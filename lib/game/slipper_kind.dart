@@ -104,15 +104,25 @@ class SlipperCatalog {
         sole: Rect.fromLTRB(0.21, 0.67, 0.83, 0.72),
       ),
     ),
-    // Пример записи с бонусом:
-    // SlipperKind(
-    //   id: 'red_king',
-    //   name: 'Королевский',
-    //   rarity: Rarity.epic,
-    //   asset: 'assets/slippers/red_king.png',
-    //   anchors: SlipperAnchors(...),
-    //   bonuses: {Bonus.damage: 0.10, Bonus.crit: 0.05},
-    // ),
+    SlipperKind(
+      id: 'blue_slide',
+      name: 'Синий слайд',
+      rarity: Rarity.rare,
+      asset: 'assets/slippers/blue_slide.png',
+      anchors: SlipperAnchors(
+        ridge: [
+          Offset(0.54, 0.29),
+          Offset(0.60, 0.18),
+          Offset(0.66, 0.23),
+          Offset(0.72, 0.31),
+          Offset(0.78, 0.40),
+        ],
+        side: [Offset(0.55, 0.66), Offset(0.63, 0.60), Offset(0.71, 0.64)],
+        heel: Offset(0.07, 0.62),
+        sole: Rect.fromLTRB(0.15, 0.80, 0.85, 0.87),
+      ),
+      bonuses: {Bonus.dodge: 0.05},
+    ),
   ];
 
   static final Map<String, SlipperKind> _byId = {for (final k in all) k.id: k};
