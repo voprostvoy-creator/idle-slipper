@@ -70,14 +70,14 @@ class _HomeScreenState extends State<HomeScreen>
                   behavior: HitTestBehavior.opaque,
                   child: SizedBox(
                     width: 340,
-                    height: 230,
+                    height: 200,
                     child: Stack(
                       alignment: Alignment.center,
                       clipBehavior: Clip.none,
                       children: [
                         const Positioned(bottom: 6, child: Rug(width: 340, aspect: 0.3)),
                         Positioned(
-                          bottom: 20,
+                          bottom: 26,
                           child: AnimatedBuilder(
                             animation: _tapAnim,
                             builder: (_, child) {

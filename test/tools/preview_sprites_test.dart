@@ -32,7 +32,11 @@ void main() {
               alignment: Alignment.center,
               child: RepaintBoundary(
                 key: key,
-                child: SlipperSprite(slipper: slipper, width: 480, animate: false),
+                // Поля — чтобы увидеть аксессуары, выходящие за картинку.
+                child: Padding(
+                  padding: const EdgeInsets.all(60),
+                  child: SlipperSprite(slipper: slipper, width: 480, animate: false),
+                ),
               ),
             ),
           ),

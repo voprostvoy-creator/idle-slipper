@@ -69,7 +69,7 @@ class SlipperKind {
   final String name;
   final Rarity rarity;
 
-  /// Путь к PNG: прозрачный фон, вид сбоку, носок вправо, желательно 1200×800.
+  /// Путь к PNG: прозрачный фон, вид сбоку, носок вправо, желательно 1200×600 (2:1).
   final String asset;
   final SlipperAnchors anchors;
   final Map<Bonus, double> bonuses;
@@ -93,15 +93,15 @@ class SlipperCatalog {
       asset: 'assets/slippers/basic.png',
       anchors: SlipperAnchors(
         ridge: [
-          Offset(0.40, 0.34),
-          Offset(0.48, 0.25),
-          Offset(0.59, 0.21),
-          Offset(0.70, 0.22),
-          Offset(0.79, 0.29),
+          Offset(0.40, 0.19),
+          Offset(0.48, 0.07),
+          Offset(0.59, 0.02),
+          Offset(0.70, 0.03),
+          Offset(0.79, 0.12),
         ],
-        side: [Offset(0.50, 0.58), Offset(0.60, 0.60), Offset(0.70, 0.59)],
-        heel: Offset(0.34, 0.41),
-        sole: Rect.fromLTRB(0.21, 0.70, 0.83, 0.74),
+        side: [Offset(0.50, 0.51), Offset(0.60, 0.53), Offset(0.70, 0.52)],
+        heel: Offset(0.34, 0.28),
+        sole: Rect.fromLTRB(0.21, 0.67, 0.83, 0.72),
       ),
     ),
     // Пример записи с бонусом:

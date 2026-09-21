@@ -314,7 +314,7 @@ class _Fighter extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       width: width,
-      height: width * 0.68,
+      height: width * 0.56,
       child: Stack(
         alignment: Alignment.bottomCenter,
         clipBehavior: Clip.none,

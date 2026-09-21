@@ -90,16 +90,16 @@ class _OpponentCard extends StatelessWidget {
       child: Row(
         children: [
           Container(
-            width: 120,
-            height: 78,
+            width: 104,
+            height: 60,
             decoration: BoxDecoration(
               color: GameColors.panelDark,
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: GameColors.outline, width: 2.5),
             ),
-            child: SlipperSprite(slipper: s, width: 112, flip: true, animate: false),
+            child: SlipperSprite(slipper: s, width: 96, flip: true, animate: false),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

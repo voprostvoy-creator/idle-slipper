@@ -9,7 +9,7 @@ import '../game/slipper_kind.dart';
 enum SlipperMood { idle, attack, hurt, happy, dead }
 
 /// Спрайт тапка: PNG из каталога + аксессуары прокачки в якорях + эффекты.
-/// Бокс всегда 3:2 от [width]; картинка вписывается с сохранением пропорций.
+/// Бокс 2:1 от [width]; картинка другой пропорции вписывается с полями.
 class SlipperSprite extends StatefulWidget {
   const SlipperSprite({
     super.key,
@@ -26,7 +26,9 @@ class SlipperSprite extends StatefulWidget {
   final bool animate;
   final double width;
 
-  double get height => width * 2 / 3;
+  static const double aspect = 2;
+
+  double get height => width / aspect;
 
   @override
   State<SlipperSprite> createState() => _SlipperSpriteState();
@@ -95,6 +97,8 @@ class _SlipperSpriteState extends State<SlipperSprite>
     Widget sprite = SizedBox.fromSize(
       size: box,
       child: Stack(
+        // Аксессуары (шипы, пламя) могут выходить за края картинки.
+        clipBehavior: Clip.none,
         children: [
           // Задний слой: пламя.
           Positioned.fill(
@@ -126,9 +130,9 @@ class _SlipperSpriteState extends State<SlipperSprite>
     );
   }
 
-  /// Прямоугольник, в который вписана картинка внутри бокса 3:2.
+  /// Прямоугольник, в который вписана картинка внутри бокса.
   Rect _fittedRect(Size box) {
-    final img = _imageSize ?? const Size(3, 2);
+    final img = _imageSize ?? const Size(2, 1);
     final scale = min(box.width / img.width, box.height / img.height);
     final w = img.width * scale;
     final h = img.height * scale;
