@@ -69,15 +69,15 @@ class _HomeScreenState extends State<HomeScreen>
                   onTapDown: _onTap,
                   behavior: HitTestBehavior.opaque,
                   child: SizedBox(
-                    width: 300,
-                    height: 210,
+                    width: 340,
+                    height: 230,
                     child: Stack(
                       alignment: Alignment.center,
                       clipBehavior: Clip.none,
                       children: [
-                        const Positioned(bottom: 6, child: Rug(width: 300)),
+                        const Positioned(bottom: 6, child: Rug(width: 340, aspect: 0.3)),
                         Positioned(
-                          bottom: 28,
+                          bottom: 20,
                           child: AnimatedBuilder(
                             animation: _tapAnim,
                             builder: (_, child) {
@@ -91,7 +91,7 @@ class _HomeScreenState extends State<HomeScreen>
                                 child: child,
                               );
                             },
-                            child: SlipperView(slipper: game.slipper, width: 250),
+                            child: SlipperView(slipper: game.slipper, width: 320),
                           ),
                         ),
                         for (final f in _floats)

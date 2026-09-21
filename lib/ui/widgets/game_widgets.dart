@@ -372,12 +372,13 @@ class _CoinPainter extends CustomPainter {
 
 /// Коврик под тапком.
 class Rug extends StatelessWidget {
-  const Rug({super.key, required this.width});
+  const Rug({super.key, required this.width, this.aspect = 0.32});
   final double width;
+  final double aspect;
 
   @override
   Widget build(BuildContext context) =>
-      CustomPaint(size: Size(width, width * 0.32), painter: _RugPainter());
+      CustomPaint(size: Size(width, width * aspect), painter: _RugPainter());
 }
 
 class _RugPainter extends CustomPainter {

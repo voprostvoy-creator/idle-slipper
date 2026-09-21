@@ -36,9 +36,9 @@ void main() {
       final (s, mood, flip) = e.value;
       final rec = ui.PictureRecorder();
       final canvas = Canvas(rec);
-      canvas.drawRect(const Rect.fromLTWH(0, 0, 400, 240), Paint()..color = const Color(0xFF2B2B2B));
-      SlipperPainter(slipper: s, mood: mood, flip: flip).paint(canvas, const Size(400, 240));
-      final img = await rec.endRecording().toImage(400, 240);
+      canvas.drawRect(const Rect.fromLTWH(0, 0, 400, 260), Paint()..color = const Color(0xFF2B2B2B));
+      SlipperPainter(slipper: s, mood: mood, flip: flip).paint(canvas, const Size(400, 260));
+      final img = await rec.endRecording().toImage(400, 260);
       final bytes = await img.toByteData(format: ui.ImageByteFormat.png);
       File('$_out/${e.key}.png').writeAsBytesSync(bytes!.buffer.asUint8List());
     }

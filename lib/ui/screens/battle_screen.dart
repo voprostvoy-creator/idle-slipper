@@ -209,7 +209,7 @@ class _BattleScreenState extends State<BattleScreen>
             Expanded(
               child: LayoutBuilder(
                 builder: (context, c) {
-                  final w = (c.maxWidth * 0.42).clamp(120.0, 220.0);
+                  final w = (c.maxWidth * 0.43).clamp(130.0, 240.0);
                   final rugW = c.maxWidth - 16;
                   return AnimatedBuilder(
                     animation: _lunge,
@@ -218,18 +218,18 @@ class _BattleScreenState extends State<BattleScreen>
                       final shift = 36 * t;
                       return Center(
                         child: SizedBox(
-                        height: rugW * 0.32 + 80,
+                        height: rugW * 0.26 + 90,
                         child: Stack(
                         alignment: Alignment.center,
                         clipBehavior: Clip.none,
                         children: [
                           Positioned(
                             bottom: 8,
-                            child: Rug(width: rugW),
+                            child: Rug(width: rugW, aspect: 0.26),
                           ),
                           Positioned(
-                            bottom: 30,
-                            left: 8 + (_lunging == Side.player ? shift : 0),
+                            bottom: 22,
+                            left: 10 + (_lunging == Side.player ? shift : 0),
                             child: _Fighter(
                               slipper: widget.player,
                               mood: _mood[Side.player]!,
@@ -238,8 +238,8 @@ class _BattleScreenState extends State<BattleScreen>
                             ),
                           ),
                           Positioned(
-                            bottom: 30,
-                            right: 8 + (_lunging == Side.opponent ? shift : 0),
+                            bottom: 22,
+                            right: 10 + (_lunging == Side.opponent ? shift : 0),
                             child: _Fighter(
                               slipper: widget.opponent,
                               mood: _mood[Side.opponent]!,

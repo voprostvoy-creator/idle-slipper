@@ -10,27 +10,35 @@ enum SlipperMood { idle, attack, hurt, happy, dead }
 /// Палитра тапка, выведенная из одного оттенка.
 class SlipperPalette {
   SlipperPalette(int hue)
-      : body = HSLColor.fromAHSL(1, hue.toDouble(), 0.6, 0.52).toColor(),
-        bodyDark = HSLColor.fromAHSL(1, hue.toDouble(), 0.55, 0.36).toColor(),
-        bodyLight = HSLColor.fromAHSL(1, hue.toDouble(), 0.65, 0.66).toColor(),
-        insole = HSLColor.fromAHSL(1, (hue + 15) % 360.0, 0.35, 0.72).toColor(),
-        insoleDark = HSLColor.fromAHSL(1, (hue + 15) % 360.0, 0.35, 0.6).toColor(),
-        sole = HSLColor.fromAHSL(1, (hue + 10) % 360.0, 0.3, 0.22).toColor(),
-        fur = HSLColor.fromAHSL(1, (hue + 30) % 360.0, 0.3, 0.9).toColor(),
-        outline = HSLColor.fromAHSL(1, hue.toDouble(), 0.4, 0.12).toColor();
+      : body = HSLColor.fromAHSL(1, hue.toDouble(), 0.72, 0.5).toColor(),
+        bodyDark = HSLColor.fromAHSL(1, hue.toDouble(), 0.65, 0.34).toColor(),
+        bodyLight = HSLColor.fromAHSL(1, hue.toDouble(), 0.75, 0.66).toColor(),
+        accent = HSLColor.fromAHSL(1, (hue + 40) % 360.0, 0.8, 0.6).toColor(),
+        heel = HSLColor.fromAHSL(1, hue.toDouble(), 0.5, 0.28).toColor();
 
   final Color body;
   final Color bodyDark;
   final Color bodyLight;
-  final Color insole;
-  final Color insoleDark;
-  final Color sole;
-  final Color fur;
-  final Color outline;
+
+  /// Контрастная полоса на носке.
+  final Color accent;
+
+  /// Задник (пяточная часть) — темнее корпуса.
+  final Color heel;
+
+  static const cream = Color(0xFFF4EAD3);
+  static const creamDark = Color(0xFFD9CBAA);
+  static const outsole = Color(0xFF2C2433);
+  static const outsoleLight = Color(0xFF4A3F55);
+  static const fur = Color(0xFFFBF6EA);
+  static const furShade = Color(0xFFD8CDB4);
+  static const outline = Color(0xFF17111D);
+  static const metal = Color(0xFFD7DCE3);
+  static const metalDark = Color(0xFF8C95A3);
 }
 
-/// Рисует тапок в боксе 200×120 (логических единиц), масштабируя под size.
-/// Вид сверху-сбоку, носок вправо; [flip] зеркалит для соперника.
+/// Рисует тапок в боксе 200×130 (логических единиц), масштабируя под size.
+/// Вид сбоку, носок вправо; [flip] зеркалит для соперника.
 class SlipperPainter extends CustomPainter {
   SlipperPainter({
     required this.slipper,
@@ -44,14 +52,7 @@ class SlipperPainter extends CustomPainter {
   final SlipperPalette palette;
 
   static const double baseW = 200;
-  static const double baseH = 120;
-
-  /// Толщина подошвы (видимый «бортик» снизу).
-  static const double _soleDepth = 9;
-
-  /// Где начинается закрытый носок (по X) и насколько вырез вогнут.
-  static const double _vampX = 96;
-  static const double _vampCurve = 46;
+  static const double baseH = 130;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -66,355 +67,406 @@ class SlipperPainter extends CustomPainter {
       canvas.translate(baseW, 0);
       canvas.scale(-1, 1);
     }
-    // Запас по краям под шипы и полосы скорости.
-    canvas.translate(baseW * 0.07, baseH * 0.05);
-    canvas.scale(0.86, 0.9);
+    // Запас по краям под шипы и пламя.
+    canvas.translate(baseW * 0.09, baseH * 0.06);
+    canvas.scale(0.82, 0.88);
 
     _drawShadow(canvas);
-    _drawSpeedTrails(canvas);
+    _drawFlames(canvas);
     _drawSole(canvas);
-    _drawInsole(canvas);
-    _drawPatches(canvas);
+    _drawFootbed(canvas);
     _drawVamp(canvas);
+    _drawOpening(canvas);
+    _drawPatches(canvas);
     _drawPlates(canvas);
-    _drawFur(canvas);
     _drawSpikes(canvas);
     _drawFace(canvas);
 
     canvas.restore();
   }
 
-  Paint get _outline => Paint()
-    ..color = palette.outline
+  static Paint _stroke([double w = 4]) => Paint()
+    ..color = SlipperPalette.outline
     ..style = PaintingStyle.stroke
-    ..strokeWidth = 3
-    ..strokeJoin = StrokeJoin.round;
+    ..strokeWidth = w
+    ..strokeJoin = StrokeJoin.round
+    ..strokeCap = StrokeCap.round;
+
+  static int _tier(int level, {int per = 5, int maxTier = 6}) =>
+      min(maxTier, level ~/ per);
 
   // --- Геометрия -------------------------------------------------------
 
-  /// Контур «следа»: пятка слева, носок справа.
-  static Path _footprint() => Path()
-    ..moveTo(14, 38)
-    ..cubicTo(45, 24, 110, 18, 150, 20)
-    ..cubicTo(186, 22, 199, 44, 197, 60)
-    ..cubicTo(195, 80, 182, 96, 150, 96)
-    ..cubicTo(110, 96, 45, 88, 14, 78)
-    ..cubicTo(0, 72, 0, 44, 14, 38)
+  /// Промежуточная подошва (светлая платформа); [raise] делает её выше.
+  static Path _midsole(double raise) => Path()
+    ..moveTo(8, 88 - raise)
+    ..cubicTo(60, 86 - raise, 130, 84 - raise, 162, 84 - raise)
+    ..cubicTo(190, 84 - raise, 201, 90 - raise, 200, 100 - raise)
+    ..lineTo(200, 106)
+    ..lineTo(8, 106)
+    ..quadraticBezierTo(1, 106, 1, 97)
+    ..quadraticBezierTo(1, 88 - raise, 8, 88 - raise)
     ..close();
 
-  /// Область носка: всё правее вогнутой линии выреза, пересечённое со следом.
-  static Path _vampRegion({double shift = 0}) {
-    final x = _vampX + shift;
-    final region = Path()
-      ..moveTo(x, -10)
-      ..lineTo(260, -10)
-      ..lineTo(260, 130)
-      ..lineTo(x, 130)
-      ..cubicTo(x + _vampCurve, 100, x + _vampCurve, 20, x, -10)
-      ..close();
-    return Path.combine(PathOperation.intersect, _footprint(), region);
+  /// Подмётка с протектором: плита + «лаги» снизу.
+  static Path _outsole() {
+    var p = Path()
+      ..addRRect(RRect.fromRectAndRadius(
+        const Rect.fromLTRB(1, 103, 200, 114),
+        const Radius.circular(5),
+      ));
+    for (var x = 8.0; x < 192; x += 17) {
+      p = Path.combine(
+        PathOperation.union,
+        p,
+        Path()
+          ..addRRect(RRect.fromRectAndRadius(
+            Rect.fromLTWH(x, 110, 11, 9),
+            const Radius.circular(3),
+          )),
+      );
+    }
+    return p;
   }
 
-  /// Точка на кривой выреза при t∈[0,1] (сверху вниз).
-  static Offset _openingPoint(double t, {double shift = 0}) {
-    final x = _vampX + shift;
-    return _cubic(Offset(x, -10), Offset(x + _vampCurve, 20),
-        Offset(x + _vampCurve, 100), Offset(x, 130), t);
-  }
+  /// Верх — большая пухлая «шапка» закрытого носка, пятка открыта.
+  static Path _vamp() => Path()
+    ..moveTo(54, 90)
+    ..cubicTo(50, 52, 78, 22, 120, 22)
+    ..cubicTo(160, 22, 190, 42, 197, 70)
+    ..cubicTo(200, 80, 199, 88, 197, 90)
+    ..close();
+
+  /// Вырез под ногу на задней грани шапки — тёмный наклонный овал.
+  static const _openingCenter = Offset(78, 56);
+  static const _openingRadii = Size(12, 24);
+  static const _openingTilt = -0.28;
+
+  /// Мысок — светлая накладка на носке.
+  static Path _toeCap() => Path.combine(
+        PathOperation.intersect,
+        _vamp(),
+        Path()
+          ..moveTo(166, 20)
+          ..lineTo(220, 20)
+          ..lineTo(220, 100)
+          ..lineTo(176, 100)
+          ..cubicTo(160, 80, 160, 40, 166, 20)
+          ..close(),
+      );
+
 
   // --- Части тапка -----------------------------------------------------
 
   void _drawShadow(Canvas c) {
     c.drawOval(
-      const Rect.fromLTWH(6, 62, 192, 52),
+      const Rect.fromLTWH(-4, 104, 214, 26),
       Paint()
-        ..color = Colors.black.withValues(alpha: 0.28)
+        ..color = Colors.black.withValues(alpha: 0.3)
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4),
     );
   }
 
   void _drawSole(Canvas c) {
-    final depth = _soleDepth + _tier(slipper.level(Stat.defense), maxTier: 3) * 2;
-    final fp = _footprint();
-    // Бортик подошвы — тот же контур, сдвинутый вниз.
+    final defTier = _tier(slipper.level(Stat.defense), maxTier: 3);
+    final out = _outsole();
+    final raise = defTier * 4.0;
+    final mid = _midsole(raise);
+
+    // Подмётка.
+    c.drawPath(out, Paint()..color = SlipperPalette.outsole);
     c.save();
-    c.translate(0, depth);
-    c.drawPath(fp, Paint()..color = palette.sole);
-    c.drawPath(fp, _outline);
+    c.clipPath(out);
+    c.drawRect(const Rect.fromLTRB(0, 103, 200, 107), Paint()..color = SlipperPalette.outsoleLight);
     c.restore();
-    // Рифление на бортике — только в полосе между стелькой и низом подошвы.
-    final band = Path.combine(
-      PathOperation.difference,
-      fp.shift(Offset(0, depth)),
-      fp,
-    );
+    c.drawPath(out, _stroke());
+
+    // Платформа, у прокачанной подошвы — выше.
+    c.drawPath(mid, Paint()..color = SlipperPalette.cream);
     c.save();
-    c.clipPath(band);
-    final groove = Paint()
-      ..color = Colors.black.withValues(alpha: 0.35)
-      ..strokeWidth = 2;
-    for (var x = 30.0; x < 190; x += 14) {
-      c.drawLine(Offset(x, 60), Offset(x - 3, 96 + depth), groove);
+    c.clipPath(mid);
+    // Тень под верхом.
+    c.drawRect(Rect.fromLTRB(0, 84 - raise, 200, 91 - raise), Paint()..color = SlipperPalette.creamDark);
+    // Светящиеся вставки от скорости.
+    final spdTier = _tier(slipper.level(Stat.speed), maxTier: 3);
+    if (spdTier >= 2) {
+      final glow = Paint()..color = const Color(0xFF4FE3FF);
+      for (var x = 30.0; x < 180; x += 40) {
+        c.drawRRect(
+          RRect.fromRectAndRadius(Rect.fromLTWH(x, 94, 24, 6), const Radius.circular(3)),
+          glow,
+        );
+      }
     }
+    c.restore();
+    c.drawPath(mid, _stroke());
+  }
+
+  /// Открытая пятка: виден край стельки.
+  void _drawFootbed(Canvas c) {
+    final raise = _tier(slipper.level(Stat.defense), maxTier: 3) * 4.0;
+    final bed = Path()
+      ..addOval(Rect.fromLTRB(4, 80 - raise, 96, 94 - raise));
+    c.save();
+    c.clipRect(const Rect.fromLTRB(0, 0, 70, 200));
+    c.drawPath(bed, Paint()..color = SlipperPalette.creamDark);
+    c.drawPath(bed, _stroke(3));
     c.restore();
   }
 
-  void _drawInsole(Canvas c) {
-    final fp = _footprint();
-    c.drawPath(fp, Paint()..color = palette.insole);
-    // Тень от носка, падающая внутрь.
+  /// Вырез: тёмный овал с меховым ободком.
+  void _drawOpening(Canvas c) {
     c.save();
-    c.clipPath(fp);
-    c.drawPath(
-      _vampRegion(shift: -14),
-      Paint()..color = palette.insoleDark,
+    c.translate(_openingCenter.dx, _openingCenter.dy);
+    c.rotate(_openingTilt);
+    final rect = Rect.fromCenter(
+      center: Offset.zero,
+      width: _openingRadii.width * 2,
+      height: _openingRadii.height * 2,
     );
+    c.drawOval(rect, Paint()..color = SlipperPalette.outline.withValues(alpha: 0.9));
+    // Меховой ободок — кольцо из кружков.
+    final fill = Paint()..color = SlipperPalette.fur;
+    final shade = Paint()..color = SlipperPalette.furShade;
+    const n = 11;
+    for (var i = 0; i < n; i++) {
+      final a = -pi / 2 + i * 2 * pi / n;
+      final p = Offset(
+        cos(a) * (_openingRadii.width + 2),
+        sin(a) * (_openingRadii.height + 1),
+      );
+      final r = 6.0 + (i.isEven ? 1.5 : 0);
+      c.drawCircle(p + const Offset(1.5, 2), r, shade);
+      c.drawCircle(p, r, fill);
+      c.drawCircle(p, r, _stroke(3));
+    }
     c.restore();
-    // Строчка по краю стельки.
-    c.save();
-    c.clipPath(fp);
-    final stitch = Paint()
-      ..color = palette.outline.withValues(alpha: 0.45)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.5;
-    _drawDashed(c, _inset(fp, 6), stitch, dash: 5, gap: 4);
-    c.restore();
-    c.drawPath(fp, _outline);
   }
 
   void _drawVamp(Canvas c) {
-    final vamp = _vampRegion();
-    c.drawPath(
-      vamp,
-      Paint()
-        ..shader = LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [palette.bodyLight, palette.body, palette.bodyDark],
-          stops: const [0, 0.5, 1],
-        ).createShader(const Rect.fromLTWH(90, 18, 110, 80)),
-    );
-    // Блик на носке.
+    final vamp = _vamp();
+    c.drawPath(vamp, Paint()..color = palette.body);
     c.save();
     c.clipPath(vamp);
-    c.drawOval(
-      const Rect.fromLTWH(140, 26, 44, 18),
-      Paint()..color = Colors.white.withValues(alpha: 0.22),
+    // Тень у подошвы.
+    c.drawRect(const Rect.fromLTRB(0, 74, 200, 92), Paint()..color = palette.bodyDark);
+    // Блик по верху.
+    c.drawPath(
+      Path()
+        ..moveTo(84, 36)
+        ..cubicTo(100, 26, 134, 22, 166, 32)
+        ..lineTo(164, 40)
+        ..cubicTo(134, 30, 104, 34, 88, 44)
+        ..close(),
+      Paint()..color = Colors.white.withValues(alpha: 0.28),
+    );
+    // Контрастная косая полоса.
+    c.drawPath(
+      Path()
+        ..moveTo(100, 24)
+        ..lineTo(116, 22)
+        ..lineTo(152, 92)
+        ..lineTo(134, 92)
+        ..close(),
+      Paint()..color = palette.accent,
+    );
+    c.drawPath(
+      Path()
+        ..moveTo(100, 24)
+        ..lineTo(116, 22)
+        ..lineTo(152, 92)
+        ..lineTo(134, 92)
+        ..close(),
+      _stroke(3),
     );
     c.restore();
-    c.drawPath(vamp, _outline);
-  }
 
-  /// Меховая опушка по краю выреза.
-  void _drawFur(Canvas c) {
-    final fill = Paint()..color = palette.fur;
-    final shade = Paint()..color = palette.fur.withValues(alpha: 0.6);
-    for (var i = 0; i <= 8; i++) {
-      final t = 0.2 + i * (0.6 / 8);
-      final p = _openingPoint(t);
-      final r = 5.5 + (i.isEven ? 1.2 : 0);
-      c.drawCircle(p + const Offset(2, 1), r, shade);
-      c.drawCircle(p, r, fill);
-      c.drawCircle(p, r, _outline..strokeWidth = 2);
+    // Мысок: тканевый или металлический (Подошва 10+).
+    final cap = _toeCap();
+    final metalCap = _tier(slipper.level(Stat.defense)) >= 2;
+    c.drawPath(cap, Paint()..color = metalCap ? SlipperPalette.metal : SlipperPalette.cream);
+    c.save();
+    c.clipPath(cap);
+    c.drawRect(
+      const Rect.fromLTRB(0, 74, 200, 92),
+      Paint()..color = metalCap ? SlipperPalette.metalDark : SlipperPalette.creamDark,
+    );
+    if (metalCap) {
+      final rivet = Paint()..color = SlipperPalette.outline;
+      for (final o in const [Offset(176, 48), Offset(190, 62), Offset(184, 80)]) {
+        c.drawCircle(o, 2.2, rivet);
+      }
     }
+    c.restore();
+    c.drawPath(cap, _stroke());
+    c.drawPath(vamp, _stroke());
   }
 
   // --- Детали от прокачки ----------------------------------------------
 
-  static int _tier(int level, {int per = 5, int maxTier = 6}) =>
-      min(maxTier, level ~/ per);
-
-  /// Удар: шипы вокруг носка, торчат наружу.
+  /// Удар: стальные шипы на заднике и верху носка.
   void _drawSpikes(Canvas c) {
     final n = _tier(slipper.level(Stat.attack));
     if (n == 0) return;
-    final fill = Paint()..color = const Color(0xFFE6E9EE);
-    final shade = Paint()..color = const Color(0xFF9AA3B0);
-    // Дуга носка: верхняя и нижняя кубики контура.
-    const top = (Offset(150, 20), Offset(186, 22), Offset(199, 44), Offset(197, 60));
-    const bottom = (Offset(197, 60), Offset(195, 80), Offset(182, 96), Offset(150, 96));
-    final len = 12.0 + min(3, n) * 2;
+    // (точка основания, направление в градусах, длина)
+    const spots = [
+      (Offset(122, 22), -95.0, 20.0),
+      (Offset(96, 28), -115.0, 18.0),
+      (Offset(148, 24), -78.0, 18.0),
+      (Offset(76, 42), -135.0, 16.0),
+      (Offset(170, 34), -60.0, 16.0),
+      (Offset(60, 66), -160.0, 14.0),
+    ];
     for (var i = 0; i < n; i++) {
-      // Распределяем шипы по дуге от верха носка до низа.
-      final u = n == 1 ? 0.5 : i / (n - 1);
-      final (p, d) = u < 0.5
-          ? (
-              _cubic(top.$1, top.$2, top.$3, top.$4, 0.35 + u * 2 * 0.65),
-              _cubicTangent(top.$1, top.$2, top.$3, top.$4, 0.35 + u * 2 * 0.65),
-            )
-          : (
-              _cubic(bottom.$1, bottom.$2, bottom.$3, bottom.$4, (u - 0.5) * 2 * 0.65),
-              _cubicTangent(bottom.$1, bottom.$2, bottom.$3, bottom.$4, (u - 0.5) * 2 * 0.65),
-            );
-      final tangent = d / d.distance;
-      final normal = Offset(tangent.dy, -tangent.dx);
-      final tip = p + normal * len;
-      final a = p - tangent * 5;
-      final b = p + tangent * 5;
-      final spike = Path()..moveTo(a.dx, a.dy)..lineTo(tip.dx, tip.dy)..lineTo(b.dx, b.dy)..close();
-      final half = Path()..moveTo(p.dx, p.dy)..lineTo(tip.dx, tip.dy)..lineTo(b.dx, b.dy)..close();
-      c.drawPath(spike, fill);
-      c.drawPath(half, shade);
-      c.drawPath(spike, _outline..strokeWidth = 2);
+      final (base, deg, len) = spots[i];
+      final a = deg * pi / 180;
+      final dir = Offset(cos(a), sin(a));
+      final side = Offset(-dir.dy, dir.dx);
+      final tip = base + dir * len;
+      final l = base + side * 6;
+      final r = base - side * 6;
+      final spike = Path()..moveTo(l.dx, l.dy)..lineTo(tip.dx, tip.dy)..lineTo(r.dx, r.dy)..close();
+      final half = Path()..moveTo(base.dx, base.dy)..lineTo(tip.dx, tip.dy)..lineTo(r.dx, r.dy)..close();
+      // Тёмное основание-«гнездо».
+      c.drawCircle(base, 7, Paint()..color = SlipperPalette.outsoleLight);
+      c.drawCircle(base, 7, _stroke(3));
+      c.drawPath(spike, Paint()..color = SlipperPalette.metal);
+      c.drawPath(half, Paint()..color = SlipperPalette.metalDark);
+      c.drawPath(spike, _stroke(3));
     }
   }
 
-  /// Подошва: броневые пластины на носке (толщина подошвы растёт отдельно).
+  /// Подошва: клёпаные пластины на носке.
   void _drawPlates(Canvas c) {
-    final n = _tier(slipper.level(Stat.defense));
+    final n = min(3, _tier(slipper.level(Stat.defense)));
     if (n == 0) return;
-    final plate = Paint()..color = const Color(0xFFB0B8C4);
-    final plateDark = Paint()..color = const Color(0xFF7E8794);
-    final rivet = Paint()..color = const Color(0xFF3A3F47);
-    const spots = [
-      Offset(178, 58), Offset(160, 84), Offset(160, 32),
-      Offset(132, 88), Offset(132, 28), Offset(120, 58),
-    ];
+    const spots = [Offset(100, 78), Offset(124, 82), Offset(148, 80)];
+    final rivet = Paint()..color = SlipperPalette.outline;
     c.save();
-    c.clipPath(_vampRegion());
+    c.clipPath(_vamp());
     for (var i = 0; i < n; i++) {
       final o = spots[i];
       final r = RRect.fromRectAndRadius(
-        Rect.fromCenter(center: o, width: 22, height: 18),
-        const Radius.circular(4),
+        Rect.fromCenter(center: o, width: 22, height: 16),
+        const Radius.circular(3),
       );
-      c.drawRRect(r.shift(const Offset(0, 3)), plateDark);
-      c.drawRRect(r, plate);
-      c.drawRRect(r, _outline..strokeWidth = 2);
-      for (final d in const [Offset(-7, -5), Offset(7, -5), Offset(-7, 5), Offset(7, 5)]) {
-        c.drawCircle(o + d, 1.8, rivet);
+      c.drawRRect(r.shift(const Offset(0, 2)), Paint()..color = SlipperPalette.metalDark);
+      c.drawRRect(r, Paint()..color = SlipperPalette.metal);
+      c.drawRRect(r, _stroke(3));
+      for (final d in const [Offset(-7, -4), Offset(7, -4), Offset(-7, 4), Offset(7, 4)]) {
+        c.drawCircle(o + d, 1.7, rivet);
       }
     }
     c.restore();
   }
 
-  /// Прочность: заплатки на стельке у пятки.
+  /// Прочность: перекрещенные бинты.
   void _drawPatches(Canvas c) {
     final n = _tier(slipper.level(Stat.health), maxTier: 3);
     if (n == 0) return;
-    final patch = Paint()..color = palette.bodyDark;
-    final stitch = Paint()
-      ..color = const Color(0xFFF5F5DC)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.6;
-    const spots = [Offset(40, 58), Offset(70, 40), Offset(68, 78)];
-    c.save();
-    c.clipPath(_footprint());
+    const spots = [Offset(96, 74), Offset(104, 42), Offset(172, 42)];
+    final band = Paint()..color = SlipperPalette.cream;
     for (var i = 0; i < n; i++) {
       final o = spots[i];
-      c.save();
-      c.translate(o.dx, o.dy);
-      c.rotate(-0.4 + i * 0.5);
-      final r = RRect.fromRectAndRadius(
-        const Rect.fromLTWH(-11, -8, 22, 16),
-        const Radius.circular(3),
-      );
-      c.drawRRect(r, patch);
-      c.drawRRect(r, _outline..strokeWidth = 2);
-      for (var k = -7; k <= 7; k += 5) {
-        c.drawLine(Offset(k.toDouble(), -9), Offset(k + 2.0, -6), stitch);
-        c.drawLine(Offset(k.toDouble(), 9), Offset(k + 2.0, 6), stitch);
+      for (final ang in [-0.6, 0.6]) {
+        c.save();
+        c.translate(o.dx, o.dy);
+        c.rotate(ang);
+        final r = RRect.fromRectAndRadius(
+          const Rect.fromLTWH(-12, -4, 24, 8),
+          const Radius.circular(2),
+        );
+        c.drawRRect(r, band);
+        c.drawRRect(r, _stroke(2.5));
+        c.restore();
       }
-      c.restore();
     }
-    c.restore();
   }
 
-  /// Скорость: полосы движения за пяткой.
-  void _drawSpeedTrails(Canvas c) {
+  /// Скорость: пламя из пятки.
+  void _drawFlames(Canvas c) {
     final n = _tier(slipper.level(Stat.speed), maxTier: 3);
     if (n == 0) return;
-    final paint = Paint()
-      ..color = palette.bodyLight
-      ..strokeWidth = 5
-      ..strokeCap = StrokeCap.round;
-    final shade = Paint()
-      ..color = palette.outline
-      ..strokeWidth = 8
-      ..strokeCap = StrokeCap.round;
-    for (var i = 0; i < n; i++) {
-      final y = 46.0 + i * 14;
-      final len = 30.0 - i * 6;
-      c.drawLine(Offset(4 - len, y), Offset(6, y), shade);
-      c.drawLine(Offset(4 - len, y), Offset(6, y), paint);
-    }
+    final len = 28.0 + n * 12;
+    const x0 = 62.0;
+    Path flame(double scale, double dy) => Path()
+      ..moveTo(x0, 40 + dy)
+      ..cubicTo(x0 - 24 * scale, 34 + dy, x0 - len * 0.5 * scale, 26 + dy, x0 - len * scale, 20 + dy)
+      ..cubicTo(x0 - len * 0.55 * scale, 34 + dy, x0 - len * 0.7 * scale, 42 + dy, x0 - len * 0.9 * scale, 48 + dy)
+      ..cubicTo(x0 - len * 0.5 * scale, 46 + dy, x0 - len * 0.4 * scale, 56 + dy, x0 - len * 0.55 * scale, 68 + dy)
+      ..cubicTo(x0 - len * 0.25 * scale, 60 + dy, x0 - 20 * scale, 64 + dy, x0, 66 + dy)
+      ..close();
+    final outer = flame(1, 0);
+    c.drawPath(outer, Paint()..color = const Color(0xFFFF6A1F));
+    c.drawPath(flame(0.62, 6), Paint()..color = const Color(0xFFFFC533));
+    c.drawPath(flame(0.3, 10), Paint()..color = const Color(0xFFFFF3B0));
+    c.drawPath(outer, _stroke(3.5));
   }
 
   // --- Лицо ------------------------------------------------------------
 
   void _drawFace(Canvas c) {
-    // Глаза на носке, «смотрят» вправо — в сторону соперника.
-    const eyes = [Offset(152, 44), Offset(152, 72)];
+    const eyes = [Offset(120, 54), Offset(150, 50)];
     final white = Paint()..color = Colors.white;
-    final black = Paint()..color = const Color(0xFF1B1B1B);
-    final stroke = Paint()
-      ..color = const Color(0xFF1B1B1B)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3
-      ..strokeCap = StrokeCap.round;
+    final black = Paint()..color = SlipperPalette.outline;
+    final s = _stroke(3.5);
 
     switch (mood) {
       case SlipperMood.dead:
         for (final e in eyes) {
-          c.drawLine(e + const Offset(-6, -6), e + const Offset(6, 6), stroke);
-          c.drawLine(e + const Offset(-6, 6), e + const Offset(6, -6), stroke);
+          c.drawLine(e + const Offset(-7, -7), e + const Offset(7, 7), s);
+          c.drawLine(e + const Offset(-7, 7), e + const Offset(7, -7), s);
         }
       case SlipperMood.hurt:
         for (final e in eyes) {
-          c.drawLine(e + const Offset(-7, 0), e + const Offset(7, 0), stroke);
+          c.drawLine(e + const Offset(-8, 0), e + const Offset(8, 0), s);
         }
       case SlipperMood.happy:
         for (final e in eyes) {
-          c.drawArc(Rect.fromCircle(center: e, radius: 7), pi, pi, false, stroke);
+          c.drawArc(Rect.fromCircle(center: e, radius: 8), pi, pi, false, s);
         }
+        _drawMouth(c, smile: true);
       case SlipperMood.idle:
       case SlipperMood.attack:
         for (final e in eyes) {
-          c.drawCircle(e, 8.5, white);
-          c.drawCircle(e, 8.5, stroke);
-          c.drawCircle(e + const Offset(3, 0), 3.8, black);
-          c.drawCircle(e + const Offset(4.5, -1.5), 1.2, white);
+          c.drawCircle(e, 10, white);
+          c.drawCircle(e, 10, s);
+          c.drawCircle(e + const Offset(3.5, 0.5), 4.5, black);
+          c.drawCircle(e + const Offset(5.5, -2), 1.5, white);
         }
         if (mood == SlipperMood.attack) {
-          // Злые брови — сходятся к носку.
-          c.drawLine(const Offset(140, 30), const Offset(158, 36), stroke);
-          c.drawLine(const Offset(140, 86), const Offset(158, 80), stroke);
+          c.drawLine(const Offset(108, 38), const Offset(128, 46), s);
+          c.drawLine(const Offset(140, 36), const Offset(160, 42), s);
         }
+        _drawMouth(c, smile: mood == SlipperMood.idle);
     }
   }
 
-  // --- Утилиты ---------------------------------------------------------
-
-  static Offset _cubic(Offset p0, Offset p1, Offset p2, Offset p3, double t) {
-    final u = 1 - t;
-    return p0 * (u * u * u) + p1 * (3 * u * u * t) + p2 * (3 * u * t * t) + p3 * (t * t * t);
-  }
-
-  static Offset _cubicTangent(Offset p0, Offset p1, Offset p2, Offset p3, double t) {
-    final u = 1 - t;
-    return (p1 - p0) * (3 * u * u) + (p2 - p1) * (6 * u * t) + (p3 - p2) * (3 * t * t);
-  }
-
-  /// Уменьшенная копия контура вокруг его центра — для внутренней строчки.
-  static Path _inset(Path p, double by) {
-    final b = p.getBounds();
-    final sx = (b.width - by * 2) / b.width;
-    final sy = (b.height - by * 2) / b.height;
-    return p.transform((Matrix4.identity()
-          ..translateByDouble(b.center.dx, b.center.dy, 0, 1)
-          ..scaleByDouble(sx, sy, 1, 1)
-          ..translateByDouble(-b.center.dx, -b.center.dy, 0, 1))
-        .storage);
-  }
-
-  static void _drawDashed(Canvas c, Path p, Paint paint,
-      {required double dash, required double gap}) {
-    for (final m in p.computeMetrics()) {
-      var d = 0.0;
-      while (d < m.length) {
-        c.drawPath(m.extractPath(d, min(d + dash, m.length)), paint);
-        d += dash + gap;
+  /// Рот на мыске; с прокачанным Ударом — зубастый.
+  void _drawMouth(Canvas c, {required bool smile}) {
+    final teeth = _tier(slipper.level(Stat.attack)) >= 2;
+    final s = _stroke(3.5);
+    if (teeth) {
+      // Пасть вдоль края мыска.
+      final mouth = Path()
+        ..moveTo(170, 58)
+        ..quadraticBezierTo(176, 76, 190, 80)
+        ..quadraticBezierTo(178, 82, 166, 70)
+        ..close();
+      c.drawPath(mouth, Paint()..color = const Color(0xFF7A1F2E));
+      final tooth = Paint()..color = Colors.white;
+      for (final (o, d) in const [
+        (Offset(172, 62), Offset(6, 6)),
+        (Offset(177, 70), Offset(6, 5)),
+        (Offset(184, 76), Offset(5, 4)),
+      ]) {
+        final t = Path()..moveTo(o.dx, o.dy)..lineTo(o.dx + d.dx, o.dy - 1)..lineTo(o.dx + d.dx * 0.4, o.dy + d.dy)..close();
+        c.drawPath(t, tooth);
+        c.drawPath(t, _stroke(2));
       }
+      c.drawPath(mouth, s);
+    } else if (smile) {
+      c.drawArc(const Rect.fromLTWH(160, 52, 30, 24), 0.35, 1.5, false, s);
     }
   }
 
