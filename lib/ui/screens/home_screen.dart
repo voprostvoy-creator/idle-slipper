@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../game/economy.dart';
 import '../../game/game_state.dart';
 import '../../game/slipper.dart';
+import '../../game/slipper_kind.dart';
 import '../format.dart';
 import '../slipper_sprite.dart';
 import '../theme.dart';
@@ -266,7 +267,106 @@ class _NameRow extends StatelessWidget {
               GameBadge(text: e.key.format(e.value), color: GameColors.green),
           ],
         ),
+        const SizedBox(height: 10),
+        GameButton(
+          color: GameColors.blue,
+          height: 38,
+          onPressed: () => _pickKind(context),
+          child: const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.checkroom, size: 18),
+              SizedBox(width: 6),
+              Text('Сменить тапок'),
+            ],
+          ),
+        ),
       ],
+    );
+  }
+
+  /// Выбор вида из каталога. Пока доступны все — кейсы и коллекция позже.
+  Future<void> _pickKind(BuildContext context) async {
+    final picked = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => _KindPicker(current: game.slipper.kindId),
+    );
+    if (picked != null) game.equip(picked);
+  }
+}
+
+class _KindPicker extends StatelessWidget {
+  const _KindPicker({required this.current});
+  final String current;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Container(
+      padding: EdgeInsets.fromLTRB(16, 12, 16, 16 + MediaQuery.paddingOf(context).bottom),
+      decoration: const BoxDecoration(
+        color: GameColors.panelDark,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        border: Border(top: BorderSide(color: GameColors.outline, width: 3)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const StrokeText('Коллекция', size: 24),
+          const SizedBox(height: 12),
+          ConstrainedBox(
+            constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.6),
+            child: ListView.separated(
+              shrinkWrap: true,
+              itemCount: SlipperCatalog.all.length,
+              separatorBuilder: (_, _) => const SizedBox(height: 10),
+              itemBuilder: (context, i) {
+                final kind = SlipperCatalog.all[i];
+                final selected = kind.id == current;
+                return GamePanel(
+                  padding: const EdgeInsets.all(10),
+                  onTap: () => Navigator.pop(context, kind.id),
+                  child: Row(
+                    children: [
+                      SlipperSprite(
+                        slipper: Slipper(name: kind.id, kindId: kind.id),
+                        width: 120,
+                        animate: false,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(kind.name, style: theme.textTheme.titleMedium),
+                            const SizedBox(height: 4),
+                            Wrap(
+                              spacing: 6,
+                              runSpacing: 4,
+                              children: [
+                                GameBadge(text: kind.rarity.label, color: kind.rarity.color),
+                                for (final e in kind.bonuses.entries)
+                                  GameBadge(text: e.key.format(e.value), color: GameColors.green),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      if (selected)
+                        const Icon(Icons.check_circle, color: GameColors.gold, size: 28)
+                      else
+                        const Icon(Icons.chevron_right, color: GameColors.textDim),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
