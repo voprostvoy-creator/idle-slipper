@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../game/battle/battle_sim.dart';
 import '../../game/slipper.dart';
-import '../slipper_painter.dart';
+import '../slipper_sprite.dart';
 import '../theme.dart';
 import '../widgets/game_widgets.dart';
 
@@ -319,19 +319,11 @@ class _Fighter extends StatelessWidget {
         alignment: Alignment.bottomCenter,
         clipBehavior: Clip.none,
         children: [
-          AnimatedOpacity(
-            opacity: mood == SlipperMood.dead ? 0.55 : 1,
-            duration: const Duration(milliseconds: 300),
-            child: Transform.rotate(
-              angle: mood == SlipperMood.dead ? (flip ? 0.35 : -0.35) : 0,
-              child: SlipperView(
-                slipper: slipper,
-                mood: mood,
-                flip: flip,
-                width: width,
-                animate: mood != SlipperMood.dead,
-              ),
-            ),
+          SlipperSprite(
+            slipper: slipper,
+            mood: mood,
+            flip: flip,
+            width: width,
           ),
           for (final p in popups)
             Positioned(

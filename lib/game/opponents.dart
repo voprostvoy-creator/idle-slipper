@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'slipper.dart';
+import 'slipper_kind.dart';
 
 /// Заглушка «чужих тапков». Интерфейс такой же, каким будет серверный:
 /// на вход — сила игрока и сид, на выход — список кандидатов.
@@ -45,9 +46,11 @@ class OpponentGenerator {
 
       final name = '${_first[rng.nextInt(_first.length)]} '
           '${_second[rng.nextInt(_second.length)]}';
+      // Вид — случайный из каталога; позже здесь будет вес по редкости.
+      final kind = SlipperCatalog.all[rng.nextInt(SlipperCatalog.all.length)];
       final slipper = Slipper(
         name: name,
-        colorSeed: rng.nextInt(360),
+        kindId: kind.id,
         levels: levels,
       );
       final ratingSpread = ((factor - 1) * 300).round();

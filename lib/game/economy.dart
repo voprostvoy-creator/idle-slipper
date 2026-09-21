@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'slipper.dart';
+import 'slipper_kind.dart';
 
 /// Все числа экономики в одном месте, чтобы балансировать не бегая по коду.
 class Economy {
@@ -21,7 +22,7 @@ class Economy {
   static double incomePerSecond(Slipper s, int rating) {
     final fromLevels = 0.5 + s.totalLevel * 0.35;
     final fromRating = max(0, rating - 1000) * 0.01;
-    return fromLevels + fromRating;
+    return (fromLevels + fromRating) * (1 + s.kind.bonus(Bonus.income));
   }
 
   /// Награда за бой. Проигрыш тоже что-то даёт, чтобы не было обидно.

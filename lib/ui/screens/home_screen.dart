@@ -4,7 +4,7 @@ import '../../game/economy.dart';
 import '../../game/game_state.dart';
 import '../../game/slipper.dart';
 import '../format.dart';
-import '../slipper_painter.dart';
+import '../slipper_sprite.dart';
 import '../theme.dart';
 import '../widgets/game_widgets.dart';
 
@@ -91,7 +91,7 @@ class _HomeScreenState extends State<HomeScreen>
                                 child: child,
                               );
                             },
-                            child: SlipperView(slipper: game.slipper, width: 320),
+                            child: SlipperSprite(slipper: game.slipper, width: 320),
                           ),
                         ),
                         for (final f in _floats)
@@ -214,65 +214,59 @@ class _NameRow extends StatelessWidget {
 
   Future<void> _edit(BuildContext context) async {
     final controller = TextEditingController(text: game.slipper.name);
-    var hue = game.slipper.colorSeed;
     final ok = await showDialog<bool>(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setState) => AlertDialog(
-          title: const StrokeText('Твой тапок', size: 22),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: controller,
-                maxLength: 18,
-                decoration: const InputDecoration(labelText: 'Имя'),
-              ),
-              SlipperView(
-                slipper: game.slipper.copyWith(colorSeed: hue),
-                width: 170,
-                animate: false,
-              ),
-              Slider(
-                value: hue.toDouble(),
-                min: 0,
-                max: 359,
-                onChanged: (v) => setState(() => hue = v.round()),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Отмена'),
-            ),
-            GameButton(
-              color: GameColors.green,
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Сохранить'),
-            ),
-          ],
+      builder: (context) => AlertDialog(
+        title: const StrokeText('Имя тапка', size: 22),
+        content: TextField(
+          controller: controller,
+          maxLength: 18,
+          autofocus: true,
+          decoration: const InputDecoration(labelText: 'Имя'),
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Отмена'),
+          ),
+          GameButton(
+            color: GameColors.green,
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Сохранить'),
+          ),
+        ],
       ),
     );
-    if (ok == true) {
-      game.rename(controller.text);
-      game.recolor(hue);
-    }
+    if (ok == true) game.rename(controller.text);
   }
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => _edit(context),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          StrokeText(game.slipper.name, size: 24),
-          const SizedBox(width: 6),
-          const Icon(Icons.edit, size: 18, color: GameColors.textDim),
-        ],
-      ),
+    final kind = game.slipper.kind;
+    return Column(
+      children: [
+        GestureDetector(
+          onTap: () => _edit(context),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              StrokeText(game.slipper.name, size: 24),
+              const SizedBox(width: 6),
+              const Icon(Icons.edit, size: 18, color: GameColors.textDim),
+            ],
+          ),
+        ),
+        const SizedBox(height: 4),
+        Wrap(
+          spacing: 6,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            GameBadge(text: '${kind.rarity.label} · ${kind.name}', color: kind.rarity.color),
+            for (final e in kind.bonuses.entries)
+              GameBadge(text: e.key.format(e.value), color: GameColors.green),
+          ],
+        ),
+      ],
     );
   }
 }

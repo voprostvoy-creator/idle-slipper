@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../game/game_state.dart';
 import '../../game/slipper.dart';
-import '../slipper_painter.dart';
+import '../slipper_sprite.dart';
 import '../theme.dart';
 import '../widgets/game_widgets.dart';
 
@@ -34,9 +34,22 @@ class RatingScreen extends StatelessWidget {
             GamePanel(
               child: Column(
                 children: [
-                  SlipperView(slipper: game.slipper, width: 190),
+                  SlipperSprite(slipper: game.slipper, width: 190),
                   const SizedBox(height: 4),
                   StrokeText(game.slipper.name, size: 22),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 6,
+                    alignment: WrapAlignment.center,
+                    children: [
+                      GameBadge(
+                        text: '${game.slipper.kind.rarity.label} · ${game.slipper.kind.name}',
+                        color: game.slipper.kind.rarity.color,
+                      ),
+                      for (final e in game.slipper.kind.bonuses.entries)
+                        GameBadge(text: e.key.format(e.value), color: GameColors.green),
+                    ],
+                  ),
                   const SizedBox(height: 14),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,

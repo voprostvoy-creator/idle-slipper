@@ -5,7 +5,7 @@ import 'package:idle_slipper/game/slipper.dart';
 
 void main() {
   Slipper make(String name, {int atk = 1, int def = 1, int hp = 1, int spd = 1}) =>
-      Slipper(name: name, colorSeed: 0, levels: {
+      Slipper(name: name, levels: {
         Stat.attack: atk,
         Stat.defense: def,
         Stat.health: hp,

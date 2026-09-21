@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../game/game_state.dart';
 import '../../game/opponents.dart';
 import '../../game/slipper.dart';
-import '../slipper_painter.dart';
+import '../slipper_sprite.dart';
 import '../theme.dart';
 import '../widgets/game_widgets.dart';
 import 'battle_screen.dart';
@@ -97,7 +97,7 @@ class _OpponentCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: GameColors.outline, width: 2.5),
             ),
-            child: SlipperView(slipper: s, width: 112, flip: true, animate: false),
+            child: SlipperSprite(slipper: s, width: 112, flip: true, animate: false),
           ),
           const SizedBox(width: 12),
           Expanded(

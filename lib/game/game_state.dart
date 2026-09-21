@@ -20,7 +20,7 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
   final SharedPreferences _prefs;
   Timer? _ticker;
 
-  Slipper slipper = Slipper(name: 'Мой тапок', colorSeed: 30);
+  Slipper slipper = Slipper(name: 'Мой тапок');
   double coins = 50;
   int rating = Rating.initial;
   int wins = 0;
@@ -130,8 +130,10 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
     notifyListeners();
   }
 
-  void recolor(int hue) {
-    slipper = slipper.copyWith(colorSeed: hue % 360);
+  /// Сменить вид тапка (после кейсов — на любой из коллекции).
+  void equip(String kindId) {
+    slipper = slipper.copyWith(kindId: kindId);
+    _refreshOpponents();
     _save();
     notifyListeners();
   }
@@ -203,7 +205,7 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
   /// Для отладки: полный сброс.
   Future<void> reset() async {
     await _prefs.remove(_key);
-    slipper = Slipper(name: 'Мой тапок', colorSeed: 30);
+    slipper = Slipper(name: 'Мой тапок');
     coins = 50;
     rating = Rating.initial;
     wins = 0;
