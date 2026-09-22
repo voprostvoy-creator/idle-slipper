@@ -27,13 +27,12 @@ void main() {
         final slipper = Slipper(name: kind.id, kindId: kind.id, levels: v.value);
         await tester.pumpWidget(
           MaterialApp(
-            home: Container(
-              color: const Color(0xFF2B2B2B),
-              alignment: Alignment.center,
+            home: Center(
               child: RepaintBoundary(
                 key: key,
-                // Поля — чтобы увидеть аксессуары, выходящие за картинку.
-                child: Padding(
+                // Фон внутри границы — иначе снимок выходит прозрачным.
+                child: Container(
+                  color: const Color(0xFF241538),
                   padding: const EdgeInsets.all(60),
                   child: SlipperSprite(slipper: slipper, width: 480, animate: false),
                 ),

@@ -130,9 +130,7 @@ class _RootShellState extends State<RootShell> {
       ),
     );
     return Scaffold(
-      body: _tab == 0
-          ? RoomBackground(child: content)
-          : GameBackground(child: content),
+      body: GameBackground(child: content),
       bottomNavigationBar: _GameNavBar(
         index: _tab,
         onChanged: (i) => setState(() => _tab = i),

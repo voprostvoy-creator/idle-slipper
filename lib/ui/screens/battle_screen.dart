@@ -147,7 +147,8 @@ class _BattleScreenState extends State<BattleScreen>
     final theme = Theme.of(context);
     final won = widget.result.playerWon;
     return Scaffold(
-      body: ArenaBackground(
+      body: ArtBackground(
+        asset: 'assets/ui/room_bg.jpg',
         child: SafeArea(
         child: Column(
           children: [

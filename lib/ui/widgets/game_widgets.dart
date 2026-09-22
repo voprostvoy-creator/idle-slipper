@@ -370,20 +370,19 @@ class _CoinPainter extends CustomPainter {
   bool shouldRepaint(_CoinPainter old) => false;
 }
 
-/// Фон боя: арт арены под затемнением, чтобы текст поверх читался.
-class ArenaBackground extends StatelessWidget {
-  const ArenaBackground({super.key, required this.child});
+/// Фон из арта под затемнением, чтобы текст поверх читался.
+class ArtBackground extends StatelessWidget {
+  const ArtBackground({super.key, required this.asset, required this.child});
+
+  final String asset;
   final Widget child;
 
   @override
   Widget build(BuildContext context) {
     return DecoratedBox(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: GameColors.bgBottom,
-        image: DecorationImage(
-          image: AssetImage('assets/ui/arena_bg.jpg'),
-          fit: BoxFit.cover,
-        ),
+        image: DecorationImage(image: AssetImage(asset), fit: BoxFit.cover),
       ),
       child: DecoratedBox(
         decoration: BoxDecoration(
@@ -391,45 +390,11 @@ class ArenaBackground extends StatelessWidget {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              GameColors.bgBottom.withValues(alpha: 0.82),
-              GameColors.bgBottom.withValues(alpha: 0.25),
               GameColors.bgBottom.withValues(alpha: 0.88),
+              GameColors.bgBottom.withValues(alpha: 0.42),
+              GameColors.bgBottom.withValues(alpha: 0.92),
             ],
-            stops: const [0, 0.45, 1],
-          ),
-        ),
-        child: child,
-      ),
-    );
-  }
-}
-
-/// Фон главного экрана: комната под затемнением.
-class RoomBackground extends StatelessWidget {
-  const RoomBackground({super.key, required this.child});
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: const BoxDecoration(
-        color: GameColors.bgBottom,
-        image: DecorationImage(
-          image: AssetImage('assets/ui/room_bg.jpg'),
-          fit: BoxFit.cover,
-        ),
-      ),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              GameColors.bgBottom.withValues(alpha: 0.9),
-              GameColors.bgBottom.withValues(alpha: 0.62),
-              GameColors.bgBottom.withValues(alpha: 0.94),
-            ],
-            stops: const [0, 0.35, 1],
+            stops: const [0, 0.4, 1],
           ),
         ),
         child: child,
