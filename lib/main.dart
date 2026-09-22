@@ -5,6 +5,7 @@ import 'ui/format.dart';
 import 'ui/screens/arena_screen.dart';
 import 'ui/screens/home_screen.dart';
 import 'ui/screens/rating_screen.dart';
+import 'ui/screens/shop_screen.dart';
 import 'ui/theme.dart';
 import 'ui/widgets/game_widgets.dart';
 
@@ -58,9 +59,9 @@ class _RootShellState extends State<RootShell> {
   /// Показывает «пока тебя не было…» один раз на каждое возвращение.
   void _maybeShowOffline() {
     final game = widget.game;
-    if (game.pendingOfflineCoins <= 0 || _offlineDialogOpen || !mounted) return;
+    if (game.pendingOfflineThreads <= 0 || _offlineDialogOpen || !mounted) return;
     _offlineDialogOpen = true;
-    final coins = game.pendingOfflineCoins;
+    final threads = game.pendingOfflineThreads;
     final away = game.pendingOfflineDuration;
     game.acknowledgeOffline();
     showDialog<void>(
@@ -75,9 +76,9 @@ class _RootShellState extends State<RootShell> {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const CoinIcon(size: 28),
+                const ThreadIcon(size: 28),
                 const SizedBox(width: 8),
-                StrokeText(fmtNum(coins.floor()), size: 28, color: GameColors.gold),
+                StrokeText(fmtNum(threads.floor()), size: 28, color: GameColors.thread),
               ],
             ),
           ],
@@ -99,6 +100,7 @@ class _RootShellState extends State<RootShell> {
     final pages = [
       HomeScreen(game: game),
       ArenaScreen(game: game),
+      ShopScreen(game: game),
       RatingScreen(game: game),
     ];
     return Scaffold(
@@ -130,13 +132,14 @@ class _GameNavBar extends StatelessWidget {
   static const _items = [
     (Icons.home_rounded, 'Тапок'),
     (Icons.sports_mma_rounded, 'Арена'),
+    (Icons.storefront_rounded, 'Магазин'),
     (Icons.person_rounded, 'Профиль'),
   ];
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.fromLTRB(12, 10, 12, 10 + MediaQuery.paddingOf(context).bottom),
+      padding: EdgeInsets.fromLTRB(8, 8, 8, 8 + MediaQuery.paddingOf(context).bottom),
       decoration: const BoxDecoration(
         color: GameColors.panelDark,
         border: Border(top: BorderSide(color: GameColors.outline, width: 3)),
@@ -144,20 +147,20 @@ class _GameNavBar extends StatelessWidget {
       child: Row(
         children: [
           for (final (i, (icon, label)) in _items.indexed) ...[
-            if (i > 0) const SizedBox(width: 10),
+            if (i > 0) const SizedBox(width: 6),
             Expanded(
               child: GameButton(
-                height: 52,
+                height: 50,
                 color: i == index ? GameColors.gold : GameColors.panelLight,
                 onPressed: () => onChanged(i),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(icon, size: 24, color: i == index ? GameColors.outline : GameColors.text),
+                    Icon(icon, size: 22, color: i == index ? GameColors.outline : GameColors.text),
                     Text(
                       label,
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 11,
                         color: i == index ? GameColors.outline : GameColors.text,
                       ),
                     ),

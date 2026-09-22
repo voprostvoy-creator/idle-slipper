@@ -2,14 +2,20 @@ import 'dart:ui';
 
 /// Редкость тапка. Чем выше — тем сильнее бонус и реже выпадает из кейса.
 enum Rarity {
-  common('Обычный', Color(0xFFB9B0C4)),
-  rare('Редкий', Color(0xFF5BC8FF)),
-  epic('Эпический', Color(0xFFC77DFF)),
-  legendary('Легендарный', Color(0xFFFFC93C));
+  common('Обычный', Color(0xFFB9B0C4), 60, 0.15),
+  rare('Редкий', Color(0xFF5BC8FF), 28, 0.6),
+  epic('Эпический', Color(0xFFC77DFF), 10, 1.6),
+  legendary('Легендарный', Color(0xFFFFC93C), 2, 6.0);
 
-  const Rarity(this.label, this.color);
+  const Rarity(this.label, this.color, this.weight, this.sellFactor);
   final String label;
   final Color color;
+
+  /// Вес при розыгрыше кейса (нормализуется по тем видам, что есть в каталоге).
+  final int weight;
+
+  /// Цена продажи как доля от цены кейса: обычный уходит в сильный минус.
+  final double sellFactor;
 }
 
 /// Тип бонуса. Значение — доля: 0.10 = +10%.

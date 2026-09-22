@@ -33,6 +33,11 @@ class GameColors {
   static const rugDark = Color(0xFF7A2A2C);
   static const rugBorder = Color(0xFF2E4A6B);
   static const rugStripe = Color(0xFFE8B25C);
+
+  /// Нитки — основная валюта.
+  static const thread = Color(0xFFE86A9B);
+  static const threadLight = Color(0xFFFFB3CE);
+  static const threadDark = Color(0xFF9E3763);
   static const rugCream = Color(0xFFF2DEB4);
   static const rugTeal = Color(0xFF2F8A8A);
 }

@@ -177,15 +177,19 @@ class _CoinsHeader extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       child: Row(
         children: [
-          const CoinIcon(size: 36),
-          const SizedBox(width: 10),
+          const ThreadIcon(size: 34),
+          const SizedBox(width: 8),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              StrokeText(fmtNum(game.coins.floor()), size: 26, color: GameColors.gold),
+              StrokeText(fmtNum(game.threads.floor()), size: 24, color: GameColors.thread),
               Text('+${fmtNum(game.incomePerSecond)} / с', style: theme.textTheme.bodySmall),
             ],
           ),
+          const SizedBox(width: 10),
+          const CoinIcon(size: 22),
+          const SizedBox(width: 4),
+          Text(fmtNum(game.coins), style: theme.textTheme.titleSmall),
           const Spacer(),
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
@@ -293,19 +297,25 @@ class _NameRow extends StatelessWidget {
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (context) => _KindPicker(current: game.slipper.kindId),
+      builder: (context) => _KindPicker(game: game, current: game.slipper.kindId),
     );
     if (picked != null) game.equip(picked);
   }
 }
 
 class _KindPicker extends StatelessWidget {
-  const _KindPicker({required this.current});
+  const _KindPicker({required this.game, required this.current});
+  final GameState game;
   final String current;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    // Каталожный порядок, но только то, что лежит в инвентаре.
+    final owned = [
+      for (final k in SlipperCatalog.all)
+        if (game.count(k.id) > 0) k.id,
+    ];
     return Container(
       padding: EdgeInsets.fromLTRB(16, 12, 16, 16 + MediaQuery.paddingOf(context).bottom),
       decoration: const BoxDecoration(
@@ -322,10 +332,11 @@ class _KindPicker extends StatelessWidget {
             constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.6),
             child: ListView.separated(
               shrinkWrap: true,
-              itemCount: SlipperCatalog.all.length,
+              itemCount: owned.length,
               separatorBuilder: (_, _) => const SizedBox(height: 10),
               itemBuilder: (context, i) {
-                final kind = SlipperCatalog.all[i];
+                final kind = SlipperCatalog.byId(owned[i]);
+                final count = game.count(kind.id);
                 final selected = kind.id == current;
                 return GamePanel(
                   padding: const EdgeInsets.all(10),
@@ -343,7 +354,21 @@ class _KindPicker extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(kind.name, style: theme.textTheme.titleMedium),
+                            Row(
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    kind.name,
+                                    style: theme.textTheme.titleMedium,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                if (count > 1) ...[
+                                  const SizedBox(width: 6),
+                                  GameBadge(text: '×$count', color: GameColors.panelLight),
+                                ],
+                              ],
+                            ),
                             const SizedBox(height: 4),
                             Wrap(
                               spacing: 6,
@@ -445,7 +470,7 @@ class _UpgradeTile extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const CoinIcon(size: 16),
+                const ThreadIcon(size: 16),
                 const SizedBox(width: 5),
                 Text(fmtNum(cost)),
               ],

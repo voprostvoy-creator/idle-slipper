@@ -8,8 +8,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'battle/battle_sim.dart';
 import 'economy.dart';
 import 'opponents.dart';
+import 'case_box.dart';
 import 'rating.dart';
 import 'slipper.dart';
+import 'slipper_kind.dart';
 
 /// Единственный источник правды для UI. Сохраняется в SharedPreferences.
 class GameState extends ChangeNotifier with WidgetsBindingObserver {
@@ -22,9 +24,16 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
 
   Slipper slipper = Slipper(name: 'Мой тапок');
   /// TODO: вернуть 50 перед релизом — сейчас для тестов.
-  static const double startingCoins = 100000;
+  static const double startingThreads = 100000;
 
-  double coins = startingCoins;
+  /// Основная валюта: нитки. Тратятся на прокачку и кейсы.
+  double threads = startingThreads;
+
+  /// Вторая валюта: монеты. Пока не зарабатываются — задел на будущее.
+  int coins = 0;
+
+  /// Тапки в собственности: id вида → сколько штук. Дубликаты стакаются.
+  Map<String, int> inventory = {SlipperCatalog.defaultId: 1};
   int rating = Rating.initial;
   int wins = 0;
   int losses = 0;
@@ -33,8 +42,8 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
   int _opponentSeed = 1;
   List<Opponent> opponents = const [];
 
-  /// Монеты, накопленные пока приложение было закрыто. UI показывает и сбрасывает.
-  double pendingOfflineCoins = 0;
+  /// Нитки, накопленные пока приложение было закрыто. UI показывает и сбрасывает.
+  double pendingOfflineThreads = 0;
   Duration pendingOfflineDuration = Duration.zero;
 
   DateTime _lastSeen = DateTime.now();
@@ -79,7 +88,7 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   void _tick() {
-    coins += incomePerSecond;
+    threads += incomePerSecond;
     _lastSeen = DateTime.now();
     notifyListeners();
     // Сохраняемся раз в 10 секунд, чтобы не дёргать диск каждый тик.
@@ -90,14 +99,14 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
     if (away < const Duration(seconds: 30)) return;
     final capped = away > Economy.maxOffline ? Economy.maxOffline : away;
     final earned = incomePerSecond * capped.inSeconds;
-    coins += earned;
-    pendingOfflineCoins = earned;
+    threads += earned;
+    pendingOfflineThreads = earned;
     pendingOfflineDuration = capped;
     notifyListeners();
   }
 
   void acknowledgeOffline() {
-    pendingOfflineCoins = 0;
+    pendingOfflineThreads = 0;
     pendingOfflineDuration = Duration.zero;
     notifyListeners();
   }
@@ -105,18 +114,18 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
   // --- Действия игрока -------------------------------------------------
 
   void tap() {
-    coins += Economy.tapReward(slipper);
+    threads += Economy.tapReward(slipper);
     notifyListeners();
   }
 
   int upgradeCost(Stat stat) => Economy.upgradeCost(stat, slipper.level(stat));
 
-  bool canUpgrade(Stat stat) => coins >= upgradeCost(stat);
+  bool canUpgrade(Stat stat) => threads >= upgradeCost(stat);
 
   void upgrade(Stat stat) {
     final cost = upgradeCost(stat);
-    if (coins < cost) return;
-    coins -= cost;
+    if (threads < cost) return;
+    threads -= cost;
     final levels = Map.of(slipper.levels);
     levels[stat] = levels[stat]! + 1;
     slipper = slipper.copyWith(levels: levels);
@@ -133,8 +142,9 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
     notifyListeners();
   }
 
-  /// Сменить вид тапка (после кейсов — на любой из коллекции).
+  /// Сменить вид тапка — только на то, что есть в инвентаре.
   void equip(String kindId) {
+    if ((inventory[kindId] ?? 0) == 0) return;
     slipper = slipper.copyWith(kindId: kindId);
     _refreshOpponents();
     _save();
@@ -146,7 +156,7 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
   BattleResult fight(Opponent opponent) {
     final result = BattleSim.run(slipper, opponent.slipper, seed: opponent.battleSeed);
     final won = result.playerWon;
-    coins += Economy.battleReward(won: won, opponentPower: opponent.slipper.power);
+    threads += Economy.battleReward(won: won, opponentPower: opponent.slipper.power);
     rating = max(100, rating + Rating.delta(mine: rating, theirs: opponent.rating, won: won));
     if (won) {
       wins++;
@@ -175,7 +185,9 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
       _key,
       jsonEncode({
         'slipper': slipper.toJson(),
+        'threads': threads,
         'coins': coins,
+        'inventory': inventory,
         'rating': rating,
         'wins': wins,
         'losses': losses,
@@ -191,7 +203,19 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
     try {
       final json = jsonDecode(raw) as Map<String, dynamic>;
       slipper = Slipper.fromJson(json['slipper'] as Map<String, dynamic>);
-      coins = (json['coins'] as num?)?.toDouble() ?? coins;
+      // Миграция: до введения ниток основной валютой были монеты.
+      threads = (json['threads'] as num?)?.toDouble() ??
+          (json['coins'] as num?)?.toDouble() ??
+          threads;
+      coins = json['threads'] == null ? 0 : (json['coins'] as num?)?.toInt() ?? 0;
+      final inv = json['inventory'] as Map?;
+      if (inv != null && inv.isNotEmpty) {
+        inventory = {
+          for (final e in inv.entries) e.key as String: (e.value as num).toInt(),
+        };
+      }
+      // Надетый тапок всегда присутствует в инвентаре.
+      inventory[slipper.kindId] = max(1, inventory[slipper.kindId] ?? 0);
       rating = json['rating'] as int? ?? rating;
       wins = json['wins'] as int? ?? 0;
       losses = json['losses'] as int? ?? 0;
@@ -205,9 +229,44 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
     }
   }
 
-  /// Для отладки: выдать монет.
-  void cheatCoins(double amount) {
-    coins += amount;
+  // --- Кейсы ------------------------------------------------------------
+
+  bool get canOpenCase => threads >= CaseBox.price;
+
+  /// Открывает кейс: списывает нитки, роллит вид и сразу кладёт его в
+  /// инвентарь. Продать выпавшее можно потом — так дроп не теряется,
+  /// если игрок закроет экран на середине анимации.
+  SlipperKind? openCase() {
+    if (!canOpenCase) return null;
+    threads -= CaseBox.price;
+    final kind = CaseBox.roll(Random());
+    inventory[kind.id] = (inventory[kind.id] ?? 0) + 1;
+    _save();
+    notifyListeners();
+    return kind;
+  }
+
+  int count(String kindId) => inventory[kindId] ?? 0;
+
+  /// Продать одну штуку. Последний экземпляр надетого тапка продать нельзя.
+  bool sell(String kindId) {
+    final have = count(kindId);
+    if (have == 0) return false;
+    if (have == 1 && kindId == slipper.kindId) return false;
+    if (have == 1) {
+      inventory.remove(kindId);
+    } else {
+      inventory[kindId] = have - 1;
+    }
+    threads += CaseBox.sellPrice(SlipperCatalog.byId(kindId).rarity);
+    _save();
+    notifyListeners();
+    return true;
+  }
+
+  /// Для отладки: выдать ниток.
+  void cheatThreads(double amount) {
+    threads += amount;
     _save();
     notifyListeners();
   }
@@ -216,7 +275,9 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
   Future<void> reset() async {
     await _prefs.remove(_key);
     slipper = Slipper(name: 'Мой тапок');
-    coins = startingCoins;
+    threads = startingThreads;
+    coins = 0;
+    inventory = {SlipperCatalog.defaultId: 1};
     rating = Rating.initial;
     wins = 0;
     losses = 0;

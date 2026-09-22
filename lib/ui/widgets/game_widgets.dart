@@ -370,6 +370,81 @@ class _CoinPainter extends CustomPainter {
   bool shouldRepaint(_CoinPainter old) => false;
 }
 
+/// Катушка ниток — основная валюта.
+class ThreadIcon extends StatelessWidget {
+  const ThreadIcon({super.key, this.size = 22});
+  final double size;
+
+  @override
+  Widget build(BuildContext context) =>
+      CustomPaint(size: Size.square(size), painter: _ThreadPainter());
+}
+
+class _ThreadPainter extends CustomPainter {
+  @override
+  void paint(Canvas c, Size s) {
+    final w = s.width;
+    final h = s.height;
+    final outline = Paint()
+      ..color = GameColors.outline
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = w * 0.09
+      ..strokeCap = StrokeCap.round;
+
+    // Тело катушки — намотанная нить.
+    final body = RRect.fromRectAndRadius(
+      Rect.fromLTWH(w * 0.22, h * 0.14, w * 0.56, h * 0.72),
+      Radius.circular(w * 0.14),
+    );
+    c.drawRRect(body, Paint()..color = GameColors.thread);
+    c.save();
+    c.clipRRect(body);
+    c.drawRect(
+      Rect.fromLTWH(w * 0.22, h * 0.14, w * 0.16, h * 0.72),
+      Paint()..color = GameColors.threadLight,
+    );
+    c.drawRect(
+      Rect.fromLTWH(w * 0.62, h * 0.14, w * 0.18, h * 0.72),
+      Paint()..color = GameColors.threadDark,
+    );
+    // Витки нити.
+    final winding = Paint()
+      ..color = GameColors.threadDark.withValues(alpha: 0.65)
+      ..strokeWidth = w * 0.05;
+    for (var i = 1; i < 5; i++) {
+      final y = h * (0.14 + 0.72 * i / 5);
+      c.drawLine(Offset(w * 0.22, y), Offset(w * 0.78, y + h * 0.05), winding);
+    }
+    c.restore();
+
+    // Фланцы сверху и снизу.
+    for (final y in [h * 0.06, h * 0.78]) {
+      final flange = RRect.fromRectAndRadius(
+        Rect.fromLTWH(w * 0.12, y, w * 0.76, h * 0.16),
+        Radius.circular(w * 0.07),
+      );
+      c.drawRRect(flange, Paint()..color = GameColors.threadLight);
+      c.drawRRect(flange, outline);
+    }
+
+    // Свободный кончик нити.
+    c.drawPath(
+      Path()
+        ..moveTo(w * 0.78, h * 0.35)
+        ..quadraticBezierTo(w * 1.02, h * 0.42, w * 0.9, h * 0.62),
+      Paint()
+        ..color = GameColors.thread
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = w * 0.08
+        ..strokeCap = StrokeCap.round,
+    );
+    c.drawRRect(body, outline);
+  }
+
+  @override
+  bool shouldRepaint(_ThreadPainter old) => false;
+}
+
 /// Коврик под тапком.
 class Rug extends StatelessWidget {
   const Rug({super.key, required this.width, this.aspect = 0.34});

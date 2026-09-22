@@ -127,11 +127,11 @@ class RatingScreen extends StatelessWidget {
                   GameButton(
                     color: GameColors.gold,
                     height: 38,
-                    onPressed: () => game.cheatCoins(100000),
+                    onPressed: () => game.cheatThreads(100000),
                     child: const Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        CoinIcon(size: 16),
+                        ThreadIcon(size: 16),
                         SizedBox(width: 5),
                         Text('+100K'),
                       ],
