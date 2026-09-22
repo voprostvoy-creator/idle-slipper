@@ -114,6 +114,33 @@ class RatingScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 24),
+            // TODO: убрать отладочную панель перед релизом.
+            GamePanel(
+              color: GameColors.panelDark,
+              child: Row(
+                children: [
+                  const Icon(Icons.bug_report, color: GameColors.textDim),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text('Отладка', style: theme.textTheme.titleMedium),
+                  ),
+                  GameButton(
+                    color: GameColors.gold,
+                    height: 38,
+                    onPressed: () => game.cheatCoins(100000),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        CoinIcon(size: 16),
+                        SizedBox(width: 5),
+                        Text('+100K'),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
             Center(
               child: TextButton.icon(
                 onPressed: () => _confirmReset(context),

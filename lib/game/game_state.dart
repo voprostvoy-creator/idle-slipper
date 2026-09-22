@@ -21,7 +21,10 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
   Timer? _ticker;
 
   Slipper slipper = Slipper(name: 'Мой тапок');
-  double coins = 50;
+  /// TODO: вернуть 50 перед релизом — сейчас для тестов.
+  static const double startingCoins = 100000;
+
+  double coins = startingCoins;
   int rating = Rating.initial;
   int wins = 0;
   int losses = 0;
@@ -202,11 +205,18 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
     }
   }
 
+  /// Для отладки: выдать монет.
+  void cheatCoins(double amount) {
+    coins += amount;
+    _save();
+    notifyListeners();
+  }
+
   /// Для отладки: полный сброс.
   Future<void> reset() async {
     await _prefs.remove(_key);
     slipper = Slipper(name: 'Мой тапок');
-    coins = 50;
+    coins = startingCoins;
     rating = Rating.initial;
     wins = 0;
     losses = 0;
