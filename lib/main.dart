@@ -157,11 +157,17 @@ class _GameNavBar extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(icon, size: 22, color: i == index ? GameColors.outline : GameColors.text),
-                    Text(
-                      label,
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: i == index ? GameColors.outline : GameColors.text,
+                    // На узких экранах подпись ужимается, а не переносится.
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        label,
+                        maxLines: 1,
+                        softWrap: false,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: i == index ? GameColors.outline : GameColors.text,
+                        ),
                       ),
                     ),
                   ],

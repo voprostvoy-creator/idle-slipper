@@ -16,14 +16,14 @@ class BattleScreen extends StatefulWidget {
     required this.opponent,
     required this.result,
     required this.ratingDelta,
-    required this.coinsDelta,
+    required this.threadsDelta,
   });
 
   final Slipper player;
   final Slipper opponent;
   final BattleResult result;
   final int ratingDelta;
-  final int coinsDelta;
+  final int threadsDelta;
 
   @override
   State<BattleScreen> createState() => _BattleScreenState();
@@ -209,7 +209,7 @@ class _BattleScreenState extends State<BattleScreen>
             Expanded(
               child: LayoutBuilder(
                 builder: (context, c) {
-                  final w = (c.maxWidth * 0.43).clamp(130.0, 240.0);
+                  final w = (c.maxWidth * 0.46).clamp(130.0, 250.0);
                   final rugW = c.maxWidth - 16;
                   return AnimatedBuilder(
                     animation: _lunge,
@@ -261,7 +261,7 @@ class _BattleScreenState extends State<BattleScreen>
               _ResultPanel(
                 won: won,
                 ratingDelta: widget.ratingDelta,
-                coinsDelta: widget.coinsDelta,
+                threadsDelta: widget.threadsDelta,
               )
             else
               Container(
@@ -392,12 +392,12 @@ class _ResultPanel extends StatelessWidget {
   const _ResultPanel({
     required this.won,
     required this.ratingDelta,
-    required this.coinsDelta,
+    required this.threadsDelta,
   });
 
   final bool won;
   final int ratingDelta;
-  final int coinsDelta;
+  final int threadsDelta;
 
   @override
   Widget build(BuildContext context) {
@@ -415,9 +415,9 @@ class _ResultPanel extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const CoinIcon(size: 22),
+                const ThreadIcon(size: 22),
                 const SizedBox(width: 5),
-                Text('+$coinsDelta', style: theme.textTheme.titleMedium),
+                Text('+$threadsDelta', style: theme.textTheme.titleMedium),
                 const SizedBox(width: 22),
                 const Icon(Icons.emoji_events, color: GameColors.blue, size: 22),
                 const SizedBox(width: 5),

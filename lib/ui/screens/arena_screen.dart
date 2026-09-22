@@ -48,7 +48,7 @@ class ArenaScreen extends StatelessWidget {
     // Бой считается мгновенно; экран боя лишь проигрывает запись.
     final me = game.slipper;
     final ratingBefore = game.rating;
-    final coinsBefore = game.coins;
+    final threadsBefore = game.threads;
     final result = game.fight(opponent);
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -57,7 +57,7 @@ class ArenaScreen extends StatelessWidget {
           opponent: opponent.slipper,
           result: result,
           ratingDelta: game.rating - ratingBefore,
-          coinsDelta: (game.coins - coinsBefore).round(),
+          threadsDelta: (game.threads - threadsBefore).round(),
         ),
       ),
     );
@@ -89,15 +89,22 @@ class _OpponentCard extends StatelessWidget {
       onTap: onFight,
       child: Row(
         children: [
-          Container(
-            width: 104,
-            height: 60,
-            decoration: BoxDecoration(
-              color: GameColors.panelDark,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: GameColors.outline, width: 2.5),
-            ),
-            child: SlipperSprite(slipper: s, width: 96, flip: true, animate: false),
+          // Бейдж сложности живёт под превью — имени остаётся вся ширина строки.
+          Column(
+            children: [
+              Container(
+                width: 88,
+                height: 62,
+                decoration: BoxDecoration(
+                  color: GameColors.panelDark,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: GameColors.outline, width: 2.5),
+                ),
+                child: SlipperSprite(slipper: s, width: 82, flip: true, animate: false),
+              ),
+              const SizedBox(height: 5),
+              GameBadge(text: label, color: color),
+            ],
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -112,8 +119,6 @@ class _OpponentCard extends StatelessWidget {
                 const SizedBox(height: 5),
                 Row(
                   children: [
-                    GameBadge(text: label, color: color),
-                    const SizedBox(width: 8),
                     const Icon(Icons.bolt, color: GameColors.orange, size: 16),
                     Text('${s.power}', style: theme.textTheme.bodyMedium),
                     const SizedBox(width: 10),
@@ -123,25 +128,35 @@ class _OpponentCard extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 6),
-                Row(
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 2,
                   children: [
-                    for (final st in Stat.values) ...[
-                      Text('${st.short} ', style: theme.textTheme.labelSmall),
-                      Text('${s.level(st)}', style: theme.textTheme.bodySmall?.copyWith(color: GameColors.text)),
-                      const SizedBox(width: 8),
-                    ],
+                    for (final st in Stat.values)
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text('${st.short} ', style: theme.textTheme.labelSmall),
+                          Text('${s.level(st)}',
+                              style: theme.textTheme.bodySmall?.copyWith(color: GameColors.text)),
+                        ],
+                      ),
                   ],
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 8),
-          GameButton(
-            onPressed: onFight,
-            color: GameColors.red,
-            height: 42,
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            child: const Icon(Icons.sports_mma, size: 22),
+          const SizedBox(width: 6),
+          // Вся карточка — кнопка боя, отдельная кнопка съедала ширину.
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: GameColors.red,
+              border: Border.all(color: GameColors.outline, width: 2.5),
+            ),
+            child: const Icon(Icons.sports_mma, size: 20, color: GameColors.outline),
           ),
         ],
       ),

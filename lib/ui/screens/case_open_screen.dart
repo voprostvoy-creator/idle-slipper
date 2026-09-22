@@ -92,7 +92,7 @@ class _CaseOpenScreenState extends State<CaseOpenScreen>
                   ],
                 ),
               ),
-              const Spacer(),
+              const Spacer(flex: 3),
               _Reel(
                 reel: _reel,
                 itemW: _itemW,
@@ -101,15 +101,16 @@ class _CaseOpenScreenState extends State<CaseOpenScreen>
                 jitter: _jitter,
                 progress: _curve,
               ),
-              const Spacer(),
+              const SizedBox(height: 24),
               AnimatedOpacity(
                 duration: const Duration(milliseconds: 300),
                 opacity: _done ? 1 : 0,
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                  child: _done ? _result(theme) : const SizedBox(height: 210),
+                  child: _done ? _result(theme) : const SizedBox(height: 200),
                 ),
               ),
+              const Spacer(flex: 2),
             ],
           ),
         ),
