@@ -123,6 +123,25 @@ class SlipperCatalog {
       ),
       bonuses: {Bonus.dodge: 0.05},
     ),
+    SlipperKind(
+      id: 'carbon_sport',
+      name: 'Карбон-спорт',
+      rarity: Rarity.epic,
+      asset: 'assets/slippers/carbon_sport.png',
+      anchors: SlipperAnchors(
+        ridge: [
+          Offset(0.54, 0.32),
+          Offset(0.58, 0.26),
+          Offset(0.62, 0.22),
+          Offset(0.68, 0.27),
+          Offset(0.76, 0.35),
+        ],
+        side: [Offset(0.57, 0.62), Offset(0.64, 0.58), Offset(0.71, 0.62)],
+        heel: Offset(0.07, 0.62),
+        sole: Rect.fromLTRB(0.18, 0.80, 0.82, 0.92),
+      ),
+      bonuses: {Bonus.damage: 0.08, Bonus.dodge: 0.04},
+    ),
   ];
 
   static final Map<String, SlipperKind> _byId = {for (final k in all) k.id: k};

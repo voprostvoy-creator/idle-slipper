@@ -65,20 +65,24 @@ class _HomeScreenState extends State<HomeScreen>
               ),
             ),
             SliverToBoxAdapter(
-              child: Center(
-                child: GestureDetector(
+              child: LayoutBuilder(
+                builder: (context, c) {
+                  // Ковёр во всю ширину экрана, тапок стоит на нём.
+                  final rugW = c.maxWidth;
+                  final rugH = rugW * 0.34;
+                  return GestureDetector(
                   onTapDown: _onTap,
                   behavior: HitTestBehavior.opaque,
                   child: SizedBox(
-                    width: 340,
-                    height: 200,
+                    width: rugW,
+                    height: rugH + 80,
                     child: Stack(
                       alignment: Alignment.center,
                       clipBehavior: Clip.none,
                       children: [
-                        const Positioned(bottom: 6, child: Rug(width: 340, aspect: 0.3)),
+                        Positioned(bottom: 0, child: Rug(width: rugW)),
                         Positioned(
-                          bottom: 26,
+                          bottom: rugH * 0.1,
                           child: AnimatedBuilder(
                             animation: _tapAnim,
                             builder: (_, child) {
@@ -92,7 +96,7 @@ class _HomeScreenState extends State<HomeScreen>
                                 child: child,
                               );
                             },
-                            child: SlipperSprite(slipper: game.slipper, width: 320),
+                            child: SlipperSprite(slipper: game.slipper, width: rugW * 0.84),
                           ),
                         ),
                         for (final f in _floats)
@@ -104,7 +108,8 @@ class _HomeScreenState extends State<HomeScreen>
                       ],
                     ),
                   ),
-                ),
+                );
+                },
               ),
             ),
             SliverToBoxAdapter(child: _NameRow(game: game)),
@@ -389,7 +394,7 @@ class _UpgradeTile extends StatelessWidget {
     return switch (stat) {
       Stat.attack => '${s.attack.toStringAsFixed(0)} урона · крит ${(s.critChance * 100).round()}%',
       Stat.defense => '−${(100 - 10000 / (100 + s.defense)).round()}% входящего урона',
-      Stat.health => '${s.maxHp.round()} HP · размер ${(s.sizeFactor * 100).round()}%',
+      Stat.health => '${s.maxHp.round()} HP',
       Stat.speed => '${s.speed.round()} скорости · уворот ${(s.dodgeChance * 100).round()}%',
     };
   }

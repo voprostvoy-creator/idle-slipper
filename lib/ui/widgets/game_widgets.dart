@@ -372,7 +372,7 @@ class _CoinPainter extends CustomPainter {
 
 /// Коврик под тапком.
 class Rug extends StatelessWidget {
-  const Rug({super.key, required this.width, this.aspect = 0.32});
+  const Rug({super.key, required this.width, this.aspect = 0.34});
   final double width;
   final double aspect;
 
@@ -381,44 +381,150 @@ class Rug extends StatelessWidget {
       CustomPaint(size: Size(width, width * aspect), painter: _RugPainter());
 }
 
+/// Ковёр в восточном стиле: кайма с узором, медальон и ромбы по полю.
 class _RugPainter extends CustomPainter {
   @override
   void paint(Canvas c, Size s) {
-    final rect = Offset.zero & s;
-    final rr = RRect.fromRectAndRadius(rect, Radius.circular(s.height / 2));
-    c.drawRRect(rr.shift(const Offset(0, 4)), Paint()..color = GameColors.outline);
+    // Бахрома торчит за края ковра, поэтому полотно чуть уже.
+    const fringe = 10.0;
+    final rect = Rect.fromLTRB(fringe, 4, s.width - fringe, s.height - 4);
+    final rr = RRect.fromRectAndRadius(rect, const Radius.circular(10));
+    final outline = Paint()
+      ..color = GameColors.outline
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3;
+
+    _drawFringe(c, rect, fringe);
+
+    // Тень и основа.
+    c.drawRRect(rr.shift(const Offset(0, 5)), Paint()..color = const Color(0x55000000));
     c.drawRRect(rr, Paint()..color = GameColors.rug);
+
     c.save();
     c.clipRRect(rr);
-    final stripe = Paint()..color = GameColors.rugStripe.withValues(alpha: 0.75);
-    for (var x = -s.height; x < s.width + s.height; x += 28) {
-      c.drawPath(
-        Path()
-          ..moveTo(x, 0)
-          ..lineTo(x + 10, 0)
-          ..lineTo(x + 10 - s.height * 0.5, s.height)
-          ..lineTo(x - s.height * 0.5, s.height)
-          ..close(),
-        stripe,
+    _drawBorder(c, rect);
+    final field = rect.deflate(rect.height * 0.17);
+    c.drawRRect(
+      RRect.fromRectAndRadius(field, const Radius.circular(6)),
+      Paint()..color = GameColors.rugDark,
+    );
+    _drawField(c, field);
+    // Общее затемнение к низу — ковёр не выглядит плоской заливкой.
+    c.drawRect(
+      rect,
+      Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Colors.white.withValues(alpha: 0.06), Colors.black.withValues(alpha: 0.22)],
+        ).createShader(rect),
+    );
+    c.restore();
+    c.drawRRect(rr, outline);
+  }
+
+  /// Кайма: синяя полоса с «зубчиками» и кремовой ниткой.
+  void _drawBorder(Canvas c, Rect rect) {
+    final band = rect.height * 0.17;
+    c.drawRRect(
+      RRect.fromRectAndRadius(rect.deflate(band * 0.45), const Radius.circular(8)),
+      Paint()
+        ..color = GameColors.rugBorder
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = band * 0.9,
+    );
+    // Зубчики по кайме.
+    final tooth = Paint()..color = GameColors.rugStripe;
+    final step = band * 1.15;
+    for (var x = rect.left + step * 0.6; x < rect.right - step * 0.3; x += step) {
+      for (final y in [rect.top + band * 0.45, rect.bottom - band * 0.45]) {
+        c.drawPath(
+          Path()
+            ..moveTo(x, y - band * 0.26)
+            ..lineTo(x + band * 0.3, y)
+            ..lineTo(x, y + band * 0.26)
+            ..lineTo(x - band * 0.3, y)
+            ..close(),
+          tooth,
+        );
+      }
+    }
+    // Тонкая кремовая нитка по внутреннему краю.
+    c.drawRRect(
+      RRect.fromRectAndRadius(rect.deflate(band), const Radius.circular(6)),
+      Paint()
+        ..color = GameColors.rugCream
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2,
+    );
+  }
+
+  /// Поле: центральный медальон и ряд ромбов по бокам.
+  void _drawField(Canvas c, Rect field) {
+    final cx = field.center.dx;
+    final cy = field.center.dy;
+    final r = field.height * 0.42;
+
+    // Медальон — вложенные ромбы.
+    _diamond(c, Offset(cx, cy), r * 2.1, r, GameColors.rugTeal);
+    _diamond(c, Offset(cx, cy), r * 1.5, r * 0.72, GameColors.rugStripe);
+    _diamond(c, Offset(cx, cy), r * 0.85, r * 0.42, GameColors.rugCream);
+    // Лучи медальона.
+    final ray = Paint()
+      ..color = GameColors.rugCream
+      ..strokeWidth = 2.5
+      ..strokeCap = StrokeCap.round;
+    for (final d in const [Offset(-1, 0), Offset(1, 0)]) {
+      c.drawLine(
+        Offset(cx + d.dx * r * 1.1, cy),
+        Offset(cx + d.dx * r * 1.9, cy),
+        ray,
       );
     }
-    // Бахрома по краям.
-    final fringe = Paint()
-      ..color = GameColors.rugStripe
+
+    // Ромбики по бокам, пока влезают.
+    final gap = r * 1.5;
+    for (var x = cx - r * 2.6; x > field.left + r * 0.5; x -= gap) {
+      _sideMotif(c, Offset(x, cy), r);
+    }
+    for (var x = cx + r * 2.6; x < field.right - r * 0.5; x += gap) {
+      _sideMotif(c, Offset(x, cy), r);
+    }
+  }
+
+  void _sideMotif(Canvas c, Offset o, double r) {
+    _diamond(c, o, r * 0.9, r * 0.55, GameColors.rugStripe);
+    _diamond(c, o, r * 0.45, r * 0.28, GameColors.rugTeal);
+  }
+
+  void _diamond(Canvas c, Offset o, double w, double h, Color color) {
+    c.drawPath(
+      Path()
+        ..moveTo(o.dx, o.dy - h)
+        ..lineTo(o.dx + w / 2, o.dy)
+        ..lineTo(o.dx, o.dy + h)
+        ..lineTo(o.dx - w / 2, o.dy)
+        ..close(),
+      Paint()..color = color,
+    );
+  }
+
+  void _drawFringe(Canvas c, Rect rect, double len) {
+    final paint = Paint()
+      ..color = GameColors.rugCream
       ..strokeWidth = 3
       ..strokeCap = StrokeCap.round;
-    for (var y = 6.0; y < s.height - 4; y += 7) {
-      c.drawLine(Offset(2, y), Offset(9, y), fringe);
-      c.drawLine(Offset(s.width - 2, y), Offset(s.width - 9, y), fringe);
+    final shade = Paint()
+      ..color = GameColors.outline
+      ..strokeWidth = 5
+      ..strokeCap = StrokeCap.round;
+    for (var y = rect.top + 8; y < rect.bottom - 4; y += 9) {
+      for (final (x, dir) in [(rect.left, -1.0), (rect.right, 1.0)]) {
+        final end = Offset(x + dir * len, y + 2);
+        c.drawLine(Offset(x, y), end, shade);
+        c.drawLine(Offset(x, y), end, paint);
+      }
     }
-    c.restore();
-    c.drawRRect(
-      rr,
-      Paint()
-        ..color = GameColors.outline
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 3,
-    );
   }
 
   @override

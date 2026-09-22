@@ -29,8 +29,12 @@ class GameColors {
   static const textDim = Color(0xFFCDBBE0);
 
   /// Коврик, на котором стоит тапок.
-  static const rug = Color(0xFFB8503F);
-  static const rugStripe = Color(0xFFE0A24A);
+  static const rug = Color(0xFF9E3B36);
+  static const rugDark = Color(0xFF7A2A2C);
+  static const rugBorder = Color(0xFF2E4A6B);
+  static const rugStripe = Color(0xFFE8B25C);
+  static const rugCream = Color(0xFFF2DEB4);
+  static const rugTeal = Color(0xFF2F8A8A);
 }
 
 ThemeData buildGameTheme() {
