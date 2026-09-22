@@ -8,6 +8,7 @@ import 'ui/screens/rating_screen.dart';
 import 'ui/screens/shop_screen.dart';
 import 'ui/theme.dart';
 import 'ui/widgets/game_widgets.dart';
+import 'ui/widgets/resource_header.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -110,7 +111,15 @@ class _RootShellState extends State<RootShell> {
             // На широком экране держим мобильную ширину.
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 520),
-              child: IndexedStack(index: _tab, children: pages),
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
+                    child: ResourceHeader(game: game),
+                  ),
+                  Expanded(child: IndexedStack(index: _tab, children: pages)),
+                ],
+              ),
             ),
           ),
         ),

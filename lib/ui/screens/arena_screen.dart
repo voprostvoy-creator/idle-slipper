@@ -20,7 +20,7 @@ class ArenaScreen extends StatelessWidget {
       listenable: game,
       builder: (context, _) {
         return ListView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
           children: [
             const Center(child: StrokeText('Арена', size: 30)),
             const SizedBox(height: 4),

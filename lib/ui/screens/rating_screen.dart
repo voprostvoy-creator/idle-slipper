@@ -27,7 +27,7 @@ class RatingScreen extends StatelessWidget {
         final total = game.wins + game.losses;
         final winRate = total == 0 ? 0 : (game.wins * 100 / total).round();
         return ListView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
           children: [
             const Center(child: StrokeText('Профиль', size: 30)),
             const SizedBox(height: 12),

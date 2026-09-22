@@ -58,12 +58,7 @@ class _HomeScreenState extends State<HomeScreen>
       builder: (context, _) {
         return CustomScrollView(
           slivers: [
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                child: _CoinsHeader(game: game),
-              ),
-            ),
+            const SliverToBoxAdapter(child: SizedBox(height: 8)),
             SliverToBoxAdapter(
               child: LayoutBuilder(
                 builder: (context, c) {
@@ -161,56 +156,7 @@ class _FloatingLabel extends StatelessWidget {
         opacity: 1 - t,
         child: Transform.translate(offset: Offset(0, -40 * t), child: child),
       ),
-      child: StrokeText(text, size: 24, color: GameColors.gold),
-    );
-  }
-}
-
-class _CoinsHeader extends StatelessWidget {
-  const _CoinsHeader({required this.game});
-  final GameState game;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return GamePanel(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      child: Row(
-        children: [
-          const ThreadIcon(size: 34),
-          const SizedBox(width: 8),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              StrokeText(fmtNum(game.threads.floor()), size: 24, color: GameColors.thread),
-              Text('+${fmtNum(game.incomePerSecond)} / с', style: theme.textTheme.bodySmall),
-            ],
-          ),
-          const SizedBox(width: 10),
-          const CoinIcon(size: 22),
-          const SizedBox(width: 4),
-          Text(fmtNum(game.coins), style: theme.textTheme.titleSmall),
-          const Spacer(),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Row(
-                children: [
-                  const Icon(Icons.bolt, color: GameColors.orange, size: 18),
-                  Text('${game.slipper.power}', style: theme.textTheme.titleMedium),
-                ],
-              ),
-              Row(
-                children: [
-                  const Icon(Icons.emoji_events, color: GameColors.blue, size: 16),
-                  const SizedBox(width: 2),
-                  Text('${game.rating}', style: theme.textTheme.bodySmall),
-                ],
-              ),
-            ],
-          ),
-        ],
-      ),
+      child: StrokeText(text, size: 24, color: GameColors.thread),
     );
   }
 }

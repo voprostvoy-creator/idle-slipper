@@ -21,7 +21,7 @@ class ShopScreen extends StatelessWidget {
       builder: (context, _) {
         final chances = CaseBox.chances();
         return ListView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
           children: [
             const Center(child: StrokeText('Магазин', size: 30)),
             const SizedBox(height: 16),
