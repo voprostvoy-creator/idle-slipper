@@ -26,13 +26,14 @@ class CaseOpenScreen extends StatefulWidget {
 
 class _CaseOpenScreenState extends State<CaseOpenScreen>
     with SingleTickerProviderStateMixin {
-  static const _itemW = 132.0;
-  static const _itemH = 106.0;
+  static const _itemW = 142.0;
+  static const _itemH = 114.0;
   static const _reelLength = 48;
   static const _winnerIndex = 42;
 
-  late final List<SlipperKind> _reel;
-  late final double _jitter;
+  late SlipperKind _prize = widget.prize;
+  late List<SlipperKind> _reel;
+  late double _jitter;
   late final AnimationController _spin = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 4600),
@@ -46,12 +47,29 @@ class _CaseOpenScreenState extends State<CaseOpenScreen>
   @override
   void initState() {
     super.initState();
+    _startSpin();
+  }
+
+  /// Набирает ленту под текущий приз и запускает прокрутку с нуля.
+  void _startSpin() {
     final rng = Random();
-    _reel = CaseBox.reel(rng, widget.prize, _reelLength, _winnerIndex);
+    _reel = CaseBox.reel(rng, _prize, _reelLength, _winnerIndex);
     // Небольшой сдвиг от центра — лента останавливается не идеально ровно.
     _jitter = (rng.nextDouble() - 0.5) * _itemW * 0.5;
-    _spin.forward().whenComplete(() {
+    _done = false;
+    _sold = false;
+    _spin.forward(from: 0).whenComplete(() {
       if (mounted) setState(() => _done = true);
+    });
+  }
+
+  /// Крутит ещё раз, не выходя в магазин.
+  void _again() {
+    final next = widget.game.openCase();
+    if (next == null) return;
+    setState(() {
+      _prize = next;
+      _startSpin();
     });
   }
 
@@ -62,7 +80,7 @@ class _CaseOpenScreenState extends State<CaseOpenScreen>
   }
 
   void _sell() {
-    if (!widget.game.sell(widget.prize.id)) return;
+    if (!widget.game.sell(_prize.id)) return;
     setState(() => _sold = true);
   }
 
@@ -119,7 +137,7 @@ class _CaseOpenScreenState extends State<CaseOpenScreen>
   }
 
   Widget _result(ThemeData theme) {
-    final kind = widget.prize;
+    final kind = _prize;
     final count = widget.game.count(kind.id);
     final sellPrice = CaseBox.sellPrice(kind.rarity);
     // Последний экземпляр надетого тапка продавать нельзя.
@@ -186,17 +204,7 @@ class _CaseOpenScreenState extends State<CaseOpenScreen>
                 ),
               ],
             ),
-          if (_sold) ...[
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: GameButton(
-                color: GameColors.gold,
-                onPressed: () => Navigator.of(context).pop(),
-                child: const Text('В магазин'),
-              ),
-            ),
-          ] else if (!canSell) ...[
+          if (!_sold && !canSell) ...[
             const SizedBox(height: 6),
             Text(
               'Единственный надетый тапок продать нельзя',
@@ -204,6 +212,37 @@ class _CaseOpenScreenState extends State<CaseOpenScreen>
               textAlign: TextAlign.center,
             ),
           ],
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              if (_sold) ...[
+                Expanded(
+                  child: GameButton(
+                    color: GameColors.panelLight,
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('В магазин', style: TextStyle(color: GameColors.text)),
+                  ),
+                ),
+                const SizedBox(width: 10),
+              ],
+              Expanded(
+                flex: _sold ? 1 : 2,
+                child: GameButton(
+                  color: widget.game.canOpenCase ? GameColors.gold : GameColors.panelDark,
+                  onPressed: widget.game.canOpenCase ? _again : null,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text('Ещё '),
+                      const ThreadIcon(size: 16),
+                      const SizedBox(width: 4),
+                      Text(fmtNum(CaseBox.price)),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );

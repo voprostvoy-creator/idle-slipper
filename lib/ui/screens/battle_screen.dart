@@ -147,7 +147,7 @@ class _BattleScreenState extends State<BattleScreen>
     final theme = Theme.of(context);
     final won = widget.result.playerWon;
     return Scaffold(
-      body: GameBackground(
+      body: ArenaBackground(
         child: SafeArea(
         child: Column(
           children: [
@@ -209,27 +209,24 @@ class _BattleScreenState extends State<BattleScreen>
             Expanded(
               child: LayoutBuilder(
                 builder: (context, c) {
-                  final w = (c.maxWidth * 0.46).clamp(130.0, 250.0);
-                  final rugW = c.maxWidth - 16;
+                  final w = (c.maxWidth * 0.5).clamp(130.0, 270.0);
                   return AnimatedBuilder(
                     animation: _lunge,
                     builder: (context, _) {
                       final t = Curves.easeOutBack.transform(_lunge.value);
                       final shift = 36 * t;
-                      return Center(
+                      // Бойцы стоят в круге на полу арены — он ниже центра экрана.
+                      return Align(
+                        alignment: const Alignment(0, 0.5),
                         child: SizedBox(
-                        height: rugW * 0.26 + 90,
+                        height: w * 0.62,
                         child: Stack(
                         alignment: Alignment.center,
                         clipBehavior: Clip.none,
                         children: [
                           Positioned(
-                            bottom: 8,
-                            child: Rug(width: rugW, aspect: 0.26),
-                          ),
-                          Positioned(
-                            bottom: 22,
-                            left: 10 + (_lunging == Side.player ? shift : 0),
+                            bottom: 0,
+                            left: 6 + (_lunging == Side.player ? shift : 0),
                             child: _Fighter(
                               slipper: widget.player,
                               mood: _mood[Side.player]!,
@@ -238,8 +235,8 @@ class _BattleScreenState extends State<BattleScreen>
                             ),
                           ),
                           Positioned(
-                            bottom: 22,
-                            right: 10 + (_lunging == Side.opponent ? shift : 0),
+                            bottom: 0,
+                            right: 6 + (_lunging == Side.opponent ? shift : 0),
                             child: _Fighter(
                               slipper: widget.opponent,
                               mood: _mood[Side.opponent]!,

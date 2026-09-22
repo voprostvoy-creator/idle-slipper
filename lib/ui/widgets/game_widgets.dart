@@ -370,6 +370,40 @@ class _CoinPainter extends CustomPainter {
   bool shouldRepaint(_CoinPainter old) => false;
 }
 
+/// Фон боя: арт арены под затемнением, чтобы текст поверх читался.
+class ArenaBackground extends StatelessWidget {
+  const ArenaBackground({super.key, required this.child});
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        color: GameColors.bgBottom,
+        image: DecorationImage(
+          image: AssetImage('assets/ui/arena_bg.jpg'),
+          fit: BoxFit.cover,
+        ),
+      ),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              GameColors.bgBottom.withValues(alpha: 0.82),
+              GameColors.bgBottom.withValues(alpha: 0.25),
+              GameColors.bgBottom.withValues(alpha: 0.88),
+            ],
+            stops: const [0, 0.45, 1],
+          ),
+        ),
+        child: child,
+      ),
+    );
+  }
+}
+
 /// Катушка ниток — основная валюта.
 class ThreadIcon extends StatelessWidget {
   const ThreadIcon({super.key, this.size = 22});

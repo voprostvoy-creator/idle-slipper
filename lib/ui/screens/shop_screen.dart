@@ -104,34 +104,6 @@ class ShopScreen extends StatelessWidget {
             const SizedBox(height: 14),
             GamePanel(
               color: GameColors.panelDark,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Цена продажи', style: theme.textTheme.titleMedium),
-                  const SizedBox(height: 8),
-                  for (final r in Rarity.values)
-                    if ((chances[r] ?? 0) > 0)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 3),
-                        child: Row(
-                          children: [
-                            GameBadge(text: r.label, color: r.color),
-                            const Spacer(),
-                            const ThreadIcon(size: 16),
-                            const SizedBox(width: 4),
-                            Text(
-                              fmtNum(CaseBox.sellPrice(r)),
-                              style: theme.textTheme.bodyMedium,
-                            ),
-                          ],
-                        ),
-                      ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 14),
-            GamePanel(
-              color: GameColors.panelDark,
               child: Row(
                 children: [
                   const CoinIcon(size: 24),
