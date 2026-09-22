@@ -57,7 +57,7 @@ class _SlipperSpriteState extends State<SlipperSprite>
   late final AnimationController _orbit = AnimationController(
     vsync: this,
     duration: const Duration(seconds: 7),
-  )..repeat();
+  );
 
   /// Реальный размер PNG — чтобы правильно положить якоря.
   Size? _imageSize;
@@ -68,12 +68,16 @@ class _SlipperSpriteState extends State<SlipperSprite>
   void initState() {
     super.initState();
     _resolveImage();
+    if (widget.animate) _orbit.repeat();
   }
 
   @override
   void didUpdateWidget(SlipperSprite old) {
     super.didUpdateWidget(old);
     if (old.slipper.kindId != widget.slipper.kindId) _resolveImage();
+    if (old.animate != widget.animate) {
+      widget.animate ? _orbit.repeat() : _orbit.stop();
+    }
     if (old.mood != widget.mood &&
         (widget.mood == SlipperMood.hurt || widget.mood == SlipperMood.happy)) {
       _fx.forward(from: 0);
@@ -118,7 +122,9 @@ class _SlipperSpriteState extends State<SlipperSprite>
               painter: AuraPainter(
                 slipper: widget.slipper,
                 fitted: fitted,
-                phase: _orbit.value,
+                phase: widget.animate
+                    ? _orbit
+                    : const AlwaysStoppedAnimation<double>(0),
               ),
             ),
           ),
@@ -141,7 +147,7 @@ class _SlipperSpriteState extends State<SlipperSprite>
     if (widget.flip) sprite = Transform.flip(flipX: true, child: sprite);
 
     return AnimatedBuilder(
-      animation: Listenable.merge([_breath, _fx, _orbit]),
+      animation: Listenable.merge([_breath, _fx]),
       builder: (_, child) => _applyMoodMotion(child!),
       child: sprite,
     );
@@ -224,13 +230,14 @@ class AuraPainter extends CustomPainter {
     required this.slipper,
     required this.fitted,
     required this.phase,
-  });
+  }) : super(repaint: phase);
 
   final Slipper slipper;
   final Rect fitted;
 
-  /// 0..1 — фаза вращения искр.
-  final double phase;
+  /// 0..1 — фаза вращения искр. Перерисовка идёт по её тикеру, поэтому
+  /// аура не зависит от того, как часто перестраивается дерево виджетов.
+  final Animation<double> phase;
 
   static const _statColors = {
     Stat.attack: Color(0xFFFF9F43),
@@ -262,7 +269,7 @@ class AuraPainter extends CustomPainter {
     final ry = fitted.height * (0.46 + 0.16 * t);
     final col = color;
     // Лёгкая пульсация, чтобы аура жила.
-    final pulse = 0.88 + 0.12 * sin(phase * 2 * pi);
+    final pulse = 0.88 + 0.12 * sin(phase.value * 2 * pi);
 
     // Мягкое свечение вокруг тапка.
     c.drawOval(
@@ -311,7 +318,7 @@ class AuraPainter extends CustomPainter {
     // Искры по орбите: половина за тапком, половина перед — создаёт объём.
     final sparks = 3 + (t * 7).round();
     for (var i = 0; i < sparks; i++) {
-      final a = (phase + i / sparks) * 2 * pi;
+      final a = (phase.value + i / sparks) * 2 * pi;
       final p = Offset(
         center.dx + cos(a) * rx * 0.86,
         center.dy + sin(a) * ry * 0.78,
@@ -331,4 +338,5 @@ class AuraPainter extends CustomPainter {
   @override
   bool shouldRepaint(AuraPainter old) =>
       old.slipper != slipper || old.fitted != fitted || old.phase != phase;
+
 }
