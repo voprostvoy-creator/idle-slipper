@@ -28,12 +28,6 @@ class GameColors {
   static const text = Color(0xFFFFF6E8);
   static const textDim = Color(0xFFCDBBE0);
 
-  /// Коврик, на котором стоит тапок.
-  static const rug = Color(0xFF9E3B36);
-  static const rugDark = Color(0xFF7A2A2C);
-  static const rugBorder = Color(0xFF2E4A6B);
-  static const rugStripe = Color(0xFFE8B25C);
-
   /// Нитки — основная валюта.
   static const thread = Color(0xFFE86A9B);
   static const threadLight = Color(0xFFFFB3CE);

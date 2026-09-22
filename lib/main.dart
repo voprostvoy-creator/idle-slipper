@@ -60,7 +60,8 @@ class _RootShellState extends State<RootShell> {
   /// Показывает «пока тебя не было…» один раз на каждое возвращение.
   void _maybeShowOffline() {
     final game = widget.game;
-    if (game.pendingOfflineThreads <= 0 || _offlineDialogOpen || !mounted) return;
+    if (game.pendingOfflineThreads <= 0 || _offlineDialogOpen || !mounted)
+      return;
     _offlineDialogOpen = true;
     final threads = game.pendingOfflineThreads;
     final away = game.pendingOfflineDuration;
@@ -79,7 +80,11 @@ class _RootShellState extends State<RootShell> {
               children: [
                 const ThreadIcon(size: 28),
                 const SizedBox(width: 8),
-                StrokeText(fmtNum(threads.floor()), size: 28, color: GameColors.thread),
+                StrokeText(
+                  fmtNum(threads.floor()),
+                  size: 28,
+                  color: GameColors.thread,
+                ),
               ],
             ),
           ],
@@ -104,26 +109,30 @@ class _RootShellState extends State<RootShell> {
       ShopScreen(game: game),
       RatingScreen(game: game),
     ];
-    return Scaffold(
-      body: GameBackground(
-        child: SafeArea(
-          child: Center(
-            // На широком экране держим мобильную ширину.
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 520),
-              child: Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
-                    child: ResourceHeader(game: game),
-                  ),
-                  Expanded(child: IndexedStack(index: _tab, children: pages)),
-                ],
+    // Главная идёт на фоне комнаты, остальные вкладки — на обычном фоне.
+    final content = SafeArea(
+      child: Center(
+        // На широком экране держим мобильную ширину.
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 520),
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
+                child: ResourceHeader(game: game),
               ),
-            ),
+              Expanded(
+                child: IndexedStack(index: _tab, children: pages),
+              ),
+            ],
           ),
         ),
       ),
+    );
+    return Scaffold(
+      body: _tab == 0
+          ? RoomBackground(child: content)
+          : GameBackground(child: content),
       bottomNavigationBar: _GameNavBar(
         index: _tab,
         onChanged: (i) => setState(() => _tab = i),
@@ -148,7 +157,12 @@ class _GameNavBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.fromLTRB(8, 8, 8, 8 + MediaQuery.paddingOf(context).bottom),
+      padding: EdgeInsets.fromLTRB(
+        8,
+        8,
+        8,
+        8 + MediaQuery.paddingOf(context).bottom,
+      ),
       decoration: const BoxDecoration(
         color: GameColors.panelDark,
         border: Border(top: BorderSide(color: GameColors.outline, width: 3)),
@@ -165,7 +179,11 @@ class _GameNavBar extends StatelessWidget {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(icon, size: 22, color: i == index ? GameColors.outline : GameColors.text),
+                    Icon(
+                      icon,
+                      size: 22,
+                      color: i == index ? GameColors.outline : GameColors.text,
+                    ),
                     // На узких экранах подпись ужимается, а не переносится.
                     FittedBox(
                       fit: BoxFit.scaleDown,
@@ -175,7 +193,9 @@ class _GameNavBar extends StatelessWidget {
                         softWrap: false,
                         style: TextStyle(
                           fontSize: 11,
-                          color: i == index ? GameColors.outline : GameColors.text,
+                          color: i == index
+                              ? GameColors.outline
+                              : GameColors.text,
                         ),
                       ),
                     ),
