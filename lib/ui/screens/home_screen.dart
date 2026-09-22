@@ -67,48 +67,45 @@ class _HomeScreenState extends State<HomeScreen>
             SliverToBoxAdapter(
               child: LayoutBuilder(
                 builder: (context, c) {
-                  // Ковёр во всю ширину экрана, тапок стоит на нём.
-                  final rugW = c.maxWidth;
-                  final rugH = rugW * 0.34;
+                  final spriteW = c.maxWidth * 0.82;
                   return GestureDetector(
-                  onTapDown: _onTap,
-                  behavior: HitTestBehavior.opaque,
-                  child: SizedBox(
-                    width: rugW,
-                    height: rugH + 80,
-                    child: Stack(
-                      alignment: Alignment.center,
-                      clipBehavior: Clip.none,
-                      children: [
-                        Positioned(bottom: 0, child: Rug(width: rugW)),
-                        Positioned(
-                          bottom: rugH * 0.1,
-                          child: AnimatedBuilder(
-                            animation: _tapAnim,
-                            builder: (_, child) {
-                              final t = Curves.easeOut.transform(_tapAnim.value);
-                              final squash = 1 - 0.12 * (1 - t);
-                              final active = _tapAnim.isAnimating;
-                              return Transform.scale(
-                                scaleY: active ? squash : 1,
-                                scaleX: active ? 2 - squash : 1,
-                                alignment: Alignment.bottomCenter,
-                                child: child,
-                              );
-                            },
-                            child: SlipperSprite(slipper: game.slipper, width: rugW * 0.84),
-                          ),
-                        ),
-                        for (final f in _floats)
+                    onTapDown: _onTap,
+                    behavior: HitTestBehavior.opaque,
+                    child: SizedBox(
+                      width: c.maxWidth,
+                      height: spriteW / SlipperSprite.aspect + 24,
+                      child: Stack(
+                        alignment: Alignment.bottomCenter,
+                        clipBehavior: Clip.none,
+                        children: [
                           Positioned(
-                            left: f.at.dx - 20,
-                            top: f.at.dy - 30,
-                            child: _FloatingLabel(text: '+${f.amount}'),
+                            bottom: 8,
+                            child: AnimatedBuilder(
+                              animation: _tapAnim,
+                              builder: (_, child) {
+                                final t = Curves.easeOut.transform(_tapAnim.value);
+                                final squash = 1 - 0.12 * (1 - t);
+                                final active = _tapAnim.isAnimating;
+                                return Transform.scale(
+                                  scaleY: active ? squash : 1,
+                                  scaleX: active ? 2 - squash : 1,
+                                  alignment: Alignment.bottomCenter,
+                                  child: child,
+                                );
+                              },
+                              child: SlipperSprite(slipper: game.slipper, width: spriteW),
+                            ),
                           ),
-                      ],
+                          for (final f in _floats)
+                            Positioned(
+                              left: f.at.dx - 20,
+                              top: f.at.dy - 30,
+                              child: _FloatingLabel(text: '+${f.amount}'),
+                            ),
+                        ],
+                      ),
                     ),
-                  ),
-                );
+                  );
                 },
               ),
             ),
