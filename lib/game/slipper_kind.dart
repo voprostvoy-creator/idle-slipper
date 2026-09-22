@@ -88,20 +88,20 @@ class SlipperCatalog {
   static const List<SlipperKind> all = [
     SlipperKind(
       id: 'basic',
-      name: 'Домашний тапок',
+      name: 'Бабушкин клетчатый',
       rarity: Rarity.common,
       asset: 'assets/slippers/basic.png',
       anchors: SlipperAnchors(
         ridge: [
-          Offset(0.40, 0.19),
-          Offset(0.48, 0.07),
-          Offset(0.59, 0.02),
-          Offset(0.70, 0.03),
-          Offset(0.79, 0.12),
+          Offset(0.54, 0.31),
+          Offset(0.58, 0.20),
+          Offset(0.62, 0.17),
+          Offset(0.70, 0.26),
+          Offset(0.78, 0.33),
         ],
-        side: [Offset(0.50, 0.51), Offset(0.60, 0.53), Offset(0.70, 0.52)],
-        heel: Offset(0.34, 0.28),
-        sole: Rect.fromLTRB(0.21, 0.67, 0.83, 0.72),
+        side: [Offset(0.57, 0.66), Offset(0.65, 0.62), Offset(0.73, 0.66)],
+        heel: Offset(0.07, 0.62),
+        sole: Rect.fromLTRB(0.17, 0.79, 0.83, 0.85),
       ),
     ),
     SlipperKind(
