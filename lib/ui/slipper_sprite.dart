@@ -18,6 +18,7 @@ class SlipperSprite extends StatefulWidget {
     this.flip = false,
     this.animate = true,
     this.width = 200,
+    this.showSize = true,
   });
 
   final Slipper slipper;
@@ -25,6 +26,10 @@ class SlipperSprite extends StatefulWidget {
   final bool flip;
   final bool animate;
   final double width;
+
+  /// Учитывать ли размер от Здоровья. В витринах (коллекция) выключаем,
+  /// чтобы тапки сравнивались в одном масштабе.
+  final bool showSize;
 
   static const double aspect = 2;
 
@@ -121,6 +126,13 @@ class _SlipperSpriteState extends State<SlipperSprite>
     );
 
     sprite = _applyMoodColor(sprite);
+    if (widget.showSize) {
+      sprite = Transform.scale(
+        scale: widget.slipper.sizeFactor,
+        alignment: Alignment.bottomCenter,
+        child: sprite,
+      );
+    }
     if (widget.flip) sprite = Transform.flip(flipX: true, child: sprite);
 
     return AnimatedBuilder(
@@ -215,8 +227,6 @@ class _AccessoryPainter extends CustomPainter {
   static const _metal = Color(0xFFD7DCE3);
   static const _metalDark = Color(0xFF8C95A3);
   static const _socket = Color(0xFF4A3F55);
-  static const _leather = Color(0xFF8A5A33);
-  static const _leatherDark = Color(0xFF5E3A1F);
 
   late final double _u = fitted.width / 200;
 
@@ -242,8 +252,7 @@ class _AccessoryPainter extends CustomPainter {
       _drawFlames(c, a);
       return;
     }
-    _drawSoleArmor(c, a);
-    _drawStraps(c, a);
+    _drawScales(c, a);
     _drawSpikes(c, a);
   }
 
@@ -285,50 +294,57 @@ class _AccessoryPainter extends CustomPainter {
     }
   }
 
-  /// Прочность: кожаные ремни с пряжками поперёк ремешка.
-  void _drawStraps(Canvas c, SlipperAnchors a) {
-    final n = min(_tier(slipper.level(Stat.health), maxTier: 3), a.side.length);
-    if (n == 0) return;
+  /// Прочность: чешуйчатая броня на корпусе — ряды пластинок внахлёст.
+  void _drawScales(Canvas c, SlipperAnchors a) {
+    final tier = _tier(slipper.level(Stat.defense));
+    if (tier == 0) return;
+    final spots = min(tier, a.side.length);
     final order = _centerOut(a.side.length);
-    final leather = Paint()..color = _leather;
-    final buckle = Paint()..color = _metal;
-    for (var i = 0; i < n; i++) {
+    // С 4-го тира кластеры становятся выше.
+    final rows = tier > 3 ? 4 : 3;
+    const cols = 4;
+    final r = 7.0 * _u;
+    for (var i = 0; i < spots; i++) {
       final o = _at(a.side[order[i]]);
       c.save();
       c.translate(o.dx, o.dy);
-      // Лёгкий наклон, чтобы ремни не выглядели штампованными.
-      c.rotate(-0.28 + i * 0.16);
-      final belt = RRect.fromRectAndRadius(
-        Rect.fromCenter(center: Offset.zero, width: 13 * _u, height: 42 * _u),
-        Radius.circular(3 * _u),
-      );
-      c.drawRRect(belt, leather);
-      // Тёмная кромка вдоль ремня — объём.
-      c.drawRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromCenter(center: Offset(4 * _u, 0), width: 5 * _u, height: 42 * _u),
-          Radius.circular(2 * _u),
-        ),
-        Paint()..color = _leatherDark,
-      );
-      c.drawRRect(belt, _stroke(2));
-      // Пряжка.
-      final plate = RRect.fromRectAndRadius(
-        Rect.fromCenter(center: Offset.zero, width: 17 * _u, height: 13 * _u),
-        Radius.circular(2.5 * _u),
-      );
-      c.drawRRect(plate.shift(Offset(0, 1.5 * _u)), Paint()..color = _metalDark);
-      c.drawRRect(plate, buckle);
-      c.drawRRect(plate, _stroke(2));
-      c.drawRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromCenter(center: Offset.zero, width: 6 * _u, height: 4.5 * _u),
-          Radius.circular(1 * _u),
-        ),
-        Paint()..color = _outline,
-      );
+      c.rotate(-0.25 + i * 0.14);
+      // Рисуем снизу вверх, чтобы верхние пластинки перекрывали нижние.
+      for (var row = rows - 1; row >= 0; row--) {
+        final dy = (row - (rows - 1) / 2) * r * 0.95;
+        // Нечётные ряды со смещением — кладка внахлёст.
+        final shift = row.isOdd ? r * 0.75 : 0.0;
+        for (var col = 0; col < cols; col++) {
+          final dx = (col - (cols - 1) / 2) * r * 1.5 + shift - r * 0.375;
+          _scale(c, Offset(dx, dy), r);
+        }
+      }
       c.restore();
     }
+  }
+
+  /// Одна пластинка: скруглённый низ, плоский верх, блик.
+  void _scale(Canvas c, Offset o, double r) {
+    final rect = Rect.fromCenter(center: o, width: r * 2, height: r * 1.8);
+    final path = Path()
+      ..moveTo(rect.left, rect.top)
+      ..lineTo(rect.right, rect.top)
+      ..lineTo(rect.right, rect.top + r * 0.35)
+      ..arcToPoint(
+        Offset(rect.left, rect.top + r * 0.35),
+        radius: Radius.circular(r),
+        clockwise: true,
+      )
+      ..close();
+    c.drawPath(path, Paint()..color = _metalDark);
+    c.save();
+    c.clipPath(path);
+    c.drawRect(
+      Rect.fromLTRB(rect.left, rect.top, rect.right, rect.top + r * 0.5),
+      Paint()..color = _metal,
+    );
+    c.restore();
+    c.drawPath(path, _stroke(1.8));
   }
 
   /// Скорость: пламя из пятки.
@@ -356,46 +372,6 @@ class _AccessoryPainter extends CustomPainter {
     c.drawPath(flame(0.62, 4), Paint()..color = const Color(0xFFFFC533));
     c.drawPath(flame(0.3, 7), Paint()..color = const Color(0xFFFFF3B0));
     c.drawPath(outer, _stroke(3));
-  }
-
-  /// Подошва: стальная шина по низу — растёт в длину и толщину с уровнем.
-  void _drawSoleArmor(Canvas c, SlipperAnchors a) {
-    final tier = _tier(slipper.level(Stat.defense));
-    if (tier == 0) return;
-    final band = Rect.fromPoints(_at(a.sole.topLeft), _at(a.sole.bottomRight));
-    // Длина: от половины подошвы на 1 тире до полной на 6-м.
-    final frac = 0.5 + 0.5 * (tier - 1) / 5;
-    final h = band.height * (0.45 + 0.07 * min(3, tier));
-    final r = Rect.fromCenter(
-      center: Offset(band.center.dx, band.bottom - h * 0.75),
-      width: band.width * frac,
-      height: h,
-    );
-    final rr = RRect.fromRectAndRadius(r, Radius.circular(h * 0.35));
-    c.drawRRect(rr, Paint()..color = _metalDark);
-    c.save();
-    c.clipRRect(rr);
-    // Верхняя половина светлее — блик на металле.
-    c.drawRect(
-      Rect.fromLTRB(r.left, r.top, r.right, r.center.dy),
-      Paint()..color = _metal,
-    );
-    // Насечки протектора.
-    final notch = Paint()
-      ..color = _outline.withValues(alpha: 0.55)
-      ..strokeWidth = 2 * _u;
-    final steps = (r.width / (10 * _u)).floor().clamp(2, 24);
-    for (var i = 1; i < steps; i++) {
-      final x = r.left + r.width * i / steps;
-      c.drawLine(Offset(x, r.top), Offset(x, r.bottom), notch);
-    }
-    c.restore();
-    c.drawRRect(rr, _stroke(2.5));
-    // Заклёпки по краям шины.
-    final rivet = Paint()..color = _outline;
-    for (final x in [r.left + 5 * _u, r.right - 5 * _u]) {
-      c.drawCircle(Offset(x, r.center.dy), 2 * _u, rivet);
-    }
   }
 
   /// Индексы от центра к краям: [2,1,3,0,4] для длины 5.

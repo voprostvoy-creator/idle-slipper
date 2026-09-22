@@ -334,6 +334,7 @@ class _KindPicker extends StatelessWidget {
                         slipper: Slipper(name: kind.id, kindId: kind.id),
                         width: 120,
                         animate: false,
+                        showSize: false,
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -388,7 +389,7 @@ class _UpgradeTile extends StatelessWidget {
     return switch (stat) {
       Stat.attack => '${s.attack.toStringAsFixed(0)} урона · крит ${(s.critChance * 100).round()}%',
       Stat.defense => '−${(100 - 10000 / (100 + s.defense)).round()}% входящего урона',
-      Stat.health => '${s.maxHp.round()} HP',
+      Stat.health => '${s.maxHp.round()} HP · размер ${(s.sizeFactor * 100).round()}%',
       Stat.speed => '${s.speed.round()} скорости · уворот ${(s.dodgeChance * 100).round()}%',
     };
   }
