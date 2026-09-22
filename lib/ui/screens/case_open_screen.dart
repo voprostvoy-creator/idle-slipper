@@ -15,9 +15,15 @@ import '../widgets/game_widgets.dart';
 /// Приз уже лежит в инвентаре — этот экран только показывает результат
 /// и предлагает продать.
 class CaseOpenScreen extends StatefulWidget {
-  const CaseOpenScreen({super.key, required this.game, required this.prize});
+  const CaseOpenScreen({
+    super.key,
+    required this.game,
+    required this.type,
+    required this.prize,
+  });
 
   final GameState game;
+  final CaseType type;
   final SlipperKind prize;
 
   @override
@@ -53,7 +59,7 @@ class _CaseOpenScreenState extends State<CaseOpenScreen>
   /// Набирает ленту под текущий приз и запускает прокрутку с нуля.
   void _startSpin() {
     final rng = Random();
-    _reel = CaseBox.reel(rng, _prize, _reelLength, _winnerIndex);
+    _reel = widget.type.reel(rng, _prize, _reelLength, _winnerIndex);
     // Небольшой сдвиг от центра — лента останавливается не идеально ровно.
     _jitter = (rng.nextDouble() - 0.5) * _itemW * 0.5;
     _done = false;
@@ -65,7 +71,7 @@ class _CaseOpenScreenState extends State<CaseOpenScreen>
 
   /// Крутит ещё раз, не выходя в магазин.
   void _again() {
-    final next = widget.game.openCase();
+    final next = widget.game.openCase(widget.type);
     if (next == null) return;
     setState(() {
       _prize = next;
@@ -104,7 +110,13 @@ class _CaseOpenScreenState extends State<CaseOpenScreen>
                       child: const Icon(Icons.arrow_back_rounded, color: GameColors.text),
                     ),
                     const Spacer(),
-                    const StrokeText('Кейс', size: 24),
+                    Flexible(
+                      // FittedBox снимает перенос: длинное название ужимается.
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: StrokeText(widget.type.name, size: 22),
+                      ),
+                    ),
                     const Spacer(),
                     const SizedBox(width: 44),
                   ],
@@ -139,9 +151,10 @@ class _CaseOpenScreenState extends State<CaseOpenScreen>
   Widget _result(ThemeData theme) {
     final kind = _prize;
     final count = widget.game.count(kind.id);
-    final sellPrice = CaseBox.sellPrice(kind.rarity);
+    final sellPrice = kind.rarity.sellPrice;
     // Последний экземпляр надетого тапка продавать нельзя.
     final canSell = !_sold && count > 0 && !(count == 1 && kind.id == widget.game.slipper.kindId);
+    final canOpenAgain = widget.game.canOpen(widget.type);
     return GamePanel(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -153,7 +166,7 @@ class _CaseOpenScreenState extends State<CaseOpenScreen>
             runSpacing: 4,
             alignment: WrapAlignment.center,
             children: [
-              GameBadge(text: kind.rarity.label, color: kind.rarity.color),
+              GameBadge(text: '${kind.rarity.label} · ${kind.rarity.tier}', color: kind.rarity.color),
               for (final e in kind.bonuses.entries)
                 GameBadge(text: e.key.format(e.value), color: GameColors.green),
               if (count > 1 && !_sold)
@@ -228,17 +241,21 @@ class _CaseOpenScreenState extends State<CaseOpenScreen>
               Expanded(
                 flex: _sold ? 1 : 2,
                 child: GameButton(
-                  color: widget.game.canOpenCase ? GameColors.gold : GameColors.panelDark,
-                  onPressed: widget.game.canOpenCase ? _again : null,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Text('Ещё '),
-                      const ThreadIcon(size: 16),
-                      const SizedBox(width: 4),
-                      Text(fmtNum(CaseBox.price)),
-                    ],
-                  ),
+                  color: canOpenAgain
+                      ? (widget.type.isFree ? GameColors.green : GameColors.gold)
+                      : GameColors.panelDark,
+                  onPressed: canOpenAgain ? _again : null,
+                  child: widget.type.isFree
+                      ? const Text('Ещё раз')
+                      : Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text('Ещё '),
+                            const ThreadIcon(size: 16),
+                            const SizedBox(width: 4),
+                            Text(fmtNum(widget.type.price)),
+                          ],
+                        ),
                 ),
               ),
             ],

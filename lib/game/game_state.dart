@@ -231,15 +231,15 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
 
   // --- Кейсы ------------------------------------------------------------
 
-  bool get canOpenCase => threads >= CaseBox.price;
+  bool canOpen(CaseType type) => threads >= type.price;
 
   /// Открывает кейс: списывает нитки, роллит вид и сразу кладёт его в
   /// инвентарь. Продать выпавшее можно потом — так дроп не теряется,
   /// если игрок закроет экран на середине анимации.
-  SlipperKind? openCase() {
-    if (!canOpenCase) return null;
-    threads -= CaseBox.price;
-    final kind = CaseBox.roll(Random());
+  SlipperKind? openCase(CaseType type) {
+    if (!canOpen(type)) return null;
+    threads -= type.price;
+    final kind = type.roll(Random());
     inventory[kind.id] = (inventory[kind.id] ?? 0) + 1;
     _save();
     notifyListeners();
@@ -258,7 +258,7 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
     } else {
       inventory[kindId] = have - 1;
     }
-    threads += CaseBox.sellPrice(SlipperCatalog.byId(kindId).rarity);
+    threads += SlipperCatalog.byId(kindId).rarity.sellPrice;
     _save();
     notifyListeners();
     return true;
