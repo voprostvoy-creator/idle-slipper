@@ -101,7 +101,7 @@ class SlipperCatalog {
         ],
         side: [Offset(0.57, 0.66), Offset(0.65, 0.62), Offset(0.73, 0.66)],
         heel: Offset(0.07, 0.62),
-        sole: Rect.fromLTRB(0.17, 0.79, 0.83, 0.85),
+        sole: Rect.fromLTRB(0.20, 0.79, 0.80, 0.91),
       ),
     ),
     SlipperKind(
@@ -119,7 +119,7 @@ class SlipperCatalog {
         ],
         side: [Offset(0.55, 0.66), Offset(0.63, 0.60), Offset(0.71, 0.64)],
         heel: Offset(0.07, 0.62),
-        sole: Rect.fromLTRB(0.15, 0.80, 0.85, 0.87),
+        sole: Rect.fromLTRB(0.18, 0.80, 0.82, 0.92),
       ),
       bonuses: {Bonus.dodge: 0.05},
     ),
