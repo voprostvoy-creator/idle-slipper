@@ -39,6 +39,12 @@ enum AttackStyle {
 
   /// Уход вверх и падение на противника.
   meteor,
+
+  /// Тяжёлые шаги к противнику с топотом.
+  stomp,
+
+  /// Выстрел лучом с отдачей.
+  laser,
 }
 
 /// Тип бонуса. Значение — доля: 0.10 = +10%.
@@ -127,7 +133,7 @@ class SlipperCatalog {
       name: 'Адский шип',
       rarity: Rarity.legendary,
       asset: 'assets/slippers/red_spike.png',
-      attack: AttackStyle.spin,
+      attack: AttackStyle.stomp,
       bonuses: {Bonus.damage: 0.18, Bonus.crit: 0.08, Bonus.hp: 0.08},
     ),
     SlipperKind(
@@ -135,7 +141,7 @@ class SlipperCatalog {
       name: 'Радужный хаос',
       rarity: Rarity.mythic,
       asset: 'assets/slippers/rainbow.png',
-      attack: AttackStyle.meteor,
+      attack: AttackStyle.laser,
       bonuses: {
         Bonus.damage: 0.25,
         Bonus.crit: 0.15,
