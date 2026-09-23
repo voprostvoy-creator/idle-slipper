@@ -60,8 +60,9 @@ class _RootShellState extends State<RootShell> {
   /// Показывает «пока тебя не было…» один раз на каждое возвращение.
   void _maybeShowOffline() {
     final game = widget.game;
-    if (game.pendingOfflineThreads <= 0 || _offlineDialogOpen || !mounted)
+    if (game.pendingOfflineThreads <= 0 || _offlineDialogOpen || !mounted) {
       return;
+    }
     _offlineDialogOpen = true;
     final threads = game.pendingOfflineThreads;
     final away = game.pendingOfflineDuration;

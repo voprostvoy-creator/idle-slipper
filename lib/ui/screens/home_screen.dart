@@ -88,7 +88,7 @@ class _HomeScreenState extends State<HomeScreen>
                                   child: child,
                                 );
                               },
-                              child: SlipperSprite(slipper: game.slipper, width: spriteW),
+                              child: SlipperSprite(fighter: game.slipper, width: spriteW),
                             ),
                           ),
                           for (final f in _floats)
@@ -290,7 +290,7 @@ class _KindPicker extends StatelessWidget {
                   child: Row(
                     children: [
                       SlipperSprite(
-                        slipper: Slipper(name: kind.id, kindId: kind.id),
+                        fighter: Slipper(name: kind.id, kindId: kind.id),
                         width: 120,
                         animate: false,
                         showSize: false,

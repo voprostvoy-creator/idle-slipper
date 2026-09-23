@@ -34,7 +34,7 @@ void main() {
                 child: Container(
                   color: const Color(0xFF241538),
                   padding: const EdgeInsets.all(60),
-                  child: SlipperSprite(slipper: slipper, width: 480, animate: false),
+                  child: SlipperSprite(fighter: slipper, width: 480, animate: false),
                 ),
               ),
             ),

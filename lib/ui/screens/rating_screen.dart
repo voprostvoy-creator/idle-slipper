@@ -34,7 +34,7 @@ class RatingScreen extends StatelessWidget {
             GamePanel(
               child: Column(
                 children: [
-                  SlipperSprite(slipper: game.slipper, width: 190),
+                  SlipperSprite(fighter: game.slipper, width: 190),
                   const SizedBox(height: 4),
                   StrokeText(game.slipper.name, size: 22),
                   const SizedBox(height: 6),

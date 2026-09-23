@@ -2,7 +2,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 
-import '../game/slipper_kind.dart';
+import '../game/battle/combatant.dart';
 
 /// Анимации атаки: каждому виду тапка — своя манера удара.
 ///

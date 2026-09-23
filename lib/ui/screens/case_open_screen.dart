@@ -424,7 +424,7 @@ class _ReelItem extends StatelessWidget {
           ),
           Center(
             child: SlipperSprite(
-              slipper: Slipper(name: kind.id, kindId: kind.id),
+              fighter: Slipper(name: kind.id, kindId: kind.id),
               width: width - 20,
               animate: false,
               showSize: false,

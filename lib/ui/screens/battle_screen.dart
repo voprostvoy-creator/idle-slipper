@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../game/battle/battle_sim.dart';
-import '../../game/slipper.dart';
+import '../../game/battle/combatant.dart';
 import '../attack_animation.dart';
 import '../slipper_sprite.dart';
 import '../theme.dart';
@@ -20,8 +20,8 @@ class BattleScreen extends StatefulWidget {
     required this.threadsDelta,
   });
 
-  final Slipper player;
-  final Slipper opponent;
+  final Combatant player;
+  final Combatant opponent;
   final BattleResult result;
   final int ratingDelta;
   final int threadsDelta;
@@ -37,6 +37,13 @@ class _BattleScreenState extends State<BattleScreen>
   late double _hpPlayer = widget.result.playerMaxHp;
   late double _hpOpponent = widget.result.opponentMaxHp;
   var _mood = {Side.player: SlipperMood.idle, Side.opponent: SlipperMood.idle};
+
+  /// Заряд ульт, 0..1 — приходит вместе с каждым событием боя.
+  double _ultPlayer = 0;
+  double _ultOpponent = 0;
+
+  /// Баннер с названием только что применённого скилла.
+  _Banner? _banner;
   final _log = <String>[];
   final _popups = <_Popup>[];
   int _index = 0;
@@ -75,18 +82,25 @@ class _BattleScreenState extends State<BattleScreen>
   }
 
   void _play(BattleEvent e) {
-    final attacker = switch (e) {
-      HitEvent(:final attacker) => attacker,
-      DodgeEvent(:final attacker) => attacker,
-    };
-    final target = attacker.other;
-    final attackerName = attacker == Side.player ? widget.player.name : widget.opponent.name;
+    final playerName = widget.player.name;
+    final opponentName = widget.opponent.name;
+    String nameOf(Side s) => s == Side.player ? playerName : opponentName;
 
     setState(() {
-      _lunging = attacker;
-      _mood = {attacker: SlipperMood.attack, target: SlipperMood.idle};
+      _ultPlayer = e.ultPlayer;
+      _ultOpponent = e.ultOpponent;
+
       switch (e) {
-        case HitEvent(:final damage, :final crit, :final targetHpAfter):
+        case SkillEvent(:final side, :final name, :final ultimate):
+          // Объявление скилла: баннер над бойцом и запись в лог.
+          _banner = _Banner(side: side, text: name, ultimate: ultimate);
+          _mood = {side: SlipperMood.attack, side.other: _mood[side.other]!};
+          _log.insert(0, '${nameOf(side)}: $name${ultimate ? '!' : ''}');
+
+        case HitEvent(:final attacker, :final damage, :final crit, :final targetHpAfter):
+          final target = attacker.other;
+          _lunging = attacker;
+          _mood = {attacker: SlipperMood.attack, target: SlipperMood.idle};
           if (target == Side.player) {
             _hpPlayer = targetHpAfter;
           } else {
@@ -94,40 +108,89 @@ class _BattleScreenState extends State<BattleScreen>
           }
           _mood[target] = targetHpAfter <= 0 ? SlipperMood.dead : SlipperMood.hurt;
           _popups.add(_Popup(side: target, text: crit ? '$damage!' : '$damage', crit: crit));
-          _log.insert(0, '$attackerName бьёт на $damage${crit ? ' (крит!)' : ''}');
-        case DodgeEvent():
+          _log.insert(0, '${nameOf(attacker)} бьёт на $damage${crit ? ' (крит!)' : ''}');
+          _startLunge(attacker);
+
+        case DodgeEvent(:final attacker):
+          final target = attacker.other;
+          _lunging = attacker;
+          _mood = {attacker: SlipperMood.attack, target: SlipperMood.idle};
           _popups.add(_Popup(side: target, text: 'мимо', crit: false));
-          _log.insert(0, '$attackerName промахивается');
+          _log.insert(0, '${nameOf(attacker)} промахивается');
+          _startLunge(attacker);
+
+        case HealEvent(:final side, :final amount, :final hpAfter):
+          if (side == Side.player) {
+            _hpPlayer = hpAfter;
+          } else {
+            _hpOpponent = hpAfter;
+          }
+          _popups.add(_Popup(side: side, text: '+$amount', crit: false, heal: true));
+          _log.insert(0, '${nameOf(side)} восстанавливает $amount');
+
+        case BurnEvent(:final side, :final damage, :final hpAfter):
+          if (side == Side.player) {
+            _hpPlayer = hpAfter;
+          } else {
+            _hpOpponent = hpAfter;
+          }
+          _mood = {side: hpAfter <= 0 ? SlipperMood.dead : SlipperMood.hurt, side.other: SlipperMood.idle};
+          _popups.add(_Popup(side: side, text: '$damage', crit: false, burn: true));
+          _log.insert(0, '${nameOf(side)} горит: $damage');
+
+        case StunEvent(:final side):
+          _popups.add(_Popup(side: side, text: 'оглушён', crit: false));
+          _log.insert(0, '${nameOf(side)} пропускает ход');
       }
       if (_log.length > 6) _log.removeLast();
     });
-    _lunge.duration = AttackAnimation.duration(
-      (attacker == Side.player ? widget.player : widget.opponent).kind.attack,
-    );
-    _lunge.forward(from: 0).then((_) => _lunge.reverse());
 
-    // Убираем всплывашку и возвращаем спокойное лицо.
+    // Убираем всплывашку и возвращаем спокойное состояние.
     Future.delayed(const Duration(milliseconds: 600), () {
       if (!mounted) return;
       setState(() {
         if (_popups.isNotEmpty) _popups.removeAt(0);
-        if (_mood[target] != SlipperMood.dead) _mood[target] = SlipperMood.idle;
-        _mood[attacker] = _mood[attacker] == SlipperMood.dead ? SlipperMood.dead : SlipperMood.idle;
+        _banner = null;
+        for (final side in Side.values) {
+          if (_mood[side] != SlipperMood.dead) _mood[side] = SlipperMood.idle;
+        }
       });
     });
   }
 
+  /// Запускает анимацию удара в манере атакующего.
+  void _startLunge(Side attacker) {
+    final who = attacker == Side.player ? widget.player : widget.opponent;
+    _lunge.duration = AttackAnimation.duration(who.attackStyle);
+    _lunge.forward(from: 0).then((_) => _lunge.reverse());
+  }
+
   void _skip() {
     _timer?.cancel();
-    final last = widget.result.events.whereType<HitEvent>();
     setState(() {
-      for (final h in last) {
-        if (h.attacker == Side.player) {
-          _hpOpponent = h.targetHpAfter;
-        } else {
-          _hpPlayer = h.targetHpAfter;
+      // Прокручиваем запись до конца: берём последнее состояние HP каждой стороны.
+      for (final e in widget.result.events) {
+        switch (e) {
+          case HitEvent(:final attacker, :final targetHpAfter):
+            if (attacker == Side.player) {
+              _hpOpponent = targetHpAfter;
+            } else {
+              _hpPlayer = targetHpAfter;
+            }
+          case HealEvent(:final side, :final hpAfter):
+          case BurnEvent(:final side, :final hpAfter):
+            if (side == Side.player) {
+              _hpPlayer = hpAfter;
+            } else {
+              _hpOpponent = hpAfter;
+            }
+          case SkillEvent():
+          case DodgeEvent():
+          case StunEvent():
+            break;
         }
       }
+      _banner = null;
       _index = widget.result.events.length;
       _popups.clear();
     });
@@ -193,6 +256,7 @@ class _BattleScreenState extends State<BattleScreen>
                       hp: _hpPlayer,
                       max: widget.result.playerMaxHp,
                       color: GameColors.green,
+                      ult: _ultPlayer,
                     ),
                   ),
                   const Padding(
@@ -206,6 +270,7 @@ class _BattleScreenState extends State<BattleScreen>
                       max: widget.result.opponentMaxHp,
                       color: GameColors.red,
                       alignEnd: true,
+                      ult: _ultOpponent,
                     ),
                   ),
                 ],
@@ -232,7 +297,7 @@ class _BattleScreenState extends State<BattleScreen>
                             bottom: 0,
                             left: 6,
                             child: _Fighter(
-                              slipper: widget.player,
+                              fighter: widget.player,
                               mood: _mood[Side.player]!,
                               width: w,
                               reach: reach,
@@ -244,7 +309,7 @@ class _BattleScreenState extends State<BattleScreen>
                             bottom: 0,
                             right: 6,
                             child: _Fighter(
-                              slipper: widget.opponent,
+                              fighter: widget.opponent,
                               mood: _mood[Side.opponent]!,
                               width: w,
                               flip: true,
@@ -260,6 +325,18 @@ class _BattleScreenState extends State<BattleScreen>
                     },
                   );
                 },
+              ),
+            ),
+            // Название сработавшего скилла — поверх сцены, под барами.
+            SizedBox(
+              height: 46,
+              child: Center(
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 180),
+                  child: _banner == null
+                      ? const SizedBox.shrink()
+                      : _SkillBanner(key: ValueKey(_banner), banner: _banner!),
+                ),
               ),
             ),
             if (_finished)
@@ -294,15 +371,78 @@ class _BattleScreenState extends State<BattleScreen>
 }
 
 class _Popup {
-  const _Popup({required this.side, required this.text, required this.crit});
+  const _Popup({
+    required this.side,
+    required this.text,
+    required this.crit,
+    this.heal = false,
+    this.burn = false,
+  });
+
   final Side side;
   final String text;
   final bool crit;
+  final bool heal;
+  final bool burn;
+
+  Color get color {
+    if (heal) return GameColors.green;
+    if (burn) return GameColors.orange;
+    if (crit) return GameColors.gold;
+    return text == 'мимо' || text == 'оглушён' ? GameColors.textDim : GameColors.text;
+  }
+}
+
+/// Виджет плашки скилла: у ульты — золотая, у обычного — синяя.
+class _SkillBanner extends StatelessWidget {
+  const _SkillBanner({super.key, required this.banner});
+  final _Banner banner;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = banner.ultimate ? GameColors.gold : GameColors.blue;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.9),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: GameColors.outline, width: 2.5),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            banner.ultimate ? Icons.auto_awesome : Icons.bolt,
+            size: 18,
+            color: GameColors.outline,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            banner.text,
+            style: const TextStyle(
+              color: GameColors.outline,
+              fontSize: 15,
+              fontVariations: [FontVariation('wght', 900)],
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Плашка с названием сработавшего скилла.
+class _Banner {
+  const _Banner({required this.side, required this.text, required this.ultimate});
+  final Side side;
+  final String text;
+  final bool ultimate;
 }
 
 class _Fighter extends StatelessWidget {
   const _Fighter({
-    required this.slipper,
+    required this.fighter,
     required this.mood,
     required this.width,
     required this.popups,
@@ -311,7 +451,7 @@ class _Fighter extends StatelessWidget {
     this.flip = false,
   });
 
-  final Slipper slipper;
+  final Combatant fighter;
   final SlipperMood mood;
   final double width;
   final bool flip;
@@ -334,12 +474,12 @@ class _Fighter extends StatelessWidget {
         clipBehavior: Clip.none,
         children: [
           AttackAnimation.apply(
-            style: slipper.kind.attack,
+            style: fighter.attackStyle,
             progress: attack,
             flip: flip,
             reach: reach,
             child: SlipperSprite(
-              slipper: slipper,
+              fighter: fighter,
               mood: mood,
               flip: flip,
               width: width,
@@ -363,7 +503,7 @@ class _Fighter extends StatelessWidget {
                 child: StrokeText(
                   p.text,
                   size: p.crit ? 34 : 26,
-                  color: p.crit ? GameColors.orange : (p.text == 'мимо' ? GameColors.textDim : GameColors.text),
+                  color: p.color,
                 ),
               ),
             ),
@@ -379,6 +519,7 @@ class _HpBar extends StatelessWidget {
     required this.hp,
     required this.max,
     required this.color,
+    required this.ult,
     this.alignEnd = false,
   });
 
@@ -386,6 +527,10 @@ class _HpBar extends StatelessWidget {
   final double hp;
   final double max;
   final Color color;
+
+  /// Заряд ульты, 0..1.
+  final double ult;
+
   final bool alignEnd;
 
   @override
@@ -402,6 +547,14 @@ class _HpBar extends StatelessWidget {
           height: 20,
           alignEnd: alignEnd,
           label: '${hp.ceil()} / ${max.round()}',
+        ),
+        const SizedBox(height: 3),
+        // Тонкая шкала ульты под здоровьем: залилась — сработает.
+        GameBar(
+          value: ult,
+          color: ult >= 1 ? GameColors.gold : GameColors.blue,
+          height: 8,
+          alignEnd: alignEnd,
         ),
       ],
     );

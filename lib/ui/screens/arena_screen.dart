@@ -100,7 +100,7 @@ class _OpponentCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: GameColors.outline, width: 2.5),
                 ),
-                child: SlipperSprite(slipper: s, width: 82, flip: true, animate: false),
+                child: SlipperSprite(fighter: s, width: 82, flip: true, animate: false),
               ),
               const SizedBox(height: 5),
               GameBadge(text: label, color: color),

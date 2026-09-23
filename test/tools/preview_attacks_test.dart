@@ -48,12 +48,12 @@ void main() {
                         height: cell,
                         child: Center(
                           child: AttackAnimation.apply(
-                            style: kind.attack,
+                            style: slipper.attackStyle,
                             progress: t,
                             flip: false,
                             reach: cell * 0.28,
                             child: SlipperSprite(
-                              slipper: slipper,
+                              fighter: slipper,
                               mood: SlipperMood.attack,
                               width: cell * 0.8,
                               animate: false,

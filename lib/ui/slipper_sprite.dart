@@ -2,8 +2,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 
-import '../game/slipper.dart';
-import '../game/slipper_kind.dart';
+import '../game/battle/combatant.dart';
 
 /// Состояние тапка в бою. Лица нет — настроение передаётся движением и цветом.
 enum SlipperMood { idle, attack, hurt, happy, dead }
@@ -13,7 +12,7 @@ enum SlipperMood { idle, attack, hurt, happy, dead }
 class SlipperSprite extends StatefulWidget {
   const SlipperSprite({
     super.key,
-    required this.slipper,
+    required this.fighter,
     this.mood = SlipperMood.idle,
     this.flip = false,
     this.animate = true,
@@ -21,7 +20,7 @@ class SlipperSprite extends StatefulWidget {
     this.showSize = true,
   });
 
-  final Slipper slipper;
+  final Combatant fighter;
   final SlipperMood mood;
   final bool flip;
   final bool animate;
@@ -74,7 +73,7 @@ class _SlipperSpriteState extends State<SlipperSprite>
   @override
   void didUpdateWidget(SlipperSprite old) {
     super.didUpdateWidget(old);
-    if (old.slipper.kindId != widget.slipper.kindId) _resolveImage();
+    if (old.fighter.asset != widget.fighter.asset) _resolveImage();
     if (old.animate != widget.animate) {
       widget.animate ? _orbit.repeat() : _orbit.stop();
     }
@@ -92,7 +91,7 @@ class _SlipperSpriteState extends State<SlipperSprite>
         _imageSize = Size(info.image.width.toDouble(), info.image.height.toDouble());
       });
     });
-    _stream = AssetImage(widget.slipper.kind.asset).resolve(ImageConfiguration.empty)
+    _stream = AssetImage(widget.fighter.asset).resolve(ImageConfiguration.empty)
       ..addListener(_listener!);
   }
 
@@ -120,7 +119,7 @@ class _SlipperSpriteState extends State<SlipperSprite>
           Positioned.fill(
             child: CustomPaint(
               painter: AuraPainter(
-                slipper: widget.slipper,
+                aura: widget.fighter.aura,
                 fitted: fitted,
                 phase: widget.animate
                     ? _orbit
@@ -130,7 +129,7 @@ class _SlipperSpriteState extends State<SlipperSprite>
           ),
           Positioned.fromRect(
             rect: fitted,
-            child: Image.asset(widget.slipper.kind.asset, fit: BoxFit.fill),
+            child: Image.asset(widget.fighter.asset, fit: BoxFit.fill),
           ),
         ],
       ),
@@ -139,7 +138,7 @@ class _SlipperSpriteState extends State<SlipperSprite>
     sprite = _applyMoodColor(sprite);
     if (widget.showSize) {
       sprite = Transform.scale(
-        scale: widget.slipper.sizeFactor,
+        scale: widget.fighter.sizeFactor,
         alignment: Alignment.bottomCenter,
         child: sprite,
       );
@@ -224,55 +223,36 @@ class _SlipperSpriteState extends State<SlipperSprite>
   }
 }
 
-/// Аура прокачки: свечение, кольца на «земле» и искры по орбите.
-/// Цвет — от стата, который прокачан сильнее всех; сила — от суммы уровней.
+/// Аура бойца: свечение, кольца на «земле» и искры по орбите.
+/// Что рисовать, решает сам боец через [AuraSpec] — движок и статы тут ни при чём.
 class AuraPainter extends CustomPainter {
   AuraPainter({
-    required this.slipper,
+    required this.aura,
     required this.fitted,
     required this.phase,
   }) : super(repaint: phase);
 
-  final Slipper slipper;
+  final AuraSpec? aura;
   final Rect fitted;
 
   /// 0..1 — фаза вращения искр. Перерисовка идёт по её тикеру, поэтому
   /// аура не зависит от того, как часто перестраивается дерево виджетов.
   final Animation<double> phase;
 
-  static const _statColors = {
-    Stat.attack: Color(0xFFFF9F43),
-    Stat.defense: Color(0xFF5BC8FF),
-    Stat.health: Color(0xFFFF6161),
-    Stat.speed: Color(0xFF6BE07A),
-  };
-
-  /// Насколько аура выражена: 0 на старте, 1 примерно к 70 суммарным уровням.
-  double get strength =>
-      ((slipper.totalLevel - Stat.values.length) / 66).clamp(0.0, 1.0);
-
-  /// Цвет ведущего стата; при равенстве берётся порядок из Stat.values.
-  Color get color {
-    var best = Stat.values.first;
-    for (final s in Stat.values) {
-      if (slipper.level(s) > slipper.level(best)) best = s;
-    }
-    return _statColors[best]!;
-  }
-
   @override
   void paint(Canvas c, Size size) {
-    final t = strength;
-    if (t <= 0.001) return;
+    final spec = aura;
+    if (spec == null || spec.strength <= 0.001) return;
+    final t = spec.strength;
+    final col = spec.color;
 
     final center = Offset(fitted.center.dx, fitted.center.dy + fitted.height * 0.12);
     final rx = fitted.width * (0.55 + 0.14 * t);
     final ry = fitted.height * (0.46 + 0.16 * t);
-    final col = color;
     // Лёгкая пульсация, чтобы аура жила.
     final pulse = 0.88 + 0.12 * sin(phase.value * 2 * pi);
 
-    // Мягкое свечение вокруг тапка.
+    // Мягкое свечение вокруг бойца.
     c.drawOval(
       Rect.fromCenter(center: center, width: rx * 2, height: ry * 2),
       Paint()
@@ -286,7 +266,7 @@ class AuraPainter extends CustomPainter {
         ).createShader(Rect.fromCenter(center: center, width: rx * 2, height: ry * 2)),
     );
 
-    // Плотное ядро у самого тапка.
+    // Плотное ядро у самого бойца.
     c.drawOval(
       Rect.fromCenter(center: center, width: rx * 1.1, height: ry * 1.0),
       Paint()
@@ -298,7 +278,7 @@ class AuraPainter extends CustomPainter {
         ).createShader(Rect.fromCenter(center: center, width: rx * 1.1, height: ry * 1.0)),
     );
 
-    // Кольца на «земле» — чем выше уровень, тем их больше.
+    // Кольца на «земле» — чем сильнее аура, тем их больше.
     final ground = Offset(fitted.center.dx, fitted.bottom - fitted.height * 0.08);
     final rings = 1 + (t * 2).floor();
     for (var i = 0; i < rings; i++) {
@@ -316,7 +296,7 @@ class AuraPainter extends CustomPainter {
       );
     }
 
-    // Искры по орбите: половина за тапком, половина перед — создаёт объём.
+    // Искры по орбите: половина за бойцом, половина перед — создаёт объём.
     final sparks = 3 + (t * 7).round();
     for (var i = 0; i < sparks; i++) {
       final a = (phase.value + i / sparks) * 2 * pi;
@@ -338,6 +318,5 @@ class AuraPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(AuraPainter old) =>
-      old.slipper != slipper || old.fitted != fitted || old.phase != phase;
-
+      old.aura != aura || old.fitted != fitted || old.phase != phase;
 }
