@@ -205,7 +205,8 @@ class _SlipperSpriteState extends State<SlipperSprite>
           ),
         );
       case SlipperMood.attack:
-        return Transform.rotate(angle: 0.12 * dir, alignment: Alignment.bottomCenter, child: child);
+        // Наклон и рывок задаёт AttackAnimation — здесь спрайт нейтрален.
+        return child;
       case SlipperMood.dead:
         return Transform.rotate(angle: -0.4 * dir, alignment: Alignment.bottomCenter, child: child);
       case SlipperMood.idle:

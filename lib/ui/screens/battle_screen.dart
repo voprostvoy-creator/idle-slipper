@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../game/battle/battle_sim.dart';
 import '../../game/slipper.dart';
+import '../attack_animation.dart';
 import '../slipper_sprite.dart';
 import '../theme.dart';
 import '../widgets/game_widgets.dart';
@@ -100,6 +101,9 @@ class _BattleScreenState extends State<BattleScreen>
       }
       if (_log.length > 6) _log.removeLast();
     });
+    _lunge.duration = AttackAnimation.duration(
+      (attacker == Side.player ? widget.player : widget.opponent).kind.attack,
+    );
     _lunge.forward(from: 0).then((_) => _lunge.reverse());
 
     // Убираем всплывашку и возвращаем спокойное лицо.
@@ -214,9 +218,8 @@ class _BattleScreenState extends State<BattleScreen>
                   return AnimatedBuilder(
                     animation: _lunge,
                     builder: (context, _) {
-                      final t = Curves.easeOutBack.transform(_lunge.value);
-                      final shift = 36 * t;
                       // Бойцы стоят в круге на полу арены — он ниже центра экрана.
+                      final reach = w * 0.3;
                       return Align(
                         alignment: const Alignment(0, 0.5),
                         child: SizedBox(
@@ -227,22 +230,26 @@ class _BattleScreenState extends State<BattleScreen>
                         children: [
                           Positioned(
                             bottom: 0,
-                            left: 6 + (_lunging == Side.player ? shift : 0),
+                            left: 6,
                             child: _Fighter(
                               slipper: widget.player,
                               mood: _mood[Side.player]!,
                               width: w,
+                              reach: reach,
+                              attack: _lunging == Side.player ? _lunge.value : 0,
                               popups: _popups.where((p) => p.side == Side.player),
                             ),
                           ),
                           Positioned(
                             bottom: 0,
-                            right: 6 + (_lunging == Side.opponent ? shift : 0),
+                            right: 6,
                             child: _Fighter(
                               slipper: widget.opponent,
                               mood: _mood[Side.opponent]!,
                               width: w,
                               flip: true,
+                              reach: reach,
+                              attack: _lunging == Side.opponent ? _lunge.value : 0,
                               popups: _popups.where((p) => p.side == Side.opponent),
                             ),
                           ),
@@ -299,6 +306,8 @@ class _Fighter extends StatelessWidget {
     required this.mood,
     required this.width,
     required this.popups,
+    required this.reach,
+    required this.attack,
     this.flip = false,
   });
 
@@ -306,6 +315,13 @@ class _Fighter extends StatelessWidget {
   final SlipperMood mood;
   final double width;
   final bool flip;
+
+  /// На сколько пикселей тапок подаётся к противнику в пике удара.
+  final double reach;
+
+  /// 0 — стоит, 1 — пик замаха.
+  final double attack;
+
   final Iterable<_Popup> popups;
 
   @override
@@ -317,11 +333,17 @@ class _Fighter extends StatelessWidget {
         alignment: Alignment.bottomCenter,
         clipBehavior: Clip.none,
         children: [
-          SlipperSprite(
-            slipper: slipper,
-            mood: mood,
+          AttackAnimation.apply(
+            style: slipper.kind.attack,
+            progress: attack,
             flip: flip,
-            width: width,
+            reach: reach,
+            child: SlipperSprite(
+              slipper: slipper,
+              mood: mood,
+              flip: flip,
+              width: width,
+            ),
           ),
           for (final p in popups)
             Positioned(

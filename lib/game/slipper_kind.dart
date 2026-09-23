@@ -20,6 +20,27 @@ enum Rarity {
   String get tier => '${index + 1}/${Rarity.values.length}';
 }
 
+/// Как тапок бьёт в бою. У каждого вида своя манера.
+enum AttackStyle {
+  /// Выпад вперёд с наклоном — базовый удар.
+  lunge,
+
+  /// Скольжение: резкий рывок с откидыванием назад.
+  dash,
+
+  /// Прыжок и удар сверху вниз.
+  slam,
+
+  /// Мигающий рывок: гаснет на месте, появляется у цели.
+  blink,
+
+  /// Разворот вокруг оси на ходу.
+  spin,
+
+  /// Уход вверх и падение на противника.
+  meteor,
+}
+
 /// Тип бонуса. Значение — доля: 0.10 = +10%.
 enum Bonus {
   damage('Урон'),
@@ -45,6 +66,7 @@ class SlipperKind {
     required this.name,
     required this.rarity,
     required this.asset,
+    this.attack = AttackStyle.lunge,
     this.bonuses = const {},
   });
 
@@ -54,6 +76,7 @@ class SlipperKind {
 
   /// Путь к PNG: прозрачный фон, вид сбоку, носок вправо, 1200×600 (2:1).
   final String asset;
+  final AttackStyle attack;
   final Map<Bonus, double> bonuses;
 
   double bonus(Bonus b) => bonuses[b] ?? 0;
@@ -80,6 +103,7 @@ class SlipperCatalog {
       name: 'Синий слайд',
       rarity: Rarity.rare,
       asset: 'assets/slippers/blue_slide.png',
+      attack: AttackStyle.dash,
       bonuses: {Bonus.dodge: 0.05},
     ),
     SlipperKind(
@@ -87,6 +111,7 @@ class SlipperCatalog {
       name: 'Карбон-спорт',
       rarity: Rarity.epic,
       asset: 'assets/slippers/carbon_sport.png',
+      attack: AttackStyle.slam,
       bonuses: {Bonus.damage: 0.08, Bonus.dodge: 0.04},
     ),
     SlipperKind(
@@ -94,6 +119,7 @@ class SlipperCatalog {
       name: 'Неон',
       rarity: Rarity.epic,
       asset: 'assets/slippers/purple_neon.png',
+      attack: AttackStyle.blink,
       bonuses: {Bonus.crit: 0.06, Bonus.income: 0.08},
     ),
     SlipperKind(
@@ -101,6 +127,7 @@ class SlipperCatalog {
       name: 'Адский шип',
       rarity: Rarity.legendary,
       asset: 'assets/slippers/red_spike.png',
+      attack: AttackStyle.spin,
       bonuses: {Bonus.damage: 0.18, Bonus.crit: 0.08, Bonus.hp: 0.08},
     ),
     SlipperKind(
@@ -108,6 +135,7 @@ class SlipperCatalog {
       name: 'Радужный хаос',
       rarity: Rarity.mythic,
       asset: 'assets/slippers/rainbow.png',
+      attack: AttackStyle.meteor,
       bonuses: {
         Bonus.damage: 0.25,
         Bonus.crit: 0.15,
