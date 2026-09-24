@@ -55,6 +55,9 @@ class _BattleScreenState extends State<BattleScreen>
   /// вспышку урона, даже если поза осталась прежней.
   final _hits = {Side.player: 0, Side.opponent: 0};
 
+  /// Последний урон пришёл от шипов — тогда боец только краснеет, без тряски.
+  final _soft = {Side.player: false, Side.opponent: false};
+
   /// Что сейчас показывается поверх каждого бойца.
   final _effects = {
     Side.player: <BattleEffect>{},
@@ -158,6 +161,7 @@ class _BattleScreenState extends State<BattleScreen>
           }
           _mood[target] = targetHpAfter <= 0 ? SlipperMood.dead : SlipperMood.hurt;
           _hits[target] = _hits[target]! + 1;
+          _soft[target] = thorns;
           if (thorns) {
             // Шипы — ответ брони, а не удар: замаха нет и поза не меняется.
             _popups.add(_Popup(side: target, text: '$damage', crit: false));
@@ -198,6 +202,7 @@ class _BattleScreenState extends State<BattleScreen>
           }
           _mood = {side: hpAfter <= 0 ? SlipperMood.dead : SlipperMood.hurt, side.other: SlipperMood.idle};
           _hits[side] = _hits[side]! + 1;
+          _soft[side] = false;
           _popups.add(_Popup(side: side, text: '$damage', crit: false, burn: true));
           _log.insert(0, '${nameOf(side)} горит: $damage');
 
@@ -388,6 +393,7 @@ class _BattleScreenState extends State<BattleScreen>
                               attack: _lunging == Side.player ? _lunge.value : 0,
                               effects: _effects[Side.player]!,
                               hits: _hits[Side.player]!,
+                              softHit: _soft[Side.player]!,
                               popups: _popups.where((p) => p.side == Side.player),
                             ),
                           ),
@@ -403,6 +409,7 @@ class _BattleScreenState extends State<BattleScreen>
                               attack: _lunging == Side.opponent ? _lunge.value : 0,
                               effects: _effects[Side.opponent]!,
                               hits: _hits[Side.opponent]!,
+                              softHit: _soft[Side.opponent]!,
                               popups: _popups.where((p) => p.side == Side.opponent),
                             ),
                           ),
@@ -695,6 +702,7 @@ class _Fighter extends StatelessWidget {
     required this.attack,
     required this.effects,
     required this.hits,
+    required this.softHit,
     this.flip = false,
   });
 
@@ -714,6 +722,9 @@ class _Fighter extends StatelessWidget {
 
   /// Счётчик попаданий — спрайт по нему перезапускает вспышку урона.
   final int hits;
+
+  /// Последний урон был от шипов: краснеем, но не трясёмся.
+  final bool softHit;
 
   final Iterable<_Popup> popups;
 
@@ -754,6 +765,7 @@ class _Fighter extends StatelessWidget {
               flip: flip,
               width: width,
               impulse: hits,
+              shake: !softHit,
             ),
           ),
           // Эффекты живут поверх спрайта, но под цифрами урона.

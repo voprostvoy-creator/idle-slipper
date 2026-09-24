@@ -92,7 +92,7 @@ class SlipperCatalog {
       name: 'Карбон-спорт',
       rarity: Rarity.epic,
       asset: 'assets/slippers/carbon_sport.png',
-      attack: AttackStyle.combo,
+      attack: AttackStyle.uppercut,
       bonuses: {Bonus.damage: 0.08, Bonus.dodge: 0.04},
     ),
     SlipperKind(

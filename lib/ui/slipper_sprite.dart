@@ -19,6 +19,7 @@ class SlipperSprite extends StatefulWidget {
     this.width = 200,
     this.showSize = true,
     this.impulse = 0,
+    this.shake = true,
   });
 
   final Combatant fighter;
@@ -34,6 +35,10 @@ class SlipperSprite extends StatefulWidget {
   /// Счётчик внешних толчков: меняется — спрайт заново проигрывает реакцию.
   /// Нужен, когда удары идут подряд и поза не успевает смениться.
   final int impulse;
+
+  /// Трясти ли при уроне. У ответного урона от шипов тряски нет —
+  /// боец в этот момент не отшатывается, только вспыхивает красным.
+  final bool shake;
 
   static const double aspect = 2;
 
@@ -193,6 +198,7 @@ class _SlipperSpriteState extends State<SlipperSprite>
     final dir = widget.flip ? -1.0 : 1.0;
     switch (widget.mood) {
       case SlipperMood.hurt:
+        if (!widget.shake) return child;
         // Затухающая горизонтальная тряска.
         final t = _fx.value;
         final dx = sin(t * pi * 6) * 8 * (1 - t) * dir;
