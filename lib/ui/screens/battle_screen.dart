@@ -135,19 +135,33 @@ class _BattleScreenState extends State<BattleScreen>
           _mood = {side: SlipperMood.attack, side.other: _mood[side.other]!};
           _log.insert(0, '${nameOf(side)}: ${skill.name}${ultimate ? '!' : ''}');
 
-        case HitEvent(:final attacker, :final damage, :final crit, :final targetHpAfter):
+        case HitEvent(
+            :final attacker,
+            :final damage,
+            :final crit,
+            :final targetHpAfter,
+            :final thorns
+          ):
           final target = attacker.other;
-          _lunging = attacker;
-          _mood = {attacker: SlipperMood.attack, target: SlipperMood.idle};
           if (target == Side.player) {
             _hpPlayer = targetHpAfter;
           } else {
             _hpOpponent = targetHpAfter;
           }
           _mood[target] = targetHpAfter <= 0 ? SlipperMood.dead : SlipperMood.hurt;
-          _popups.add(_Popup(side: target, text: crit ? '$damage!' : '$damage', crit: crit));
-          _log.insert(0, '${nameOf(attacker)} бьёт на $damage${crit ? ' (крит!)' : ''}');
-          _startLunge(attacker);
+          if (thorns) {
+            // Шипы — ответ брони, а не удар: замаха нет и поза не меняется.
+            _popups.add(_Popup(side: target, text: '$damage', crit: false));
+            _log.insert(0, '${nameOf(attacker)}: шипы на $damage');
+          } else {
+            _lunging = attacker;
+            if (_mood[attacker] != SlipperMood.dead) {
+              _mood[attacker] = SlipperMood.attack;
+            }
+            _popups.add(_Popup(side: target, text: crit ? '$damage!' : '$damage', crit: crit));
+            _log.insert(0, '${nameOf(attacker)} бьёт на $damage${crit ? ' (крит!)' : ''}');
+            _startLunge(attacker);
+          }
 
         case DodgeEvent(:final attacker):
           final target = attacker.other;

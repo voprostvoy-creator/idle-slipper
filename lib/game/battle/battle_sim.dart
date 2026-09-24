@@ -73,12 +73,16 @@ class HitEvent extends BattleEvent {
     required this.targetHpAfter,
     required super.player,
     required super.opponent,
+    this.thorns = false,
   });
 
   final Side attacker;
   final int damage;
   final bool crit;
   final double targetHpAfter;
+
+  /// Урон от шипов: не удар, а ответ брони, поэтому боец не делает выпад.
+  final bool thorns;
 }
 
 class DodgeEvent extends BattleEvent {
@@ -358,6 +362,10 @@ class BattleSim {
               opponent: o,
             ));
 
+        // Добитый противник шипами уже не отвечает — иначе он «оживал»
+        // на экране после смертельного удара.
+        if (foe.hp <= 0) return finish(side);
+
         // Шипы: часть урона возвращается атакующему.
         if (foe.passive.thorns > 0 && me.hp > 0) {
           final back = max(1, (damage * foe.passive.thorns).round());
@@ -367,13 +375,12 @@ class BattleSim {
                 damage: back,
                 crit: false,
                 targetHpAfter: me.hp,
+                thorns: true,
                 player: p,
                 opponent: o,
               ));
           if (me.hp <= 0) return finish(side.other);
         }
-
-        if (foe.hp <= 0) return finish(side);
       }
 
       // --- После ударов: вампиризм и поджог ---

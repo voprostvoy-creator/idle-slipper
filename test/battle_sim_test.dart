@@ -214,6 +214,23 @@ void main() {
       expect(r.events[i + 1].of(victim).stunned, isFalse);
     });
 
+    test('a killed fighter does not retaliate with thorns', () {
+      // Адский шип колет в ответ, но добитый отвечать уже не должен:
+      // иначе на экране он «оживал» после смертельного удара.
+      for (var seed = 0; seed < 40; seed++) {
+        final r = BattleSim.run(
+          make('Strong', atk: 30, def: 20, hp: 20, spd: 20),
+          make('Spike', atk: 2, def: 1, hp: 1, spd: 2, kind: 'red_spike'),
+          seed: seed,
+        );
+        if (!r.playerWon) continue;
+        final last = r.events.last;
+        expect(last, isA<HitEvent>(), reason: 'сид $seed');
+        expect((last as HitEvent).thorns, isFalse, reason: 'сид $seed');
+        expect(last.targetHpAfter, 0, reason: 'сид $seed');
+      }
+    });
+
     test('fighter without skills still fights', () {
       final r = BattleSim.run(_Dummy(name: 'A'), _Dummy(name: 'B', maxHp: 80), seed: 2);
       expect(r.events.whereType<SkillEvent>(), isEmpty);
