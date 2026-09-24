@@ -184,19 +184,48 @@ void main() {
       expect(burning, greaterThan(1), reason: 'горение видно лишь мгновение');
     });
 
-    test('shield is reported as state while it holds', () {
+    test('barrier holds and absorbs damage', () {
+      // Карбон ставит барьер активным скиллом — он должен держаться
+      // несколько событий и гасить часть урона.
       final r = BattleSim.run(
-        make('A', atk: 7, hp: 30, spd: 7, kind: 'blue_slide'),
-        make('B', atk: 7, hp: 30, spd: 7, kind: 'carbon_sport'),
+        make('Carbon', atk: 7, def: 7, hp: 30, spd: 7, kind: 'carbon_sport'),
+        make('B', atk: 7, def: 7, hp: 30, spd: 7),
         seed: 21,
       );
-      final first = r.events.indexWhere((e) => e.player.shielded);
-      expect(first, isNot(-1), reason: 'щит так и не поставился');
+      final first = r.events.indexWhere((e) => e.player.barriered);
+      expect(first, isNot(-1), reason: 'барьер так и не поставился');
       expect(
-        r.events.skip(first).takeWhile((e) => e.player.shielded).length,
+        r.events.skip(first).takeWhile((e) => e.player.barriered).length,
         greaterThan(1),
-        reason: 'щит виден лишь мгновение',
+        reason: 'барьер виден лишь мгновение',
       );
+    });
+
+    test('slow and weaken are reported as state', () {
+      // Адский шип замедляет топотом, клетчатый ослабляет ультой.
+      final slowed = BattleSim.run(
+        make('Spike', atk: 8, hp: 40, spd: 8, kind: 'red_spike'),
+        make('B', atk: 6, hp: 40, spd: 6),
+        seed: 5,
+      );
+      expect(slowed.events.any((e) => e.opponent.slowed), isTrue);
+
+      final weakened = BattleSim.run(
+        make('Granny', atk: 8, hp: 40, spd: 8),
+        make('B', atk: 6, hp: 40, spd: 6),
+        seed: 5,
+      );
+      expect(weakened.events.any((e) => e.opponent.weakened), isTrue);
+    });
+
+    test('guaranteed evade makes the next attack miss', () {
+      // Слайд подкатом гарантирует промах следующей атаки по себе.
+      final r = BattleSim.run(
+        make('Slide', atk: 7, hp: 30, spd: 7, kind: 'blue_slide'),
+        make('B', atk: 7, hp: 30, spd: 7),
+        seed: 3,
+      );
+      expect(r.events.whereType<DodgeEvent>(), isNotEmpty);
     });
 
     test('stun is reported as state until the victim skips its turn', () {

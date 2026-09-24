@@ -5,6 +5,49 @@
 /// (`BattleSim`), а соперник — снимок чужого тапка, за которым никто не сидит.
 library;
 
+import 'dart:ui';
+
+import 'combatant.dart';
+
+/// Визуальный росчерк скилла: что вспыхивает на экране при срабатывании.
+enum SkillVfx {
+  /// Ничего особенного.
+  none,
+
+  /// Ударная волна от бойца во все стороны.
+  shockwave,
+
+  /// Росчерки по цели.
+  slash,
+
+  /// Взрыв искр на цели.
+  burst,
+
+  /// Иней и осколки на цели — замедление.
+  frost,
+
+  /// Частицы тянутся от цели к бойцу — вытягивание здоровья.
+  drain,
+
+  /// Серия быстрых лезвий по цели.
+  blades,
+
+  /// Тёмные клубы над целью — ослабление.
+  gloom,
+}
+
+/// Где играть эффект скилла.
+enum VfxOrigin { self, target }
+
+extension SkillVfxX on SkillVfx {
+  /// Эффекты вокруг себя рисуются у бойца, остальные — у цели.
+  VfxOrigin get origin => switch (this) {
+        SkillVfx.shockwave => VfxOrigin.self,
+        SkillVfx.drain => VfxOrigin.target,
+        _ => VfxOrigin.target,
+      };
+}
+
 /// Разовый эффект — активный скилл или ульта.
 class ActiveSkill {
   const ActiveSkill({
@@ -19,6 +62,20 @@ class ActiveSkill {
     this.burnPercent = 0,
     this.burnTurns = 0,
     this.lifesteal = 0,
+    this.pierce = 0,
+    this.weaken = 0,
+    this.weakenTurns = 0,
+    this.slow = 0,
+    this.slowTurns = 0,
+    this.haste = 0,
+    this.hasteTurns = 0,
+    this.barrierPercent = 0,
+    this.evadeTurns = 0,
+    this.extraTurn = false,
+    this.alwaysCrit = false,
+    this.style,
+    this.vfx = SkillVfx.none,
+    this.vfxColor,
   });
 
   final String name;
@@ -46,6 +103,42 @@ class ActiveSkill {
 
   /// Доля нанесённого урона, возвращаемая себе как лечение.
   final double lifesteal;
+
+  /// Какую часть защиты цели удар игнорирует.
+  final double pierce;
+
+  /// Ослабление: насколько слабее бьёт противник и сколько его ходов это длится.
+  final double weaken;
+  final int weakenTurns;
+
+  /// Замедление противника: доля его скорости и длительность в его ходах.
+  final double slow;
+  final int slowTurns;
+
+  /// Ускорение себя: доля скорости и длительность в своих ходах.
+  final double haste;
+  final int hasteTurns;
+
+  /// Барьер, поглощающий урон: доля от своего максимума HP.
+  final double barrierPercent;
+
+  /// Сколько следующих атак по бойцу гарантированно пройдут мимо.
+  final int evadeTurns;
+
+  /// Боец ходит ещё раз сразу после этого хода.
+  final bool extraTurn;
+
+  /// Удары скилла всегда критуют.
+  final bool alwaysCrit;
+
+  /// Чем бить при этом скилле: если не задано — обычной манерой бойца.
+  final AttackStyle? style;
+
+  /// Что вспыхнет на экране при срабатывании.
+  final SkillVfx vfx;
+
+  /// Цвет росчерка; если не задан, берётся типовой для этого vfx.
+  final Color? vfxColor;
 }
 
 /// Постоянный эффект — работает весь бой без срабатываний.
@@ -55,12 +148,14 @@ class PassiveSkill {
     required this.description,
     this.damageBonus = 0,
     this.critBonus = 0,
+    this.critDamageBonus = 0,
     this.dodgeBonus = 0,
     this.defenseBonus = 0,
     this.lifesteal = 0,
     this.thorns = 0,
     this.regenPercent = 0,
     this.lowHpDamageBonus = 0,
+    this.executeThreshold = 0,
   });
 
   final String name;
@@ -69,6 +164,10 @@ class PassiveSkill {
   /// Прибавки к боевым величинам: доли (0.1 = +10%).
   final double damageBonus;
   final double critBonus;
+
+  /// Насколько сильнее обычного бьёт крит.
+  final double critDamageBonus;
+
   final double dodgeBonus;
 
   /// Прибавка к защите в её единицах (не доля).
@@ -85,6 +184,9 @@ class PassiveSkill {
 
   /// Дополнительный урон, когда своих HP меньше половины.
   final double lowHpDamageBonus;
+
+  /// Добивание: если у цели осталось меньше этой доли HP, удар удваивается.
+  final double executeThreshold;
 }
 
 /// Набор из трёх скиллов бойца.

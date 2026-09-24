@@ -19,6 +19,10 @@ class SideSnapshot {
     this.burning = false,
     this.shielded = false,
     this.stunned = false,
+    this.weakened = false,
+    this.slowed = false,
+    this.hasted = false,
+    this.barriered = false,
   });
 
   /// Заряд ульты: 1 — сработает на ближайшем ходу.
@@ -32,6 +36,12 @@ class SideSnapshot {
   final bool burning;
   final bool shielded;
   final bool stunned;
+
+  /// Ослаблен, замедлен, ускорен, под барьером.
+  final bool weakened;
+  final bool slowed;
+  final bool hasted;
+  final bool barriered;
 }
 
 /// Одно событие боя. UI проигрывает их последовательно.
@@ -74,6 +84,7 @@ class HitEvent extends BattleEvent {
     required super.player,
     required super.opponent,
     this.thorns = false,
+    this.bySkill = false,
   });
 
   final Side attacker;
@@ -83,6 +94,9 @@ class HitEvent extends BattleEvent {
 
   /// Урон от шипов: не удар, а ответ брони, поэтому боец не делает выпад.
   final bool thorns;
+
+  /// Удар нанесён в рамках скилла — экран играет его манеру и росчерк.
+  final bool bySkill;
 }
 
 class DodgeEvent extends BattleEvent {
@@ -173,6 +187,26 @@ class _State {
   int shieldTurns = 0;
   double shield = 0;
 
+  /// Барьер, поглощающий урон до того, как тот дойдёт до HP.
+  double barrier = 0;
+
+  /// Ослабление: насколько слабее бьёт и сколько своих ходов это длится.
+  double weaken = 0;
+  int weakenTurns = 0;
+
+  /// Замедление и ускорение: доля скорости и сколько своих ходов действует.
+  double slow = 0;
+  int slowTurns = 0;
+  double haste = 0;
+  int hasteTurns = 0;
+
+  /// Сколько ближайших атак по бойцу пройдут мимо.
+  int evadeCharges = 0;
+
+  /// Скорость с учётом замедления и ускорения.
+  double get speedNow =>
+      (who.speed * (1 + haste - slow)).clamp(who.speed * 0.25, who.speed * 3);
+
   /// Поджог: сколько своих ходов гореть и по сколько урона за ход.
   int burnTurns = 0;
   double burnDamage = 0;
@@ -214,6 +248,10 @@ class BattleSim {
           burning: st.burnTurns > 0,
           shielded: st.shieldTurns > 0,
           stunned: st.stunned,
+          weakened: st.weakenTurns > 0,
+          slowed: st.slowTurns > 0,
+          hasted: st.hasteTurns > 0,
+          barriered: st.barrier > 0,
         );
 
     void add(BattleEvent Function(SideSnapshot p, SideSnapshot o) make) {
@@ -231,8 +269,8 @@ class BattleSim {
     for (var actions = 0; actions < _maxActions; actions++) {
       // Продвигаем время до момента, когда кто-то готов действовать.
       while (gauge[0] < _gaugeThreshold && gauge[1] < _gaugeThreshold) {
-        gauge[0] += fighters[0].who.speed;
-        gauge[1] += fighters[1].who.speed;
+        gauge[0] += fighters[0].speedNow;
+        gauge[1] += fighters[1].speedNow;
       }
 
       // При одновременной готовности ход отдаётся тому, у кого шкала полнее;
@@ -277,10 +315,22 @@ class BattleSim {
         }
       }
 
-      // Щит живёт своими ходами владельца.
+      // Щит и прочие длящиеся эффекты живут ходами своего владельца.
       if (me.shieldTurns > 0) {
         me.shieldTurns--;
         if (me.shieldTurns == 0) me.shield = 0;
+      }
+      if (me.weakenTurns > 0) {
+        me.weakenTurns--;
+        if (me.weakenTurns == 0) me.weaken = 0;
+      }
+      if (me.slowTurns > 0) {
+        me.slowTurns--;
+        if (me.slowTurns == 0) me.slow = 0;
+      }
+      if (me.hasteTurns > 0) {
+        me.hasteTurns--;
+        if (me.hasteTurns == 0) me.haste = 0;
       }
 
       // --- Выбор действия: ульта → скилл по откату → обычный удар ---
@@ -308,11 +358,19 @@ class BattleSim {
               player: p,
               opponent: o,
             ));
-        // Щит и лечение от скилла применяются до ударов.
+        // Всё, что действует на себя, применяется до ударов.
         if (skill.shield > 0) {
           me.shield = skill.shield;
           me.shieldTurns = skill.shieldTurns;
         }
+        if (skill.barrierPercent > 0) {
+          me.barrier = me.who.maxHp * skill.barrierPercent;
+        }
+        if (skill.hasteTurns > 0) {
+          me.haste = skill.haste;
+          me.hasteTurns = skill.hasteTurns;
+        }
+        if (skill.evadeTurns > 0) me.evadeCharges = skill.evadeTurns;
         if (skill.healPercent > 0) {
           final before = me.hp;
           me.hp = min(me.who.maxHp, me.hp + me.who.maxHp * skill.healPercent);
@@ -328,6 +386,13 @@ class BattleSim {
       var dealtTotal = 0.0;
 
       for (var h = 0; h < hits; h++) {
+        // Гарантированный промах от скилла уклонения тратится первым.
+        if (foe.evadeCharges > 0) {
+          foe.evadeCharges--;
+          add((p, o) => DodgeEvent(attacker: side, player: p, opponent: o));
+          continue;
+        }
+
         final dodge = (foe.who.dodgeChance + foe.passive.dodgeBonus).clamp(0.0, 0.85);
         if (rng.nextDouble() < dodge) {
           add((p, o) => DodgeEvent(attacker: side, player: p, opponent: o));
@@ -335,16 +400,42 @@ class BattleSim {
         }
 
         final critChance = (me.who.critChance + me.passive.critBonus).clamp(0.0, 0.95);
-        final crit = rng.nextDouble() < critChance;
+        final crit = (skill?.alwaysCrit ?? false) || rng.nextDouble() < critChance;
         final variance = 0.85 + rng.nextDouble() * 0.3;
-        final defense = foe.who.defense + foe.passive.defenseBonus;
+        // Пробитие срезает часть защиты цели.
+        final pierce = skill?.pierce ?? 0;
+        final defense = (foe.who.defense + foe.passive.defenseBonus) * (1 - pierce);
         final mitigation = 100 / (100 + defense) * (1 - foe.shield);
 
-        var raw = me.who.attack * (1 + me.passive.damageBonus);
+        var raw = me.who.attack * (1 + me.passive.damageBonus - me.weaken);
         if (me.lowHp) raw *= 1 + me.passive.lowHpDamageBonus;
+        // Добивание: по еле живой цели удар проходит вдвое сильнее.
+        if (me.passive.executeThreshold > 0 &&
+            foe.hp / foe.who.maxHp <= me.passive.executeThreshold) {
+          raw *= 2;
+        }
         var dmg = raw * variance * mitigation * damageMul;
-        if (crit) dmg *= 1.75;
-        final damage = max(1, dmg.round());
+        if (crit) dmg *= 1.75 + me.passive.critDamageBonus;
+        var damage = max(1, dmg.round());
+
+        // Барьер съедает урон до того, как тот дойдёт до здоровья.
+        if (foe.barrier > 0) {
+          final absorbed = min(foe.barrier, damage.toDouble());
+          foe.barrier -= absorbed;
+          damage = max(0, damage - absorbed.round());
+          if (damage == 0) {
+            add((p, o) => HitEvent(
+                  attacker: side,
+                  damage: 0,
+                  crit: false,
+                  targetHpAfter: foe.hp,
+                  bySkill: skill != null,
+                  player: p,
+                  opponent: o,
+                ));
+            continue;
+          }
+        }
 
         foe.hp = max(0.0, foe.hp - damage);
         dealtTotal += damage;
@@ -358,6 +449,7 @@ class BattleSim {
               damage: damage,
               crit: crit,
               targetHpAfter: foe.hp,
+              bySkill: skill != null,
               player: p,
               opponent: o,
             ));
@@ -400,7 +492,19 @@ class BattleSim {
         }
       }
 
-      if (skill != null && skill.stun) foe.stunned = true;
+      if (skill != null) {
+        if (skill.stun) foe.stunned = true;
+        if (skill.weakenTurns > 0 && dealtTotal > 0) {
+          foe.weaken = skill.weaken;
+          foe.weakenTurns = skill.weakenTurns;
+        }
+        if (skill.slowTurns > 0 && dealtTotal > 0) {
+          foe.slow = skill.slow;
+          foe.slowTurns = skill.slowTurns;
+        }
+        // Дополнительный ход: шкала сразу заполняется заново.
+        if (skill.extraTurn) gauge[who] += _gaugeThreshold;
+      }
 
       // Ход прошёл — немного ульты за сам факт действия.
       me.ult = min(1, me.ult + _ultPerTurn);
