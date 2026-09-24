@@ -6,6 +6,7 @@ import '../../game/battle/battle_sim.dart';
 import '../../game/battle/combatant.dart';
 import '../../game/battle/skills.dart';
 import '../attack_animation.dart';
+import '../battle_effects.dart';
 import '../slipper_sprite.dart';
 import '../theme.dart';
 import '../widgets/game_widgets.dart';
@@ -45,6 +46,27 @@ class _BattleScreenState extends State<BattleScreen>
 
   /// Баннер с названием только что применённого скилла.
   _Banner? _banner;
+
+  /// Что сейчас показывается поверх каждого бойца.
+  final _effects = {
+    Side.player: <BattleEffect>{},
+    Side.opponent: <BattleEffect>{},
+  };
+
+  /// Метки постановки эффекта: снимаем его, только если сверху не легло новое.
+  final _effectStamp = <(Side, BattleEffect), int>{};
+  int _stampCounter = 0;
+
+  /// Показывает эффект над бойцом на положенное ему время.
+  void _showEffect(Side side, BattleEffect effect) {
+    final stamp = ++_stampCounter;
+    _effectStamp[(side, effect)] = stamp;
+    _effects[side]!.add(effect);
+    Future.delayed(effectDurations[effect]!, () {
+      if (!mounted || _effectStamp[(side, effect)] != stamp) return;
+      setState(() => _effects[side]!.remove(effect));
+    });
+  }
   final _log = <String>[];
   final _popups = <_Popup>[];
   int _index = 0;
@@ -92,11 +114,12 @@ class _BattleScreenState extends State<BattleScreen>
       _snapOpponent = e.opponent;
 
       switch (e) {
-        case SkillEvent(:final side, :final name, :final ultimate):
+        case SkillEvent(:final side, :final skill, :final ultimate):
           // Объявление скилла: баннер над бойцом и запись в лог.
-          _banner = _Banner(side: side, text: name, ultimate: ultimate);
+          _banner = _Banner(side: side, text: skill.name, ultimate: ultimate);
+          if (skill.shield > 0) _showEffect(side, BattleEffect.shield);
           _mood = {side: SlipperMood.attack, side.other: _mood[side.other]!};
-          _log.insert(0, '${nameOf(side)}: $name${ultimate ? '!' : ''}');
+          _log.insert(0, '${nameOf(side)}: ${skill.name}${ultimate ? '!' : ''}');
 
         case HitEvent(:final attacker, :final damage, :final crit, :final targetHpAfter):
           final target = attacker.other;
@@ -127,6 +150,7 @@ class _BattleScreenState extends State<BattleScreen>
             _hpOpponent = hpAfter;
           }
           _popups.add(_Popup(side: side, text: '+$amount', crit: false, heal: true));
+          _showEffect(side, BattleEffect.heal);
           _log.insert(0, '${nameOf(side)} восстанавливает $amount');
 
         case BurnEvent(:final side, :final damage, :final hpAfter):
@@ -137,10 +161,12 @@ class _BattleScreenState extends State<BattleScreen>
           }
           _mood = {side: hpAfter <= 0 ? SlipperMood.dead : SlipperMood.hurt, side.other: SlipperMood.idle};
           _popups.add(_Popup(side: side, text: '$damage', crit: false, burn: true));
+          _showEffect(side, BattleEffect.burn);
           _log.insert(0, '${nameOf(side)} горит: $damage');
 
         case StunEvent(:final side):
           _popups.add(_Popup(side: side, text: 'оглушён', crit: false));
+          _showEffect(side, BattleEffect.stun);
           _log.insert(0, '${nameOf(side)} пропускает ход');
       }
       if (_log.length > 6) _log.removeLast();
@@ -318,6 +344,7 @@ class _BattleScreenState extends State<BattleScreen>
                               width: w,
                               reach: reach,
                               attack: _lunging == Side.player ? _lunge.value : 0,
+                              effects: _effects[Side.player]!,
                               popups: _popups.where((p) => p.side == Side.player),
                             ),
                           ),
@@ -331,6 +358,7 @@ class _BattleScreenState extends State<BattleScreen>
                               flip: true,
                               reach: reach,
                               attack: _lunging == Side.opponent ? _lunge.value : 0,
+                              effects: _effects[Side.opponent]!,
                               popups: _popups.where((p) => p.side == Side.opponent),
                             ),
                           ),
@@ -586,6 +614,7 @@ class _Fighter extends StatelessWidget {
     required this.popups,
     required this.reach,
     required this.attack,
+    required this.effects,
     this.flip = false,
   });
 
@@ -600,13 +629,16 @@ class _Fighter extends StatelessWidget {
   /// 0 — стоит, 1 — пик замаха.
   final double attack;
 
+  /// Что показать поверх бойца: оглушение, горение, щит, лечение.
+  final Set<BattleEffect> effects;
+
   final Iterable<_Popup> popups;
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: width,
-      height: width * 0.56,
+    final box = Size(width, width * 0.56);
+    return SizedBox.fromSize(
+      size: box,
       child: Stack(
         alignment: Alignment.bottomCenter,
         clipBehavior: Clip.none,
@@ -622,6 +654,10 @@ class _Fighter extends StatelessWidget {
               flip: flip,
               width: width,
             ),
+          ),
+          // Эффекты живут поверх спрайта, но под цифрами урона.
+          Positioned.fill(
+            child: BattleEffectsLayer(effects: effects, size: box),
           ),
           for (final p in popups)
             Positioned(

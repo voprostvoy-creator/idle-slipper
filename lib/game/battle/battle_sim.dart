@@ -36,17 +36,21 @@ sealed class BattleEvent {
 class SkillEvent extends BattleEvent {
   const SkillEvent({
     required this.side,
-    required this.name,
+    required this.skill,
     required this.ultimate,
     required super.player,
     required super.opponent,
   });
 
   final Side side;
-  final String name;
+
+  /// Сам скилл — из него UI берёт название и понимает, что показывать.
+  final ActiveSkill skill;
 
   /// true — ульта, false — обычный скилл по откату.
   final bool ultimate;
+
+  String get name => skill.name;
 }
 
 class HitEvent extends BattleEvent {
@@ -279,7 +283,7 @@ class BattleSim {
       if (skill != null) {
         add((p, o) => SkillEvent(
               side: side,
-              name: skill!.name,
+              skill: skill!,
               ultimate: isUltimate,
               player: p,
               opponent: o,

@@ -8,18 +8,18 @@ class SkillCatalog {
   static const _fallback = SkillSet(
     active: ActiveSkill(
       name: 'Сильный шлепок',
-      description: 'Удар в полтора раза сильнее обычного.',
+      description: 'Следующая атака с уроном ×1.5.',
       damageMul: 1.5,
     ),
     activeCooldown: 4,
     passive: PassiveSkill(
       name: 'Стойкость',
-      description: 'Немного больше защиты.',
+      description: '+10 к защите.',
       defenseBonus: 10,
     ),
     ultimate: ActiveSkill(
       name: 'Размах',
-      description: 'Мощный удар с двойным уроном.',
+      description: 'Атака с уроном ×2.5.',
       damageMul: 2.5,
     ),
   );
@@ -29,18 +29,18 @@ class SkillCatalog {
     'basic': SkillSet(
       active: ActiveSkill(
         name: 'Шлепок с оттяжкой',
-        description: 'Замах через плечо: урон ×1.8.',
+        description: 'Следующая атака с уроном ×1.8.',
         damageMul: 1.8,
       ),
       activeCooldown: 4,
       passive: PassiveSkill(
         name: 'Домашний уют',
-        description: 'Восстанавливает 3% здоровья каждый ход.',
+        description: '+3% здоровья каждый ход.',
         regenPercent: 0.03,
       ),
       ultimate: ActiveSkill(
         name: 'Бабушкин гнев',
-        description: 'Урон ×3 и противник пропускает ход.',
+        description: 'Атака с уроном ×3, противник пропускает ход.',
         damageMul: 3,
         stun: true,
       ),
@@ -50,7 +50,7 @@ class SkillCatalog {
     'blue_slide': SkillSet(
       active: ActiveSkill(
         name: 'Подкат',
-        description: 'Урон ×1.6 и 25% защиты на два хода.',
+        description: 'Атака с уроном ×1.6, −25% входящего урона на 2 хода.',
         damageMul: 1.6,
         shield: 0.25,
         shieldTurns: 2,
@@ -58,12 +58,12 @@ class SkillCatalog {
       activeCooldown: 3,
       passive: PassiveSkill(
         name: 'Скользкая подошва',
-        description: 'Ещё +7% к шансу уворота.',
+        description: '+7% к шансу уворота.',
         dodgeBonus: 0.07,
       ),
       ultimate: ActiveSkill(
         name: 'Град шлепков',
-        description: 'Три быстрых удара подряд по ×1.2.',
+        description: 'Три атаки подряд с уроном ×1.2.',
         damageMul: 1.2,
         hits: 3,
       ),
@@ -73,18 +73,18 @@ class SkillCatalog {
     'carbon_sport': SkillSet(
       active: ActiveSkill(
         name: 'Прыжковый удар',
-        description: 'Удар сверху: урон ×2.',
+        description: 'Следующая атака с уроном ×2.',
         damageMul: 2,
       ),
       activeCooldown: 4,
       passive: PassiveSkill(
         name: 'Карбоновая подошва',
-        description: 'Жёсткая подошва добавляет защиты.',
+        description: '+35 к защите.',
         defenseBonus: 35,
       ),
       ultimate: ActiveSkill(
         name: 'Метеоритный удар',
-        description: 'Урон ×3.2, противник пропускает ход.',
+        description: 'Атака с уроном ×3.2, противник пропускает ход.',
         damageMul: 3.2,
         stun: true,
       ),
@@ -94,7 +94,7 @@ class SkillCatalog {
     'purple_neon': SkillSet(
       active: ActiveSkill(
         name: 'Фазовый рывок',
-        description: 'Урон ×1.7, половина возвращается здоровьем.',
+        description: 'Атака с уроном ×1.7, 50% урона возвращается здоровьем.',
         damageMul: 1.7,
         lifesteal: 0.5,
       ),
@@ -106,7 +106,7 @@ class SkillCatalog {
       ),
       ultimate: ActiveSkill(
         name: 'Перегрузка',
-        description: 'Урон ×2.6 и поджог на три хода.',
+        description: 'Атака с уроном ×2.6, поджог на 3 хода.',
         damageMul: 2.6,
         burnPercent: 0.3,
         burnTurns: 3,
@@ -117,18 +117,18 @@ class SkillCatalog {
     'red_spike': SkillSet(
       active: ActiveSkill(
         name: 'Тяжёлый топот',
-        description: 'Три шага и удар: урон ×2.1.',
+        description: 'Следующая атака с уроном ×2.1.',
         damageMul: 2.1,
       ),
       activeCooldown: 3,
       passive: PassiveSkill(
         name: 'Шипы',
-        description: 'Возвращает атакующему 20% полученного урона.',
+        description: '20% полученного урона возвращается атакующему.',
         thorns: 0.2,
       ),
       ultimate: ActiveSkill(
         name: 'Адский разлом',
-        description: 'Урон ×3.5 и поджог на два хода.',
+        description: 'Атака с уроном ×3.5, поджог на 2 хода.',
         damageMul: 3.5,
         burnPercent: 0.35,
         burnTurns: 2,
@@ -139,20 +139,20 @@ class SkillCatalog {
     'rainbow': SkillSet(
       active: ActiveSkill(
         name: 'Призматический луч',
-        description: 'Урон ×2.2, четверть возвращается здоровьем.',
+        description: 'Атака с уроном ×2.2, 25% урона возвращается здоровьем.',
         damageMul: 2.2,
         lifesteal: 0.25,
       ),
       activeCooldown: 3,
       passive: PassiveSkill(
         name: 'Хаос',
-        description: '+12% урона и +10% к шансу крита.',
+        description: '+12% урона, +10% к шансу крита.',
         damageBonus: 0.12,
         critBonus: 0.1,
       ),
       ultimate: ActiveSkill(
         name: 'Спектральный залп',
-        description: 'Четыре луча по ×1.4 с вампиризмом.',
+        description: 'Четыре атаки с уроном ×1.4, 20% урона возвращается здоровьем.',
         damageMul: 1.4,
         hits: 4,
         lifesteal: 0.2,
