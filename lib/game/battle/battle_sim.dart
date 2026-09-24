@@ -13,13 +13,25 @@ extension SideX on Side {
 /// Состояние скиллов стороны на момент события — всё в долях 0..1,
 /// чтобы экран рисовал шкалы и откаты, не зная правил их накопления.
 class SideSnapshot {
-  const SideSnapshot({required this.ult, required this.skillReady});
+  const SideSnapshot({
+    required this.ult,
+    required this.skillReady,
+    this.burning = false,
+    this.shielded = false,
+    this.stunned = false,
+  });
 
   /// Заряд ульты: 1 — сработает на ближайшем ходу.
   final double ult;
 
   /// Готовность активного скилла: 0 — только что применён, 1 — готов.
   final double skillReady;
+
+  /// Длящиеся эффекты: горит, под щитом, пропустит ход. UI держит их
+  /// столько, сколько они держатся в бою, а не по своему таймеру.
+  final bool burning;
+  final bool shielded;
+  final bool stunned;
 }
 
 /// Одно событие боя. UI проигрывает их последовательно.
@@ -179,9 +191,9 @@ class BattleSim {
   static const double _gaugeThreshold = 100;
 
   /// Сколько ульты копится за свой ход и за каждый процент урона.
-  static const double _ultPerTurn = 0.08;
-  static const double _ultPerDamageDealt = 0.35;
-  static const double _ultPerDamageTaken = 0.25;
+  static const double _ultPerTurn = 0.1;
+  static const double _ultPerDamageDealt = 0.4375;
+  static const double _ultPerDamageTaken = 0.3125;
 
   static BattleResult run(Combatant player, Combatant opponent, {required int seed}) {
     final rng = Random(seed);
@@ -195,6 +207,9 @@ class BattleSim {
               ? 0
               : ((st.skills.activeCooldown - st.cooldown) / st.skills.activeCooldown)
                   .clamp(0.0, 1.0),
+          burning: st.burnTurns > 0,
+          shielded: st.shieldTurns > 0,
+          stunned: st.stunned,
         );
 
     void add(BattleEvent Function(SideSnapshot p, SideSnapshot o) make) {
@@ -241,8 +256,9 @@ class BattleSim {
 
       // --- Оглушение ---
       if (me.stunned) {
-        me.stunned = false;
+        // Снимок берём до сброса, иначе звёзды оглушения не попадут в событие.
         add((p, o) => StunEvent(side: side, player: p, opponent: o));
+        me.stunned = false;
         continue;
       }
 

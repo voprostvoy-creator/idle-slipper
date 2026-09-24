@@ -53,12 +53,13 @@ class _BattleScreenState extends State<BattleScreen>
     Side.opponent: <BattleEffect>{},
   };
 
-  /// Метки постановки эффекта: снимаем его, только если сверху не легло новое.
+  /// Метки постановки мгновенного эффекта: снимаем его, только если сверху
+  /// не легло новое такое же.
   final _effectStamp = <(Side, BattleEffect), int>{};
   int _stampCounter = 0;
 
-  /// Показывает эффект над бойцом на положенное ему время.
-  void _showEffect(Side side, BattleEffect effect) {
+  /// Разовый эффект — виден положенное ему время и гаснет.
+  void _flashEffect(Side side, BattleEffect effect) {
     final stamp = ++_stampCounter;
     _effectStamp[(side, effect)] = stamp;
     _effects[side]!.add(effect);
@@ -66,6 +67,18 @@ class _BattleScreenState extends State<BattleScreen>
       if (!mounted || _effectStamp[(side, effect)] != stamp) return;
       setState(() => _effects[side]!.remove(effect));
     });
+  }
+
+  /// Длящиеся эффекты держатся ровно столько, сколько действуют в бою:
+  /// их состояние приходит в каждом событии, поэтому они не мигают между
+  /// ходами противника.
+  void _syncEffects(Side side, SideSnapshot snap) {
+    final set = _effects[side]!;
+    void toggle(BattleEffect effect, bool on) =>
+        on ? set.add(effect) : set.remove(effect);
+    toggle(BattleEffect.burn, snap.burning);
+    toggle(BattleEffect.shield, snap.shielded);
+    toggle(BattleEffect.stun, snap.stunned);
   }
   final _log = <String>[];
   final _popups = <_Popup>[];
@@ -112,12 +125,13 @@ class _BattleScreenState extends State<BattleScreen>
     setState(() {
       _snapPlayer = e.player;
       _snapOpponent = e.opponent;
+      _syncEffects(Side.player, e.player);
+      _syncEffects(Side.opponent, e.opponent);
 
       switch (e) {
         case SkillEvent(:final side, :final skill, :final ultimate):
           // Объявление скилла: баннер над бойцом и запись в лог.
           _banner = _Banner(side: side, text: skill.name, ultimate: ultimate);
-          if (skill.shield > 0) _showEffect(side, BattleEffect.shield);
           _mood = {side: SlipperMood.attack, side.other: _mood[side.other]!};
           _log.insert(0, '${nameOf(side)}: ${skill.name}${ultimate ? '!' : ''}');
 
@@ -150,7 +164,7 @@ class _BattleScreenState extends State<BattleScreen>
             _hpOpponent = hpAfter;
           }
           _popups.add(_Popup(side: side, text: '+$amount', crit: false, heal: true));
-          _showEffect(side, BattleEffect.heal);
+          _flashEffect(side, BattleEffect.heal);
           _log.insert(0, '${nameOf(side)} восстанавливает $amount');
 
         case BurnEvent(:final side, :final damage, :final hpAfter):
@@ -161,12 +175,10 @@ class _BattleScreenState extends State<BattleScreen>
           }
           _mood = {side: hpAfter <= 0 ? SlipperMood.dead : SlipperMood.hurt, side.other: SlipperMood.idle};
           _popups.add(_Popup(side: side, text: '$damage', crit: false, burn: true));
-          _showEffect(side, BattleEffect.burn);
           _log.insert(0, '${nameOf(side)} горит: $damage');
 
         case StunEvent(:final side):
           _popups.add(_Popup(side: side, text: 'оглушён', crit: false));
-          _showEffect(side, BattleEffect.stun);
           _log.insert(0, '${nameOf(side)} пропускает ход');
       }
       if (_log.length > 6) _log.removeLast();
@@ -178,6 +190,9 @@ class _BattleScreenState extends State<BattleScreen>
       setState(() {
         if (_popups.isNotEmpty) _popups.removeAt(0);
         _banner = null;
+      for (final set in _effects.values) {
+        set.clear();
+      }
         for (final side in Side.values) {
           if (_mood[side] != SlipperMood.dead) _mood[side] = SlipperMood.idle;
         }
@@ -238,6 +253,9 @@ class _BattleScreenState extends State<BattleScreen>
     final won = widget.result.playerWon;
     setState(() {
       _finished = true;
+      for (final set in _effects.values) {
+        set.clear();
+      }
       _mood = {
         Side.player: won ? SlipperMood.happy : SlipperMood.dead,
         Side.opponent: won ? SlipperMood.dead : SlipperMood.happy,

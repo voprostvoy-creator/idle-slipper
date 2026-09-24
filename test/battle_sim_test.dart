@@ -165,6 +165,55 @@ void main() {
       }
     });
 
+    test('lasting effects stay on across the opponent turns', () {
+      // Неон поджигает ультой: горение должно держаться подряд,
+      // а не гаснуть в ходы противника.
+      final r = BattleSim.run(
+        make('Neon', atk: 8, hp: 30, spd: 9, kind: 'purple_neon'),
+        make('B', atk: 6, hp: 40, spd: 6),
+        seed: 12,
+      );
+      final events = r.events;
+      final first = events.indexWhere((e) => e.opponent.burning);
+      expect(first, isNot(-1), reason: 'поджог так и не случился');
+      // От начала горения и до его конца флаг не должен прерываться.
+      final burning = events
+          .skip(first)
+          .takeWhile((e) => e.opponent.burning)
+          .length;
+      expect(burning, greaterThan(1), reason: 'горение видно лишь мгновение');
+    });
+
+    test('shield is reported as state while it holds', () {
+      final r = BattleSim.run(
+        make('A', atk: 7, hp: 30, spd: 7, kind: 'blue_slide'),
+        make('B', atk: 7, hp: 30, spd: 7, kind: 'carbon_sport'),
+        seed: 21,
+      );
+      final first = r.events.indexWhere((e) => e.player.shielded);
+      expect(first, isNot(-1), reason: 'щит так и не поставился');
+      expect(
+        r.events.skip(first).takeWhile((e) => e.player.shielded).length,
+        greaterThan(1),
+        reason: 'щит виден лишь мгновение',
+      );
+    });
+
+    test('stun is reported as state until the victim skips its turn', () {
+      final r = BattleSim.run(
+        make('A', atk: 8, hp: 40, spd: 8),
+        make('B', atk: 8, hp: 40, spd: 8, kind: 'carbon_sport'),
+        seed: 9,
+      );
+      final i = r.events.indexWhere((e) => e is StunEvent);
+      expect(i, isNot(-1), reason: 'оглушения не случилось');
+      final victim = (r.events[i] as StunEvent).side;
+      // В момент пропуска хода флаг ещё горит — UI показывает звёзды.
+      expect(r.events[i].of(victim).stunned, isTrue);
+      // А дальше снят.
+      expect(r.events[i + 1].of(victim).stunned, isFalse);
+    });
+
     test('fighter without skills still fights', () {
       final r = BattleSim.run(_Dummy(name: 'A'), _Dummy(name: 'B', maxHp: 80), seed: 2);
       expect(r.events.whereType<SkillEvent>(), isEmpty);
