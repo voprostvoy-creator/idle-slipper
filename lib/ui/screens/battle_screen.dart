@@ -445,6 +445,7 @@ class _SkillSlot extends StatelessWidget {
     required this.color,
     required this.onDialog,
     required this.onDialogClosed,
+    this.cooldown = 0,
     this.skill,
     this.passive,
   });
@@ -456,6 +457,10 @@ class _SkillSlot extends StatelessWidget {
   final double ready;
 
   final Color color;
+
+  /// Откат активного скилла в ходах — показывается в описании.
+  final int cooldown;
+
   final VoidCallback onDialog;
   final VoidCallback onDialogClosed;
   final ActiveSkill? skill;
@@ -471,6 +476,19 @@ class _SkillSlot extends StatelessWidget {
         2 => 'Пассивный',
         _ => 'Ульта',
       };
+
+  /// Чем скилл ограничен: откат в ходах, шкала или ничего (у пассивки).
+  String? get _recharge => switch (index) {
+        1 => 'Перезарядка: ${_turns(cooldown)}',
+        2 => null,
+        _ => 'Заряжается от урона: нанесённого и полученного',
+      };
+
+  static String _turns(int n) {
+    final tail = n % 100 >= 11 && n % 100 <= 14 ? 0 : n % 10;
+    final word = switch (tail) { 1 => 'ход', 2 || 3 || 4 => 'хода', _ => 'ходов' };
+    return '$n $word';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -546,7 +564,24 @@ class _SkillSlot extends StatelessWidget {
             StrokeText(_name, size: 20, color: color, align: TextAlign.start),
           ],
         ),
-        content: Text(_description, style: theme.textTheme.bodyMedium),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(_description, style: theme.textTheme.bodyMedium),
+            if (_recharge != null) ...[
+              const SizedBox(height: 10),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.timer_outlined, size: 16, color: GameColors.textDim),
+                  const SizedBox(width: 6),
+                  Expanded(child: Text(_recharge!, style: theme.textTheme.bodySmall)),
+                ],
+              ),
+            ],
+          ],
+        ),
         actions: [
           GameButton(
             color: GameColors.panelLight,
@@ -634,6 +669,23 @@ class _Fighter extends StatelessWidget {
 
   final Iterable<_Popup> popups;
 
+  /// Где внутри бокса реально стоит тапок: спрайт 2:1 прижат к низу и
+  /// уменьшен на sizeFactor, а в самом PNG остаются поля по краям.
+  Rect _bodyRect(Size box) {
+    final scale = fighter.sizeFactor;
+    final spriteW = width * scale;
+    final spriteH = width / SlipperSprite.aspect * scale;
+    final left = (box.width - spriteW) / 2;
+    final top = box.height - spriteH;
+    // Поля нормализованного PNG: по 4% с боков и 8% снизу.
+    return Rect.fromLTRB(
+      left + spriteW * 0.04,
+      top + spriteH * 0.06,
+      left + spriteW * 0.96,
+      top + spriteH * 0.94,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final box = Size(width, width * 0.56);
@@ -657,7 +709,11 @@ class _Fighter extends StatelessWidget {
           ),
           // Эффекты живут поверх спрайта, но под цифрами урона.
           Positioned.fill(
-            child: BattleEffectsLayer(effects: effects, size: box),
+            child: BattleEffectsLayer(
+              effects: effects,
+              size: box,
+              body: _bodyRect(box),
+            ),
           ),
           for (final p in popups)
             Positioned(
@@ -750,6 +806,7 @@ class _HpBar extends StatelessWidget {
                 skill: skills.active,
                 ready: snapshot.skillReady,
                 color: GameColors.blue,
+                cooldown: skills.activeCooldown,
                 onDialog: onDialog,
                 onDialogClosed: onDialogClosed,
               ),

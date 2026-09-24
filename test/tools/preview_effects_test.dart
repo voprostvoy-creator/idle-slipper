@@ -24,6 +24,18 @@ void main() {
       name: 'preview',
       levels: {for (final s in Stat.values) s: 10},
     );
+    // Те же расчёты, что и на экране боя: спрайт прижат к низу и уменьшен.
+    const box = Size(cell, cell * 0.56);
+    final spriteW = cell * slipper.sizeFactor;
+    final spriteH = cell / 2 * slipper.sizeFactor;
+    final left = (box.width - spriteW) / 2;
+    final top = box.height - spriteH;
+    final bodyRect = Rect.fromLTRB(
+      left + spriteW * 0.04,
+      top + spriteH * 0.06,
+      left + spriteW * 0.96,
+      top + spriteH * 0.94,
+    );
     // Каждый эффект отдельно и все разом — проверяем, что они не спорят.
     const sets = <Set<BattleEffect>>[
       {BattleEffect.stun},
@@ -50,12 +62,14 @@ void main() {
                       width: cell,
                       height: cell * 0.56,
                       child: Stack(
+                        alignment: Alignment.bottomCenter,
                         children: [
                           SlipperSprite(fighter: slipper, width: cell, animate: false),
                           Positioned.fill(
                             child: BattleEffectsLayer(
                               effects: set,
-                              size: const Size(cell, cell * 0.56),
+                              size: box,
+                              body: bodyRect,
                             ),
                           ),
                         ],
