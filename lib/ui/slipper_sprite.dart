@@ -18,6 +18,7 @@ class SlipperSprite extends StatefulWidget {
     this.animate = true,
     this.width = 200,
     this.showSize = true,
+    this.impulse = 0,
   });
 
   final Combatant fighter;
@@ -29,6 +30,10 @@ class SlipperSprite extends StatefulWidget {
   /// Учитывать ли размер от Здоровья. В витринах (коллекция) выключаем,
   /// чтобы тапки сравнивались в одном масштабе.
   final bool showSize;
+
+  /// Счётчик внешних толчков: меняется — спрайт заново проигрывает реакцию.
+  /// Нужен, когда удары идут подряд и поза не успевает смениться.
+  final int impulse;
 
   static const double aspect = 2;
 
@@ -77,8 +82,8 @@ class _SlipperSpriteState extends State<SlipperSprite>
     if (old.animate != widget.animate) {
       widget.animate ? _orbit.repeat() : _orbit.stop();
     }
-    if (old.mood != widget.mood &&
-        (widget.mood == SlipperMood.hurt || widget.mood == SlipperMood.happy)) {
+    final reacts = widget.mood == SlipperMood.hurt || widget.mood == SlipperMood.happy;
+    if (reacts && (old.mood != widget.mood || old.impulse != widget.impulse)) {
       _fx.forward(from: 0);
     }
   }

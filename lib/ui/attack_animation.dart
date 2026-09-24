@@ -22,6 +22,8 @@ class AttackAnimation {
         AttackStyle.meteor => const Duration(milliseconds: 420),
         AttackStyle.stomp => const Duration(milliseconds: 360),
         AttackStyle.laser => const Duration(milliseconds: 320),
+        AttackStyle.combo => const Duration(milliseconds: 300),
+        AttackStyle.charge => const Duration(milliseconds: 380),
       };
 
   static Widget apply({
@@ -43,6 +45,8 @@ class AttackAnimation {
       AttackStyle.meteor => _meteor(progress, dir, reach, child),
       AttackStyle.stomp => _stomp(progress, dir, reach, child),
       AttackStyle.laser => _laser(progress, dir, reach, child),
+      AttackStyle.combo => _combo(progress, dir, reach, child),
+      AttackStyle.charge => _charge(progress, dir, reach, child),
     };
   }
 
@@ -196,6 +200,59 @@ class AttackAnimation {
           ),
         ),
       ],
+    );
+  }
+
+  /// Двойка: два коротких быстрых выпада, второй дальше и злее.
+  static Widget _combo(double t, double dir, double reach, Widget child) {
+    // Каждый выпад — полный цикл «вперёд и обратно».
+    final second = t >= 0.5;
+    final local = second ? (t - 0.5) * 2 : t * 2;
+    final punch = sin(Curves.easeOutQuad.transform(local) * pi);
+    final depth = second ? 1.4 : 0.7;
+    // Между выпадами боец чуть приседает — видно, что это два разных удара.
+    final crouch = second ? 0.0 : local;
+    return Transform.translate(
+      offset: Offset(reach * depth * punch * dir, 0),
+      child: Transform.rotate(
+        angle: (second ? 0.2 : 0.1) * punch * dir,
+        alignment: Alignment.bottomCenter,
+        child: Transform.scale(
+          scaleX: 1 + (second ? 0.12 : 0.07) * punch,
+          scaleY: 1 - 0.06 * crouch,
+          alignment: Alignment.bottomCenter,
+          child: child,
+        ),
+      ),
+    );
+  }
+
+  /// Таран: отходит назад, приседает и бросается на противника шипами вперёд.
+  static Widget _charge(double t, double dir, double reach, Widget child) {
+    const windupEnd = 0.35;
+    // Замах: отход назад с наклоном от противника.
+    final windup = t < windupEnd
+        ? Curves.easeOutCubic.transform(t / windupEnd)
+        : 1 - Curves.easeInCubic.transform((t - windupEnd) / (1 - windupEnd));
+    // Рывок: резкий разгон вперёд после замаха.
+    final dash = t < windupEnd
+        ? 0.0
+        : Curves.easeInQuart.transform((t - windupEnd) / (1 - windupEnd));
+    final x = -reach * 0.4 * windup + reach * 1.3 * dash;
+    return Transform.translate(
+      offset: Offset(x * dir, -reach * 0.1 * windup),
+      child: Transform.rotate(
+        // Откидывается назад на замахе и клюёт носком в рывке.
+        angle: (-0.22 * windup + 0.3 * dash) * dir,
+        alignment: Alignment.bottomCenter,
+        child: Transform.scale(
+          // Сжимается как пружина, потом вытягивается в броске.
+          scaleX: 1 - 0.1 * windup + 0.14 * dash,
+          scaleY: 1 - 0.08 * windup,
+          alignment: Alignment.bottomCenter,
+          child: child,
+        ),
+      ),
     );
   }
 

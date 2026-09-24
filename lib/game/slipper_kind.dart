@@ -92,7 +92,7 @@ class SlipperCatalog {
       name: 'Карбон-спорт',
       rarity: Rarity.epic,
       asset: 'assets/slippers/carbon_sport.png',
-      attack: AttackStyle.slam,
+      attack: AttackStyle.combo,
       bonuses: {Bonus.damage: 0.08, Bonus.dodge: 0.04},
     ),
     SlipperKind(
@@ -108,7 +108,7 @@ class SlipperCatalog {
       name: 'Адский шип',
       rarity: Rarity.legendary,
       asset: 'assets/slippers/red_spike.png',
-      attack: AttackStyle.stomp,
+      attack: AttackStyle.charge,
       bonuses: {Bonus.damage: 0.18, Bonus.crit: 0.08, Bonus.hp: 0.08},
     ),
     SlipperKind(

@@ -47,6 +47,14 @@ class _BattleScreenState extends State<BattleScreen>
   /// Баннер с названием только что применённого скилла.
   _Banner? _banner;
 
+  /// Метка последнего запланированного сброса позы.
+  int _moodCounter = 0;
+  int _moodStamp = 0;
+
+  /// Сколько раз по бойцу попали: по смене числа спрайт заново проигрывает
+  /// вспышку урона, даже если поза осталась прежней.
+  final _hits = {Side.player: 0, Side.opponent: 0};
+
   /// Что сейчас показывается поверх каждого бойца.
   final _effects = {
     Side.player: <BattleEffect>{},
@@ -149,6 +157,7 @@ class _BattleScreenState extends State<BattleScreen>
             _hpOpponent = targetHpAfter;
           }
           _mood[target] = targetHpAfter <= 0 ? SlipperMood.dead : SlipperMood.hurt;
+          _hits[target] = _hits[target]! + 1;
           if (thorns) {
             // Шипы — ответ брони, а не удар: замаха нет и поза не меняется.
             _popups.add(_Popup(side: target, text: '$damage', crit: false));
@@ -188,6 +197,7 @@ class _BattleScreenState extends State<BattleScreen>
             _hpOpponent = hpAfter;
           }
           _mood = {side: hpAfter <= 0 ? SlipperMood.dead : SlipperMood.hurt, side.other: SlipperMood.idle};
+          _hits[side] = _hits[side]! + 1;
           _popups.add(_Popup(side: side, text: '$damage', crit: false, burn: true));
           _log.insert(0, '${nameOf(side)} горит: $damage');
 
@@ -198,15 +208,15 @@ class _BattleScreenState extends State<BattleScreen>
       if (_log.length > 6) _log.removeLast();
     });
 
-    // Убираем всплывашку и возвращаем спокойное состояние.
+    // Возвращаем спокойное состояние — но только если сверху не легло
+    // новое событие: иначе старый таймер гасил свежую реакцию на удар.
+    final stamp = ++_moodCounter;
+    _moodStamp = stamp;
     Future.delayed(const Duration(milliseconds: 600), () {
-      if (!mounted) return;
+      if (!mounted || _moodStamp != stamp) return;
       setState(() {
         if (_popups.isNotEmpty) _popups.removeAt(0);
         _banner = null;
-      for (final set in _effects.values) {
-        set.clear();
-      }
         for (final side in Side.values) {
           if (_mood[side] != SlipperMood.dead) _mood[side] = SlipperMood.idle;
         }
@@ -377,6 +387,7 @@ class _BattleScreenState extends State<BattleScreen>
                               reach: reach,
                               attack: _lunging == Side.player ? _lunge.value : 0,
                               effects: _effects[Side.player]!,
+                              hits: _hits[Side.player]!,
                               popups: _popups.where((p) => p.side == Side.player),
                             ),
                           ),
@@ -391,6 +402,7 @@ class _BattleScreenState extends State<BattleScreen>
                               reach: reach,
                               attack: _lunging == Side.opponent ? _lunge.value : 0,
                               effects: _effects[Side.opponent]!,
+                              hits: _hits[Side.opponent]!,
                               popups: _popups.where((p) => p.side == Side.opponent),
                             ),
                           ),
@@ -682,6 +694,7 @@ class _Fighter extends StatelessWidget {
     required this.reach,
     required this.attack,
     required this.effects,
+    required this.hits,
     this.flip = false,
   });
 
@@ -698,6 +711,9 @@ class _Fighter extends StatelessWidget {
 
   /// Что показать поверх бойца: оглушение, горение, щит, лечение.
   final Set<BattleEffect> effects;
+
+  /// Счётчик попаданий — спрайт по нему перезапускает вспышку урона.
+  final int hits;
 
   final Iterable<_Popup> popups;
 
@@ -737,6 +753,7 @@ class _Fighter extends StatelessWidget {
               mood: mood,
               flip: flip,
               width: width,
+              impulse: hits,
             ),
           ),
           // Эффекты живут поверх спрайта, но под цифрами урона.
