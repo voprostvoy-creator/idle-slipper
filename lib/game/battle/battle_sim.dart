@@ -10,15 +10,26 @@ extension SideX on Side {
   Side get other => this == Side.player ? Side.opponent : Side.player;
 }
 
-/// Одно событие боя. UI проигрывает их последовательно.
-///
-/// Каждое событие несёт заряд ульт обеих сторон (0..1), чтобы экран мог
-/// рисовать шкалы, не зная правил их накопления.
-sealed class BattleEvent {
-  const BattleEvent({required this.ultPlayer, required this.ultOpponent});
+/// Состояние скиллов стороны на момент события — всё в долях 0..1,
+/// чтобы экран рисовал шкалы и откаты, не зная правил их накопления.
+class SideSnapshot {
+  const SideSnapshot({required this.ult, required this.skillReady});
 
-  final double ultPlayer;
-  final double ultOpponent;
+  /// Заряд ульты: 1 — сработает на ближайшем ходу.
+  final double ult;
+
+  /// Готовность активного скилла: 0 — только что применён, 1 — готов.
+  final double skillReady;
+}
+
+/// Одно событие боя. UI проигрывает их последовательно.
+sealed class BattleEvent {
+  const BattleEvent({required this.player, required this.opponent});
+
+  final SideSnapshot player;
+  final SideSnapshot opponent;
+
+  SideSnapshot of(Side side) => side == Side.player ? player : opponent;
 }
 
 /// Объявление скилла перед его эффектом.
@@ -27,8 +38,8 @@ class SkillEvent extends BattleEvent {
     required this.side,
     required this.name,
     required this.ultimate,
-    required super.ultPlayer,
-    required super.ultOpponent,
+    required super.player,
+    required super.opponent,
   });
 
   final Side side;
@@ -44,8 +55,8 @@ class HitEvent extends BattleEvent {
     required this.damage,
     required this.crit,
     required this.targetHpAfter,
-    required super.ultPlayer,
-    required super.ultOpponent,
+    required super.player,
+    required super.opponent,
   });
 
   final Side attacker;
@@ -57,8 +68,8 @@ class HitEvent extends BattleEvent {
 class DodgeEvent extends BattleEvent {
   const DodgeEvent({
     required this.attacker,
-    required super.ultPlayer,
-    required super.ultOpponent,
+    required super.player,
+    required super.opponent,
   });
 
   final Side attacker;
@@ -70,8 +81,8 @@ class HealEvent extends BattleEvent {
     required this.side,
     required this.amount,
     required this.hpAfter,
-    required super.ultPlayer,
-    required super.ultOpponent,
+    required super.player,
+    required super.opponent,
   });
 
   final Side side;
@@ -85,8 +96,8 @@ class BurnEvent extends BattleEvent {
     required this.side,
     required this.damage,
     required this.hpAfter,
-    required super.ultPlayer,
-    required super.ultOpponent,
+    required super.player,
+    required super.opponent,
   });
 
   /// Кто горит.
@@ -99,8 +110,8 @@ class BurnEvent extends BattleEvent {
 class StunEvent extends BattleEvent {
   const StunEvent({
     required this.side,
-    required super.ultPlayer,
-    required super.ultOpponent,
+    required super.player,
+    required super.opponent,
   });
 
   /// Кто пропускает ход.
@@ -174,8 +185,16 @@ class BattleSim {
     final gauge = [0.0, 0.0];
     final events = <BattleEvent>[];
 
-    void add(BattleEvent Function(double ultP, double ultO) make) {
-      events.add(make(fighters[0].ult, fighters[1].ult));
+    SideSnapshot snap(_State st) => SideSnapshot(
+          ult: st.ult,
+          skillReady: st.skills.isEmpty
+              ? 0
+              : ((st.skills.activeCooldown - st.cooldown) / st.skills.activeCooldown)
+                  .clamp(0.0, 1.0),
+        );
+
+    void add(BattleEvent Function(SideSnapshot p, SideSnapshot o) make) {
+      events.add(make(snap(fighters[0]), snap(fighters[1])));
     }
 
     BattleResult finish(Side winner) => BattleResult(
@@ -212,14 +231,14 @@ class BattleSim {
         final dmg = max(1, me.burnDamage.round());
         me.hp = max(0.0, me.hp - dmg);
         me.burnTurns--;
-        add((p, o) => BurnEvent(side: side, damage: dmg, hpAfter: me.hp, ultPlayer: p, ultOpponent: o));
+        add((p, o) => BurnEvent(side: side, damage: dmg, hpAfter: me.hp, player: p, opponent: o));
         if (me.hp <= 0) return finish(side.other);
       }
 
       // --- Оглушение ---
       if (me.stunned) {
         me.stunned = false;
-        add((p, o) => StunEvent(side: side, ultPlayer: p, ultOpponent: o));
+        add((p, o) => StunEvent(side: side, player: p, opponent: o));
         continue;
       }
 
@@ -230,7 +249,7 @@ class BattleSim {
         me.hp = min(me.who.maxHp, me.hp + heal);
         final gained = (me.hp - before).round();
         if (gained > 0) {
-          add((p, o) => HealEvent(side: side, amount: gained, hpAfter: me.hp, ultPlayer: p, ultOpponent: o));
+          add((p, o) => HealEvent(side: side, amount: gained, hpAfter: me.hp, player: p, opponent: o));
         }
       }
 
@@ -250,8 +269,11 @@ class BattleSim {
       } else if (!me.skills.isEmpty && me.cooldown <= 0) {
         skill = me.skills.active;
         me.cooldown = me.skills.activeCooldown;
-      } else if (me.cooldown > 0) {
-        me.cooldown--;
+      }
+      // Откат активного идёт и в ходы, занятые ультой, — иначе частые ульты
+      // морозили бы его навсегда.
+      if (skill == null || isUltimate) {
+        if (me.cooldown > 0) me.cooldown--;
       }
 
       if (skill != null) {
@@ -259,8 +281,8 @@ class BattleSim {
               side: side,
               name: skill!.name,
               ultimate: isUltimate,
-              ultPlayer: p,
-              ultOpponent: o,
+              player: p,
+              opponent: o,
             ));
         // Щит и лечение от скилла применяются до ударов.
         if (skill.shield > 0) {
@@ -272,7 +294,7 @@ class BattleSim {
           me.hp = min(me.who.maxHp, me.hp + me.who.maxHp * skill.healPercent);
           final gained = (me.hp - before).round();
           if (gained > 0) {
-            add((p, o) => HealEvent(side: side, amount: gained, hpAfter: me.hp, ultPlayer: p, ultOpponent: o));
+            add((p, o) => HealEvent(side: side, amount: gained, hpAfter: me.hp, player: p, opponent: o));
           }
         }
       }
@@ -284,7 +306,7 @@ class BattleSim {
       for (var h = 0; h < hits; h++) {
         final dodge = (foe.who.dodgeChance + foe.passive.dodgeBonus).clamp(0.0, 0.85);
         if (rng.nextDouble() < dodge) {
-          add((p, o) => DodgeEvent(attacker: side, ultPlayer: p, ultOpponent: o));
+          add((p, o) => DodgeEvent(attacker: side, player: p, opponent: o));
           continue;
         }
 
@@ -312,8 +334,8 @@ class BattleSim {
               damage: damage,
               crit: crit,
               targetHpAfter: foe.hp,
-              ultPlayer: p,
-              ultOpponent: o,
+              player: p,
+              opponent: o,
             ));
 
         // Шипы: часть урона возвращается атакующему.
@@ -325,8 +347,8 @@ class BattleSim {
                 damage: back,
                 crit: false,
                 targetHpAfter: me.hp,
-                ultPlayer: p,
-                ultOpponent: o,
+                player: p,
+                opponent: o,
               ));
           if (me.hp <= 0) return finish(side.other);
         }
@@ -342,7 +364,7 @@ class BattleSim {
           me.hp = min(me.who.maxHp, me.hp + dealtTotal * steal);
           final gained = (me.hp - before).round();
           if (gained > 0) {
-            add((p, o) => HealEvent(side: side, amount: gained, hpAfter: me.hp, ultPlayer: p, ultOpponent: o));
+            add((p, o) => HealEvent(side: side, amount: gained, hpAfter: me.hp, player: p, opponent: o));
           }
         }
         if (skill != null && skill.burnTurns > 0) {

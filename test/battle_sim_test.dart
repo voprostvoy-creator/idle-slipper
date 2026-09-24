@@ -116,18 +116,22 @@ void main() {
       expect(skills.where((e) => e.ultimate), isNotEmpty);
     });
 
-    test('ult charge is reported monotonically until it fires', () {
+    test('events carry ult charge and skill cooldown for both sides', () {
       final r = BattleSim.run(
         make('A', atk: 5, hp: 20),
         make('B', atk: 5, hp: 20),
         seed: 3,
       );
       for (final e in r.events) {
-        expect(e.ultPlayer, inInclusiveRange(0, 1));
-        expect(e.ultOpponent, inInclusiveRange(0, 1));
+        for (final side in [e.player, e.opponent]) {
+          expect(side.ult, inInclusiveRange(0, 1));
+          expect(side.skillReady, inInclusiveRange(0, 1));
+        }
       }
       // Ульта хоть раз доходит до полной шкалы.
-      expect(r.events.any((e) => e.ultPlayer >= 1 || e.ultOpponent >= 1), isTrue);
+      expect(r.events.any((e) => e.player.ult >= 1 || e.opponent.ult >= 1), isTrue);
+      // И откат хоть раз уходит в ноль сразу после применения скилла.
+      expect(r.events.any((e) => e.player.skillReady < 0.2), isTrue);
     });
 
     test('regen heals, thorns hurt the attacker, burn ticks', () {

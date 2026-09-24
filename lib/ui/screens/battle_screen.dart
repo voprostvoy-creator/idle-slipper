@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../game/battle/battle_sim.dart';
 import '../../game/battle/combatant.dart';
+import '../../game/battle/skills.dart';
 import '../attack_animation.dart';
 import '../slipper_sprite.dart';
 import '../theme.dart';
@@ -38,9 +39,9 @@ class _BattleScreenState extends State<BattleScreen>
   late double _hpOpponent = widget.result.opponentMaxHp;
   var _mood = {Side.player: SlipperMood.idle, Side.opponent: SlipperMood.idle};
 
-  /// Заряд ульт, 0..1 — приходит вместе с каждым событием боя.
-  double _ultPlayer = 0;
-  double _ultOpponent = 0;
+  /// Состояние скиллов сторон — приходит вместе с каждым событием боя.
+  var _snapPlayer = const SideSnapshot(ult: 0, skillReady: 1);
+  var _snapOpponent = const SideSnapshot(ult: 0, skillReady: 1);
 
   /// Баннер с названием только что применённого скилла.
   _Banner? _banner;
@@ -87,8 +88,8 @@ class _BattleScreenState extends State<BattleScreen>
     String nameOf(Side s) => s == Side.player ? playerName : opponentName;
 
     setState(() {
-      _ultPlayer = e.ultPlayer;
-      _ultOpponent = e.ultOpponent;
+      _snapPlayer = e.player;
+      _snapOpponent = e.opponent;
 
       switch (e) {
         case SkillEvent(:final side, :final name, :final ultimate):
@@ -156,6 +157,15 @@ class _BattleScreenState extends State<BattleScreen>
         }
       });
     });
+  }
+
+  /// Пока открыто описание скилла, бой стоит — иначе дочитать не успеешь.
+  void _pause() => _timer?.cancel();
+
+  void _resume() {
+    if (_finished || !mounted) return;
+    _timer?.cancel();
+    _timer = Timer(_stepDuration, _tick);
   }
 
   /// Запускает анимацию удара в манере атакующего.
@@ -256,7 +266,10 @@ class _BattleScreenState extends State<BattleScreen>
                       hp: _hpPlayer,
                       max: widget.result.playerMaxHp,
                       color: GameColors.green,
-                      ult: _ultPlayer,
+                      snapshot: _snapPlayer,
+                      skills: widget.player.skills,
+                      onDialog: _pause,
+                      onDialogClosed: _resume,
                     ),
                   ),
                   const Padding(
@@ -270,7 +283,10 @@ class _BattleScreenState extends State<BattleScreen>
                       max: widget.result.opponentMaxHp,
                       color: GameColors.red,
                       alignEnd: true,
-                      ult: _ultOpponent,
+                      snapshot: _snapOpponent,
+                      skills: widget.opponent.skills,
+                      onDialog: _pause,
+                      onDialogClosed: _resume,
                     ),
                   ),
                 ],
@@ -390,6 +406,128 @@ class _Popup {
     if (burn) return GameColors.orange;
     if (crit) return GameColors.gold;
     return text == 'мимо' || text == 'оглушён' ? GameColors.textDim : GameColors.text;
+  }
+}
+
+/// Квадратик скилла под шкалами: номер, затемнение по откату и описание по тапу.
+class _SkillSlot extends StatelessWidget {
+  const _SkillSlot({
+    required this.index,
+    required this.ready,
+    required this.color,
+    required this.onDialog,
+    required this.onDialogClosed,
+    this.skill,
+    this.passive,
+  });
+
+  /// Порядковый номер: 1 — активный, 2 — пассивный, 3 — ульта.
+  final int index;
+
+  /// Готовность 0..1: 0 — только применён, 1 — готов.
+  final double ready;
+
+  final Color color;
+  final VoidCallback onDialog;
+  final VoidCallback onDialogClosed;
+  final ActiveSkill? skill;
+  final PassiveSkill? passive;
+
+  static const _size = 30.0;
+
+  String get _name => skill?.name ?? passive!.name;
+  String get _description => skill?.description ?? passive!.description;
+
+  String get _kindLabel => switch (index) {
+        1 => 'Скилл',
+        2 => 'Пассивный',
+        _ => 'Ульта',
+      };
+
+  @override
+  Widget build(BuildContext context) {
+    final done = ready >= 1;
+    return GestureDetector(
+      onTap: () => _show(context),
+      child: Container(
+        width: _size,
+        height: _size,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(7),
+          border: Border.all(color: GameColors.outline, width: 2.5),
+          // Готовый скилл светится своим цветом — так видно границу отката.
+          color: Color.lerp(color, GameColors.panelDark, 0.35),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // Пока картинок нет — просто номер скилла.
+            Center(
+              child: Text(
+                '$index',
+                style: const TextStyle(
+                  color: GameColors.outline,
+                  fontSize: 16,
+                  fontVariations: [FontVariation('wght', 900)],
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+            // Затемнение откатом: тёмная часть прижата к низу и уходит вниз
+            // по мере готовности.
+            if (!done)
+              Align(
+                alignment: Alignment.bottomCenter,
+                child: FractionallySizedBox(
+                  heightFactor: (1 - ready).clamp(0.0, 1.0),
+                  widthFactor: 1,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: GameColors.panelDark.withValues(alpha: 0.88),
+                      // Светлая кромка по краю затемнения — видно, куда оно ушло.
+                      border: ready > 0
+                          ? Border(
+                              top: BorderSide(
+                                color: Colors.white.withValues(alpha: 0.5),
+                                width: 1.5,
+                              ),
+                            )
+                          : null,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _show(BuildContext context) {
+    final theme = Theme.of(context);
+    onDialog();
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            GameBadge(text: _kindLabel, color: color),
+            const SizedBox(height: 8),
+            StrokeText(_name, size: 20, color: color, align: TextAlign.start),
+          ],
+        ),
+        content: Text(_description, style: theme.textTheme.bodyMedium),
+        actions: [
+          GameButton(
+            color: GameColors.panelLight,
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Понятно', style: TextStyle(color: GameColors.text)),
+          ),
+        ],
+      ),
+    ).whenComplete(onDialogClosed);
   }
 }
 
@@ -519,7 +657,10 @@ class _HpBar extends StatelessWidget {
     required this.hp,
     required this.max,
     required this.color,
-    required this.ult,
+    required this.snapshot,
+    required this.skills,
+    required this.onDialog,
+    required this.onDialogClosed,
     this.alignEnd = false,
   });
 
@@ -528,8 +669,14 @@ class _HpBar extends StatelessWidget {
   final double max;
   final Color color;
 
-  /// Заряд ульты, 0..1.
-  final double ult;
+  /// Заряды ульты и откат активного скилла.
+  final SideSnapshot snapshot;
+
+  final SkillSet skills;
+
+  /// Бой ставится на паузу, пока открыто описание скилла.
+  final VoidCallback onDialog;
+  final VoidCallback onDialogClosed;
 
   final bool alignEnd;
 
@@ -551,11 +698,46 @@ class _HpBar extends StatelessWidget {
         const SizedBox(height: 3),
         // Тонкая шкала ульты под здоровьем: залилась — сработает.
         GameBar(
-          value: ult,
-          color: ult >= 1 ? GameColors.gold : GameColors.blue,
+          value: snapshot.ult,
+          color: snapshot.ult >= 1 ? GameColors.gold : GameColors.blue,
           height: 8,
           alignEnd: alignEnd,
         ),
+        if (!skills.isEmpty) ...[
+          const SizedBox(height: 5),
+          Row(
+            mainAxisAlignment:
+                alignEnd ? MainAxisAlignment.end : MainAxisAlignment.start,
+            children: [
+              _SkillSlot(
+                index: 1,
+                skill: skills.active,
+                ready: snapshot.skillReady,
+                color: GameColors.blue,
+                onDialog: onDialog,
+                onDialogClosed: onDialogClosed,
+              ),
+              const SizedBox(width: 5),
+              _SkillSlot(
+                index: 2,
+                passive: skills.passive,
+                ready: 1,
+                color: GameColors.green,
+                onDialog: onDialog,
+                onDialogClosed: onDialogClosed,
+              ),
+              const SizedBox(width: 5),
+              _SkillSlot(
+                index: 3,
+                skill: skills.ultimate,
+                ready: snapshot.ult,
+                color: GameColors.gold,
+                onDialog: onDialog,
+                onDialogClosed: onDialogClosed,
+              ),
+            ],
+          ),
+        ],
       ],
     );
   }
