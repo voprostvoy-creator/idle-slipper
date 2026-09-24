@@ -23,8 +23,13 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
   Timer? _ticker;
 
   Slipper slipper = Slipper(name: 'Мой тапок');
-  /// TODO: вернуть 50 перед релизом — сейчас для тестов.
-  static const double startingThreads = 100000;
+  /// TODO: вернуть 50 перед релизом — сейчас для тестов пусто,
+  /// нитки берутся кнопкой в отладочной панели.
+  static const double startingThreads = 0;
+
+  /// TODO: убрать перед релизом — для тестов вся коллекция открыта сразу.
+  static Map<String, int> get startingInventory =>
+      {for (final k in SlipperCatalog.all) k.id: 1};
 
   /// Основная валюта: нитки. Тратятся на прокачку и кейсы.
   double threads = startingThreads;
@@ -33,7 +38,7 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
   int coins = 0;
 
   /// Тапки в собственности: id вида → сколько штук. Дубликаты стакаются.
-  Map<String, int> inventory = {SlipperCatalog.defaultId: 1};
+  Map<String, int> inventory = startingInventory;
   int rating = Rating.initial;
   int wins = 0;
   int losses = 0;
@@ -277,7 +282,7 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
     slipper = Slipper(name: 'Мой тапок');
     threads = startingThreads;
     coins = 0;
-    inventory = {SlipperCatalog.defaultId: 1};
+    inventory = startingInventory;
     rating = Rating.initial;
     wins = 0;
     losses = 0;
