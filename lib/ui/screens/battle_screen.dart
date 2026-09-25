@@ -8,6 +8,7 @@ import '../../game/battle/skills.dart';
 import '../attack_animation.dart';
 import '../battle_effects.dart';
 import '../skill_vfx.dart';
+import '../status_icons.dart';
 import '../slipper_sprite.dart';
 import '../theme.dart';
 import '../widgets/game_widgets.dart';
@@ -228,7 +229,7 @@ class _BattleScreenState extends State<BattleScreen>
           _popups.add(_Popup(side: side, text: 'оглушён', crit: false));
           _log.insert(0, '${nameOf(side)} пропускает ход');
       }
-      if (_log.length > 6) _log.removeLast();
+      if (_log.length > 4) _log.removeLast();
     });
 
     // Возвращаем спокойное состояние — но только если сверху не легло
@@ -376,7 +377,6 @@ class _BattleScreenState extends State<BattleScreen>
                       max: widget.result.playerMaxHp,
                       color: GameColors.green,
                       snapshot: _snapPlayer,
-                      skills: widget.player.skills,
                       onDialog: _pause,
                       onDialogClosed: _resume,
                     ),
@@ -393,7 +393,6 @@ class _BattleScreenState extends State<BattleScreen>
                       color: GameColors.red,
                       alignEnd: true,
                       snapshot: _snapOpponent,
-                      skills: widget.opponent.skills,
                       onDialog: _pause,
                       onDialogClosed: _resume,
                     ),
@@ -466,6 +465,29 @@ class _BattleScreenState extends State<BattleScreen>
                 },
               ),
             ),
+            // Скиллы — под своими тапками: игрока слева, соперника справа.
+            // В конце боя прячем, чтобы итог помещался на узком экране.
+            if (!_finished)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
+                child: Row(
+                  children: [
+                    _SkillRow(
+                      skills: widget.player.skills,
+                      snapshot: _snapPlayer,
+                      onDialog: _pause,
+                      onDialogClosed: _resume,
+                    ),
+                    const Spacer(),
+                    _SkillRow(
+                      skills: widget.opponent.skills,
+                      snapshot: _snapOpponent,
+                      onDialog: _pause,
+                      onDialogClosed: _resume,
+                    ),
+                  ],
+                ),
+              ),
             // Название сработавшего скилла — поверх сцены, под барами.
             SizedBox(
               height: 46,
@@ -486,7 +508,7 @@ class _BattleScreenState extends State<BattleScreen>
               )
             else
               Container(
-                height: 120,
+                height: 84,
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 alignment: Alignment.topCenter,
                 child: Column(
@@ -561,7 +583,7 @@ class _SkillSlot extends StatelessWidget {
   final ActiveSkill? skill;
   final PassiveSkill? passive;
 
-  static const _size = 30.0;
+  static const _size = 38.0;
 
   String get _name => skill?.name ?? passive!.name;
   String get _description => skill?.description ?? passive!.description;
@@ -877,7 +899,6 @@ class _HpBar extends StatelessWidget {
     required this.max,
     required this.color,
     required this.snapshot,
-    required this.skills,
     required this.onDialog,
     required this.onDialogClosed,
     this.alignEnd = false,
@@ -888,10 +909,8 @@ class _HpBar extends StatelessWidget {
   final double max;
   final Color color;
 
-  /// Заряды ульты и откат активного скилла.
+  /// Заряд ульты и эффекты, висящие на бойце.
   final SideSnapshot snapshot;
-
-  final SkillSet skills;
 
   /// Бой ставится на паузу, пока открыто описание скилла.
   final VoidCallback onDialog;
@@ -922,42 +941,77 @@ class _HpBar extends StatelessWidget {
           height: 8,
           alignEnd: alignEnd,
         ),
-        if (!skills.isEmpty) ...[
-          const SizedBox(height: 5),
-          Row(
-            mainAxisAlignment:
-                alignEnd ? MainAxisAlignment.end : MainAxisAlignment.start,
+        const SizedBox(height: 5),
+        // Что висит на бойце. Высота фиксирована, чтобы при появлении
+        // и снятии эффектов вёрстка не прыгала.
+        SizedBox(
+          height: 24,
+          child: Wrap(
+            spacing: 4,
+            alignment: alignEnd ? WrapAlignment.end : WrapAlignment.start,
             children: [
-              _SkillSlot(
-                index: 1,
-                skill: skills.active,
-                ready: snapshot.skillReady,
-                color: GameColors.blue,
-                cooldown: skills.activeCooldown,
-                onDialog: onDialog,
-                onDialogClosed: onDialogClosed,
-              ),
-              const SizedBox(width: 5),
-              _SkillSlot(
-                index: 2,
-                passive: skills.passive,
-                ready: 1,
-                color: GameColors.green,
-                onDialog: onDialog,
-                onDialogClosed: onDialogClosed,
-              ),
-              const SizedBox(width: 5),
-              _SkillSlot(
-                index: 3,
-                skill: skills.ultimate,
-                ready: snapshot.ult,
-                color: GameColors.gold,
-                onDialog: onDialog,
-                onDialogClosed: onDialogClosed,
-              ),
+              for (final kind in statusesOf(snapshot))
+                StatusIcon(
+                  kind: kind,
+                  size: 24,
+                  onDialog: onDialog,
+                  onDialogClosed: onDialogClosed,
+                ),
             ],
           ),
-        ],
+        ),
+      ],
+    );
+  }
+}
+
+/// Три слота скиллов бойца: активный, пассивный, ульта.
+class _SkillRow extends StatelessWidget {
+  const _SkillRow({
+    required this.skills,
+    required this.snapshot,
+    required this.onDialog,
+    required this.onDialogClosed,
+  });
+
+  final SkillSet skills;
+  final SideSnapshot snapshot;
+  final VoidCallback onDialog;
+  final VoidCallback onDialogClosed;
+
+  @override
+  Widget build(BuildContext context) {
+    if (skills.isEmpty) return const SizedBox.shrink();
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _SkillSlot(
+          index: 1,
+          skill: skills.active,
+          ready: snapshot.skillReady,
+          color: GameColors.blue,
+          cooldown: skills.activeCooldown,
+          onDialog: onDialog,
+          onDialogClosed: onDialogClosed,
+        ),
+        const SizedBox(width: 6),
+        _SkillSlot(
+          index: 2,
+          passive: skills.passive,
+          ready: 1,
+          color: GameColors.green,
+          onDialog: onDialog,
+          onDialogClosed: onDialogClosed,
+        ),
+        const SizedBox(width: 6),
+        _SkillSlot(
+          index: 3,
+          skill: skills.ultimate,
+          ready: snapshot.ult,
+          color: GameColors.gold,
+          onDialog: onDialog,
+          onDialogClosed: onDialogClosed,
+        ),
       ],
     );
   }

@@ -23,6 +23,7 @@ class SideSnapshot {
     this.slowed = false,
     this.hasted = false,
     this.barriered = false,
+    this.evading = false,
   });
 
   /// Заряд ульты: 1 — сработает на ближайшем ходу.
@@ -37,11 +38,12 @@ class SideSnapshot {
   final bool shielded;
   final bool stunned;
 
-  /// Ослаблен, замедлен, ускорен, под барьером.
+  /// Ослаблен, замедлен, ускорен, под барьером, уйдёт от следующей атаки.
   final bool weakened;
   final bool slowed;
   final bool hasted;
   final bool barriered;
+  final bool evading;
 }
 
 /// Одно событие боя. UI проигрывает их последовательно.
@@ -252,6 +254,7 @@ class BattleSim {
           slowed: st.slowTurns > 0,
           hasted: st.hasteTurns > 0,
           barriered: st.barrier > 0,
+          evading: st.evadeCharges > 0,
         );
 
     void add(BattleEvent Function(SideSnapshot p, SideSnapshot o) make) {
