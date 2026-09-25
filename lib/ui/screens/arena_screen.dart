@@ -6,12 +6,16 @@ import '../../game/slipper.dart';
 import '../slipper_sprite.dart';
 import '../theme.dart';
 import '../widgets/game_widgets.dart';
+import 'battle_hub_screen.dart';
 import 'battle_screen.dart';
 
 /// Арена: три соперника на выбор.
 class ArenaScreen extends StatelessWidget {
-  const ArenaScreen({super.key, required this.game});
+  const ArenaScreen({super.key, required this.game, required this.onBack});
   final GameState game;
+
+  /// Возврат к выбору режима во вкладке «В бой».
+  final VoidCallback onBack;
 
   @override
   Widget build(BuildContext context) {
@@ -22,7 +26,7 @@ class ArenaScreen extends StatelessWidget {
         return ListView(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
           children: [
-            const Center(child: StrokeText('Арена', size: 30)),
+            BackToModes(title: 'Арена', onBack: onBack),
             const SizedBox(height: 4),
             Text(
               'Выбери соперника. Бой идёт сам — исход решают характеристики тапков.',

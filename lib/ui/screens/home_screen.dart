@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../../game/economy.dart';
 import '../../game/game_state.dart';
 import '../../game/slipper.dart';
-import '../../game/slipper_kind.dart';
 import '../format.dart';
 import '../slipper_sprite.dart';
 import '../theme.dart';
@@ -11,8 +10,11 @@ import '../widgets/game_widgets.dart';
 
 /// Главный экран: тапок на коврике, монеты, прокачка.
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key, required this.game});
+  const HomeScreen({super.key, required this.game, required this.onOpenCollection});
   final GameState game;
+
+  /// Переход во вкладку «Коллекция» — там меняется тапок.
+  final VoidCallback onOpenCollection;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -104,7 +106,9 @@ class _HomeScreenState extends State<HomeScreen>
                 },
               ),
             ),
-            SliverToBoxAdapter(child: _NameRow(game: game)),
+            SliverToBoxAdapter(
+              child: _NameRow(game: game, onOpenCollection: widget.onOpenCollection),
+            ),
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 18, 20, 10),
@@ -162,8 +166,9 @@ class _FloatingLabel extends StatelessWidget {
 }
 
 class _NameRow extends StatelessWidget {
-  const _NameRow({required this.game});
+  const _NameRow({required this.game, required this.onOpenCollection});
   final GameState game;
+  final VoidCallback onOpenCollection;
 
   Future<void> _edit(BuildContext context) async {
     final controller = TextEditingController(text: game.slipper.name);
@@ -223,7 +228,7 @@ class _NameRow extends StatelessWidget {
         GameButton(
           color: GameColors.blue,
           height: 38,
-          onPressed: () => _pickKind(context),
+          onPressed: onOpenCollection,
           child: const Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -237,112 +242,6 @@ class _NameRow extends StatelessWidget {
     );
   }
 
-  /// Выбор вида из каталога. Пока доступны все — кейсы и коллекция позже.
-  Future<void> _pickKind(BuildContext context) async {
-    final picked = await showModalBottomSheet<String>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) => _KindPicker(game: game, current: game.slipper.kindId),
-    );
-    if (picked != null) game.equip(picked);
-  }
-}
-
-class _KindPicker extends StatelessWidget {
-  const _KindPicker({required this.game, required this.current});
-  final GameState game;
-  final String current;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    // Каталожный порядок, но только то, что лежит в инвентаре.
-    final owned = [
-      for (final k in SlipperCatalog.all)
-        if (game.count(k.id) > 0) k.id,
-    ];
-    return Container(
-      padding: EdgeInsets.fromLTRB(16, 12, 16, 16 + MediaQuery.paddingOf(context).bottom),
-      decoration: const BoxDecoration(
-        color: GameColors.panelDark,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        border: Border(top: BorderSide(color: GameColors.outline, width: 3)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const StrokeText('Коллекция', size: 24),
-          const SizedBox(height: 12),
-          ConstrainedBox(
-            constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height * 0.6),
-            child: ListView.separated(
-              shrinkWrap: true,
-              itemCount: owned.length,
-              separatorBuilder: (_, _) => const SizedBox(height: 10),
-              itemBuilder: (context, i) {
-                final kind = SlipperCatalog.byId(owned[i]);
-                final count = game.count(kind.id);
-                final selected = kind.id == current;
-                return GamePanel(
-                  padding: const EdgeInsets.all(10),
-                  onTap: () => Navigator.pop(context, kind.id),
-                  child: Row(
-                    children: [
-                      SlipperSprite(
-                        fighter: Slipper(name: kind.id, kindId: kind.id),
-                        width: 120,
-                        animate: false,
-                        showSize: false,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Flexible(
-                                  child: Text(
-                                    kind.name,
-                                    style: theme.textTheme.titleMedium,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                                if (count > 1) ...[
-                                  const SizedBox(width: 6),
-                                  GameBadge(text: '×$count', color: GameColors.panelLight),
-                                ],
-                              ],
-                            ),
-                            const SizedBox(height: 4),
-                            Wrap(
-                              spacing: 6,
-                              runSpacing: 4,
-                              children: [
-                                GameBadge(text: kind.rarity.label, color: kind.rarity.color),
-                                for (final e in kind.bonuses.entries)
-                                  GameBadge(text: e.key.format(e.value), color: GameColors.green),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      if (selected)
-                        const Icon(Icons.check_circle, color: GameColors.gold, size: 28)
-                      else
-                        const Icon(Icons.chevron_right, color: GameColors.textDim),
-                    ],
-                  ),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 class _UpgradeTile extends StatelessWidget {
