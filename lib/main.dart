@@ -177,6 +177,9 @@ class _GameNavBar extends StatelessWidget {
   /// Насколько центральная кнопка выступает над панелью.
   static const _lift = 18.0;
 
+  /// Зазор между кнопками меню.
+  static const _gap = 3.0;
+
   @override
   Widget build(BuildContext context) {
     Widget sideButton((_Tab, IconData, String) item) {
@@ -217,7 +220,7 @@ class _GameNavBar extends StatelessWidget {
       alignment: Alignment.topCenter,
       children: [
         Container(
-          padding: EdgeInsets.fromLTRB(6, 8, 6, 8 + bottomInset),
+          padding: EdgeInsets.fromLTRB(4, 8, 4, 8 + bottomInset),
           decoration: const BoxDecoration(
             color: GameColors.panelDark,
             border: Border(top: BorderSide(color: GameColors.outline, width: 3)),
@@ -225,12 +228,12 @@ class _GameNavBar extends StatelessWidget {
           child: Row(
             children: [
               sideButton(_side[0]),
-              const SizedBox(width: 5),
+              const SizedBox(width: _gap),
               sideButton(_side[1]),
-              // Место под центральную кнопку.
-              const SizedBox(width: 86),
+              // Место под центральную кнопку — вплотную к ней.
+              const SizedBox(width: _FightButtonState._size + _gap * 2),
               sideButton(_side[2]),
-              const SizedBox(width: 5),
+              const SizedBox(width: _gap),
               sideButton(_side[3]),
             ],
           ),

@@ -53,20 +53,33 @@ class _ModePicker extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 16),
-        _ModeCard(
-          title: 'Сюжет',
-          subtitle: 'Главы с боссами в конце. Награда — монеты и тапки.',
-          icon: Icons.menu_book_rounded,
-          color: GameColors.orange,
-          onTap: () => onMode(BattleMode.story),
-        ),
-        const SizedBox(height: 14),
-        _ModeCard(
-          title: 'Арена',
-          subtitle: 'Тапки других игроков. Награда — нитки и рейтинг.',
-          icon: Icons.emoji_events_rounded,
-          color: GameColors.blue,
-          onTap: () => onMode(BattleMode.arena),
+        // Режимы бок о бок; IntrinsicHeight выравнивает карточки по высоте,
+        // даже если описание в одной длиннее.
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: _ModeCard(
+                  title: 'Сюжет',
+                  subtitle: 'Главы с боссами. Награда — монеты и тапки.',
+                  icon: Icons.menu_book_rounded,
+                  color: GameColors.orange,
+                  onTap: () => onMode(BattleMode.story),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _ModeCard(
+                  title: 'Арена',
+                  subtitle: 'Тапки других игроков. Награда — нитки и рейтинг.',
+                  icon: Icons.emoji_events_rounded,
+                  color: GameColors.blue,
+                  onTap: () => onMode(BattleMode.arena),
+                ),
+              ),
+            ],
+          ),
         ),
       ],
     );
@@ -93,36 +106,38 @@ class _ModeCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return GamePanel(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.fromLTRB(12, 14, 12, 14),
       onTap: onTap,
-      child: Row(
+      child: Column(
         children: [
-          Container(
-            width: 84,
-            height: 84,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: GameColors.outline, width: 3),
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Color.lerp(color, Colors.white, 0.3)!, color],
+          AspectRatio(
+            aspectRatio: 1,
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: GameColors.outline, width: 3),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Color.lerp(color, Colors.white, 0.3)!, color],
+                ),
+              ),
+              child: FittedBox(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Icon(icon, size: 56, color: GameColors.outline),
+                ),
               ),
             ),
-            child: Icon(icon, size: 46, color: GameColors.outline),
           ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                StrokeText(title, size: 24, align: TextAlign.start),
-                const SizedBox(height: 4),
-                Text(subtitle, style: theme.textTheme.bodySmall),
-              ],
-            ),
+          const SizedBox(height: 10),
+          StrokeText(title, size: 24),
+          const SizedBox(height: 4),
+          Text(
+            subtitle,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodySmall,
           ),
-          const Icon(Icons.chevron_right_rounded, color: GameColors.textDim, size: 30),
         ],
       ),
     );
