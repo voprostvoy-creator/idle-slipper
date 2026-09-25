@@ -23,8 +23,15 @@ class AttackAnimation {
         AttackStyle.stomp => const Duration(milliseconds: 360),
         AttackStyle.laser => const Duration(milliseconds: 320),
         AttackStyle.uppercut => const Duration(milliseconds: 300),
-        AttackStyle.charge => const Duration(milliseconds: 380),
+        // Таран возвращается сам, поэтому это длина всего цикла.
+        AttackStyle.charge => const Duration(milliseconds: 600),
       };
+
+  /// Стили, которые сами возвращают бойца на место за один проход 0 → 1.
+  /// Для них экран не проигрывает анимацию в обратную сторону: у тарана
+  /// обратный ход прошёл бы через замах, то есть откатил бы назад дальше
+  /// исходной точки.
+  static bool returnsOnItsOwn(AttackStyle style) => style == AttackStyle.charge;
 
   static Widget apply({
     required AttackStyle style,
@@ -224,26 +231,32 @@ class AttackAnimation {
     );
   }
 
-  /// Таран: отходит назад, приседает и бросается на противника шипами вперёд.
+  /// Таран: отходит назад, сжимается и бросается шипами вперёд, затем
+  /// плавно возвращается на место — всё за один проход, без обратного хода.
   static Widget _charge(double t, double dir, double reach, Widget child) {
-    const windupEnd = 0.35;
-    // Замах: отход назад с наклоном от противника.
+    const windupEnd = 0.3;
+    const hitAt = 0.58;
+    // Замах: отход назад и сжатие как у пружины.
     final windup = t < windupEnd
         ? Curves.easeOutCubic.transform(t / windupEnd)
-        : 1 - Curves.easeInCubic.transform((t - windupEnd) / (1 - windupEnd));
-    // Рывок: резкий разгон вперёд после замаха.
+        : t < hitAt
+            ? 1 - Curves.easeInCubic.transform((t - windupEnd) / (hitAt - windupEnd))
+            : 0.0;
+    // Бросок: резкий разгон до удара, потом плавный отход прямо на место.
     final dash = t < windupEnd
         ? 0.0
-        : Curves.easeInQuart.transform((t - windupEnd) / (1 - windupEnd));
-    final x = -reach * 0.3 * windup + reach * 0.98 * dash;
+        : t < hitAt
+            ? Curves.easeInQuart.transform((t - windupEnd) / (hitAt - windupEnd))
+            : 1 - Curves.easeInOutCubic.transform((t - hitAt) / (1 - hitAt));
+    // Дистанция на 10% короче прежней: бросок 0.88, замах 0.27.
+    final x = -reach * 0.27 * windup + reach * 0.88 * dash;
     return Transform.translate(
       offset: Offset(x * dir, -reach * 0.1 * windup),
       child: Transform.rotate(
-        // Откидывается назад на замахе и клюёт носком в рывке.
+        // Откидывается назад на замахе и клюёт носком в броске.
         angle: (-0.22 * windup + 0.3 * dash) * dir,
         alignment: Alignment.bottomCenter,
         child: Transform.scale(
-          // Сжимается как пружина, потом вытягивается в броске.
           scaleX: 1 - 0.1 * windup + 0.14 * dash,
           scaleY: 1 - 0.08 * windup,
           alignment: Alignment.bottomCenter,

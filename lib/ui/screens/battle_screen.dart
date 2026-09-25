@@ -242,9 +242,24 @@ class _BattleScreenState extends State<BattleScreen>
   }
 
   /// Запускает анимацию удара в манере атакующего.
+  ///
+  /// Весь цикл обязан уложиться в шаг боя: иначе следующий удар начинался,
+  /// пока боец ещё возвращался, анимация сбрасывалась в ноль и он рывком
+  /// прыгал на место.
   void _startLunge(Side attacker) {
-    final who = attacker == Side.player ? widget.player : widget.opponent;
-    _lunge.duration = AttackAnimation.duration(who.attackStyle);
+    final style = (attacker == Side.player ? widget.player : widget.opponent).attackStyle;
+    final forward = AttackAnimation.duration(style);
+    _lunge.duration = forward;
+    if (AttackAnimation.returnsOnItsOwn(style)) {
+      // Стиль сам приводит бойца на место — после прохода просто обнуляем.
+      _lunge.forward(from: 0).then((_) => _lunge.value = 0);
+      return;
+    }
+    // Возврат укорачивается, если вместе с замахом не влезает в шаг.
+    final room = _stepDuration - forward - const Duration(milliseconds: 40);
+    _lunge.reverseDuration = room < forward
+        ? (room < const Duration(milliseconds: 120) ? const Duration(milliseconds: 120) : room)
+        : forward;
     _lunge.forward(from: 0).then((_) => _lunge.reverse());
   }
 
