@@ -8,7 +8,6 @@ import '../../game/battle/skills.dart';
 import '../attack_animation.dart';
 import '../format.dart';
 import '../battle_effects.dart';
-import '../skill_vfx.dart';
 import '../status_icons.dart';
 import '../slipper_sprite.dart';
 import '../theme.dart';
@@ -61,13 +60,6 @@ class _BattleScreenState extends State<BattleScreen>
   /// Последний урон пришёл от шипов — тогда боец только краснеет, без тряски.
   final _soft = {Side.player: false, Side.opponent: false};
 
-  /// Манера удара текущего скилла: пока он играет, боец бьёт иначе.
-  final _skillStyle = <Side, AttackStyle?>{};
-
-  /// Росчерк скилла и метка его запуска — по ней анимация перезапускается.
-  final _vfx = <Side, SkillVfx>{Side.player: SkillVfx.none, Side.opponent: SkillVfx.none};
-  final _vfxColor = <Side, Color>{Side.player: GameColors.gold, Side.opponent: GameColors.gold};
-  final _vfxToken = <Side, int>{Side.player: 0, Side.opponent: 0};
 
   /// Что сейчас показывается поверх каждого бойца.
   final _effects = {
@@ -154,14 +146,6 @@ class _BattleScreenState extends State<BattleScreen>
         case SkillEvent(:final side, :final skill, :final ultimate):
           // Объявление скилла: баннер над бойцом и запись в лог.
           _banner = _Banner(side: side, text: skill.name, ultimate: ultimate);
-          _skillStyle[side] = skill.style;
-          if (skill.vfx != SkillVfx.none) {
-            // Росчерк «на себе» играем у бойца, остальные — у противника.
-            final at = skill.vfx.origin == VfxOrigin.self ? side : side.other;
-            _vfx[at] = skill.vfx;
-            _vfxColor[at] = skill.vfxColor ?? _defaultVfxColor(skill.vfx);
-            _vfxToken[at] = _vfxToken[at]! + 1;
-          }
           _mood = {side: SlipperMood.attack, side.other: _mood[side.other]!};
           _log.insert(0, '${nameOf(side)}: ${skill.name}${ultimate ? '!' : ''}');
 
@@ -170,8 +154,7 @@ class _BattleScreenState extends State<BattleScreen>
             :final damage,
             :final crit,
             :final targetHpAfter,
-            :final thorns,
-            :final bySkill
+            :final thorns
           ):
           final target = attacker.other;
           if (target == Side.player) {
@@ -193,7 +176,7 @@ class _BattleScreenState extends State<BattleScreen>
             }
             _popups.add(_Popup(side: target, text: crit ? '$damage!' : '$damage', crit: crit));
             _log.insert(0, '${nameOf(attacker)} бьёт на $damage${crit ? ' (крит!)' : ''}');
-            _startLunge(attacker, bySkill: bySkill);
+            _startLunge(attacker);
           }
 
         case DodgeEvent(:final attacker):
@@ -202,7 +185,7 @@ class _BattleScreenState extends State<BattleScreen>
           _mood = {attacker: SlipperMood.attack, target: SlipperMood.idle};
           _popups.add(_Popup(side: target, text: 'мимо', crit: false));
           _log.insert(0, '${nameOf(attacker)} промахивается');
-          _startLunge(attacker, bySkill: _skillStyle[attacker] != null);
+          _startLunge(attacker);
 
         case HealEvent(:final side, :final amount, :final hpAfter):
           if (side == Side.player) {
@@ -258,30 +241,12 @@ class _BattleScreenState extends State<BattleScreen>
     _timer = Timer(_stepDuration, _tick);
   }
 
-  /// Запускает анимацию удара: обычную или ту, что задал скилл.
-  void _startLunge(Side attacker, {bool bySkill = false}) {
+  /// Запускает анимацию удара в манере атакующего.
+  void _startLunge(Side attacker) {
     final who = attacker == Side.player ? widget.player : widget.opponent;
-    final style = (bySkill ? _skillStyle[attacker] : null) ?? who.attackStyle;
-    _styleInUse[attacker] = style;
-    if (!bySkill) _skillStyle[attacker] = null;
-    _lunge.duration = AttackAnimation.duration(style);
+    _lunge.duration = AttackAnimation.duration(who.attackStyle);
     _lunge.forward(from: 0).then((_) => _lunge.reverse());
   }
-
-  /// Чем боец бьёт прямо сейчас — обычной манерой или манерой скилла.
-  final _styleInUse = <Side, AttackStyle?>{};
-
-  /// Типовой цвет росчерка, если скилл не задал свой.
-  static Color _defaultVfxColor(SkillVfx vfx) => switch (vfx) {
-        SkillVfx.shockwave => GameColors.orange,
-        SkillVfx.slash => GameColors.text,
-        SkillVfx.burst => GameColors.gold,
-        SkillVfx.frost => GameColors.blue,
-        SkillVfx.drain => GameColors.green,
-        SkillVfx.blades => GameColors.blue,
-        SkillVfx.gloom => GameColors.panelLight,
-        SkillVfx.none => GameColors.text,
-      };
 
   void _skip() {
     _timer?.cancel();
@@ -430,10 +395,6 @@ class _BattleScreenState extends State<BattleScreen>
                               effects: _effects[Side.player]!,
                               hits: _hits[Side.player]!,
                               softHit: _soft[Side.player]!,
-                              style: _styleInUse[Side.player] ?? widget.player.attackStyle,
-                              vfx: _vfx[Side.player]!,
-                              vfxColor: _vfxColor[Side.player]!,
-                              vfxToken: _vfxToken[Side.player]!,
                               popups: _popups.where((p) => p.side == Side.player),
                             ),
                           ),
@@ -450,10 +411,6 @@ class _BattleScreenState extends State<BattleScreen>
                               effects: _effects[Side.opponent]!,
                               hits: _hits[Side.opponent]!,
                               softHit: _soft[Side.opponent]!,
-                              style: _styleInUse[Side.opponent] ?? widget.opponent.attackStyle,
-                              vfx: _vfx[Side.opponent]!,
-                              vfxColor: _vfxColor[Side.opponent]!,
-                              vfxToken: _vfxToken[Side.opponent]!,
                               popups: _popups.where((p) => p.side == Side.opponent),
                             ),
                           ),
@@ -766,10 +723,6 @@ class _Fighter extends StatelessWidget {
     required this.effects,
     required this.hits,
     required this.softHit,
-    required this.style,
-    required this.vfx,
-    required this.vfxColor,
-    required this.vfxToken,
     this.flip = false,
   });
 
@@ -792,14 +745,6 @@ class _Fighter extends StatelessWidget {
 
   /// Последний урон был от шипов: краснеем, но не трясёмся.
   final bool softHit;
-
-  /// Манера текущего удара — обычная или заданная скиллом.
-  final AttackStyle style;
-
-  /// Росчерк скилла, который играет на этом бойце.
-  final SkillVfx vfx;
-  final Color vfxColor;
-  final int vfxToken;
 
   final Iterable<_Popup> popups;
 
@@ -830,7 +775,7 @@ class _Fighter extends StatelessWidget {
         clipBehavior: Clip.none,
         children: [
           AttackAnimation.apply(
-            style: style,
+            style: fighter.attackStyle,
             progress: attack,
             flip: flip,
             reach: reach,
@@ -849,16 +794,6 @@ class _Fighter extends StatelessWidget {
               effects: effects,
               size: box,
               body: _bodyRect(box),
-            ),
-          ),
-          // Росчерк скилла — поверх эффектов, чтобы читался как вспышка.
-          Positioned.fill(
-            child: SkillVfxLayer(
-              vfx: vfx,
-              color: vfxColor,
-              body: _bodyRect(box),
-              flip: flip,
-              token: vfxToken,
             ),
           ),
           for (final p in popups)

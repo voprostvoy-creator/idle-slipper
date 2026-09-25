@@ -5,49 +5,6 @@
 /// (`BattleSim`), а соперник — снимок чужого тапка, за которым никто не сидит.
 library;
 
-import 'dart:ui';
-
-import 'combatant.dart';
-
-/// Визуальный росчерк скилла: что вспыхивает на экране при срабатывании.
-enum SkillVfx {
-  /// Ничего особенного.
-  none,
-
-  /// Ударная волна от бойца во все стороны.
-  shockwave,
-
-  /// Росчерки по цели.
-  slash,
-
-  /// Взрыв искр на цели.
-  burst,
-
-  /// Иней и осколки на цели — замедление.
-  frost,
-
-  /// Частицы тянутся от цели к бойцу — вытягивание здоровья.
-  drain,
-
-  /// Серия быстрых лезвий по цели.
-  blades,
-
-  /// Тёмные клубы над целью — ослабление.
-  gloom,
-}
-
-/// Где играть эффект скилла.
-enum VfxOrigin { self, target }
-
-extension SkillVfxX on SkillVfx {
-  /// Эффекты вокруг себя рисуются у бойца, остальные — у цели.
-  VfxOrigin get origin => switch (this) {
-        SkillVfx.shockwave => VfxOrigin.self,
-        SkillVfx.drain => VfxOrigin.target,
-        _ => VfxOrigin.target,
-      };
-}
-
 /// Разовый эффект — активный скилл или ульта.
 class ActiveSkill {
   const ActiveSkill({
@@ -73,9 +30,6 @@ class ActiveSkill {
     this.evadeTurns = 0,
     this.extraTurn = false,
     this.alwaysCrit = false,
-    this.style,
-    this.vfx = SkillVfx.none,
-    this.vfxColor,
   });
 
   final String name;
@@ -130,15 +84,6 @@ class ActiveSkill {
 
   /// Удары скилла всегда критуют.
   final bool alwaysCrit;
-
-  /// Чем бить при этом скилле: если не задано — обычной манерой бойца.
-  final AttackStyle? style;
-
-  /// Что вспыхнет на экране при срабатывании.
-  final SkillVfx vfx;
-
-  /// Цвет росчерка; если не задан, берётся типовой для этого vfx.
-  final Color? vfxColor;
 }
 
 /// Постоянный эффект — работает весь бой без срабатываний.

@@ -93,7 +93,6 @@ class HitEvent extends BattleEvent {
     required super.player,
     required super.opponent,
     this.thorns = false,
-    this.bySkill = false,
   });
 
   final Side attacker;
@@ -103,9 +102,6 @@ class HitEvent extends BattleEvent {
 
   /// Урон от шипов: не удар, а ответ брони, поэтому боец не делает выпад.
   final bool thorns;
-
-  /// Удар нанесён в рамках скилла — экран играет его манеру и росчерк.
-  final bool bySkill;
 }
 
 class DodgeEvent extends BattleEvent {
@@ -446,7 +442,6 @@ class BattleSim {
                   damage: 0,
                   crit: false,
                   targetHpAfter: foe.hp,
-                  bySkill: skill != null,
                   player: p,
                   opponent: o,
                 ));
@@ -466,7 +461,6 @@ class BattleSim {
               damage: damage,
               crit: crit,
               targetHpAfter: foe.hp,
-              bySkill: skill != null,
               player: p,
               opponent: o,
             ));

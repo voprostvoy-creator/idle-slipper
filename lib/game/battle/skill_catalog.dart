@@ -1,14 +1,10 @@
-import 'dart:ui';
-
-import 'combatant.dart';
 import 'skills.dart';
 
 /// Скиллы по видам тапков. Пока открыты сразу; позже будут выдаваться
 /// за улучшение тапка копиями.
 ///
 /// У каждого свой почерк: кто-то давит уроном, кто-то контролит,
-/// кто-то живёт с чужого здоровья. Манера удара и росчерк задаются здесь же,
-/// чтобы скилл читался в бою, а не только в цифрах.
+/// кто-то живёт с чужого здоровья.
 class SkillCatalog {
   SkillCatalog._();
 
@@ -17,7 +13,6 @@ class SkillCatalog {
       name: 'Сильный шлепок',
       description: 'Атака с уроном ×1.5.',
       damageMul: 1.5,
-      vfx: SkillVfx.slash,
     ),
     activeCooldown: 4,
     passive: PassiveSkill(
@@ -29,7 +24,6 @@ class SkillCatalog {
       name: 'Размах',
       description: 'Атака с уроном ×2.5.',
       damageMul: 2.5,
-      vfx: SkillVfx.burst,
     ),
   );
 
@@ -41,9 +35,6 @@ class SkillCatalog {
         description: 'Атака с уроном ×1.7 и лечение на 10% здоровья.',
         damageMul: 1.7,
         healPercent: 0.1,
-        style: AttackStyle.lunge,
-        vfx: SkillVfx.slash,
-        vfxColor: Color(0xFFFFE28A),
       ),
       activeCooldown: 4,
       passive: PassiveSkill(
@@ -60,9 +51,6 @@ class SkillCatalog {
         stun: true,
         weaken: 0.25,
         weakenTurns: 3,
-        style: AttackStyle.slam,
-        vfx: SkillVfx.shockwave,
-        vfxColor: Color(0xFFFFC93C),
       ),
     ),
 
@@ -73,9 +61,6 @@ class SkillCatalog {
         description: 'Атака с уроном ×1.4, следующая атака противника мимо.',
         damageMul: 1.4,
         evadeTurns: 1,
-        style: AttackStyle.dash,
-        vfx: SkillVfx.slash,
-        vfxColor: Color(0xFF5BC8FF),
       ),
       activeCooldown: 3,
       passive: PassiveSkill(
@@ -90,9 +75,6 @@ class SkillCatalog {
         hits: 3,
         haste: 0.4,
         hasteTurns: 3,
-        style: AttackStyle.dash,
-        vfx: SkillVfx.blades,
-        vfxColor: Color(0xFF5BC8FF),
       ),
     ),
 
@@ -103,9 +85,6 @@ class SkillCatalog {
         description: 'Атака с уроном ×1.7 и барьер на 18% здоровья.',
         damageMul: 1.7,
         barrierPercent: 0.18,
-        style: AttackStyle.slam,
-        vfx: SkillVfx.shockwave,
-        vfxColor: Color(0xFF5BC8FF),
       ),
       activeCooldown: 4,
       passive: PassiveSkill(
@@ -121,9 +100,6 @@ class SkillCatalog {
         damageMul: 2.8,
         pierce: 0.5,
         stun: true,
-        style: AttackStyle.meteor,
-        vfx: SkillVfx.burst,
-        vfxColor: Color(0xFFFF9F43),
       ),
     ),
 
@@ -134,9 +110,6 @@ class SkillCatalog {
         description: 'Атака с уроном ×1.6, 60% урона возвращается здоровьем.',
         damageMul: 1.6,
         lifesteal: 0.6,
-        style: AttackStyle.blink,
-        vfx: SkillVfx.drain,
-        vfxColor: Color(0xFFC77DFF),
       ),
       activeCooldown: 3,
       passive: PassiveSkill(
@@ -154,9 +127,6 @@ class SkillCatalog {
         burnTurns: 3,
         weaken: 0.25,
         weakenTurns: 3,
-        style: AttackStyle.blink,
-        vfx: SkillVfx.gloom,
-        vfxColor: Color(0xFFC77DFF),
       ),
     ),
 
@@ -168,9 +138,6 @@ class SkillCatalog {
         damageMul: 1.9,
         slow: 0.35,
         slowTurns: 2,
-        style: AttackStyle.slam,
-        vfx: SkillVfx.shockwave,
-        vfxColor: Color(0xFFFF6161),
       ),
       activeCooldown: 3,
       passive: PassiveSkill(
@@ -189,9 +156,6 @@ class SkillCatalog {
         pierce: 0.4,
         burnPercent: 0.3,
         burnTurns: 2,
-        style: AttackStyle.charge,
-        vfx: SkillVfx.burst,
-        vfxColor: Color(0xFFFF6161),
       ),
     ),
 
@@ -202,9 +166,6 @@ class SkillCatalog {
         description: 'Атака с уроном ×2, игнорирует половину защиты.',
         damageMul: 2,
         pierce: 0.5,
-        style: AttackStyle.laser,
-        vfx: SkillVfx.slash,
-        vfxColor: Color(0xFF4FD8FF),
       ),
       activeCooldown: 3,
       passive: PassiveSkill(
@@ -221,9 +182,6 @@ class SkillCatalog {
         hits: 4,
         lifesteal: 0.2,
         extraTurn: true,
-        style: AttackStyle.laser,
-        vfx: SkillVfx.blades,
-        vfxColor: Color(0xFFB06BFF),
       ),
     ),
   };
