@@ -7,8 +7,10 @@
   - печатает подсказку по якорям (верхний контур, пятка, подошва).
 
 Запуск:
-  python tool/normalize_slipper.py <входной.png> <id>
-Результат: assets/slippers/<id>.png (1200x600).
+  python tool/normalize_slipper.py <входной.png> <id> [папка] [--webp]
+Результат: <папка>/<id>.png (1200x600), по умолчанию assets/slippers.
+С --webp сохраняет WebP: в 6-7 раз легче PNG без видимой разницы.
+Противники сюжета: python tool/normalize_slipper.py fly.png fly assets/enemies --webp
 """
 import sys
 
@@ -24,7 +26,7 @@ FLOOR = 0.92          # где стоит подошва, доля высоты
 NOISE = 24            # alpha ниже этого считаем мусором
 
 
-def main(src: str, slipper_id: str) -> None:
+def main(src: str, slipper_id: str, folder: str, webp: bool) -> None:
     im = Image.open(src).convert("RGBA")
     arr = np.array(im)
     alpha = arr[:, :, 3]
@@ -48,9 +50,12 @@ def main(src: str, slipper_id: str) -> None:
     y = round(H * FLOOR) - im.height
     canvas.paste(im, (x, y), im)
 
-    out = Path("assets/slippers") / f"{slipper_id}.png"
+    out = Path(folder) / f"{slipper_id}.{'webp' if webp else 'png'}"
     out.parent.mkdir(parents=True, exist_ok=True)
-    canvas.save(out)
+    if webp:
+        canvas.save(out, "WEBP", quality=90, method=6)
+    else:
+        canvas.save(out)
     print(f"сохранено {out}: тапок {im.width}x{im.height} на холсте {W}x{H}")
 
     _print_anchor_hints(np.array(canvas)[:, :, 3])
@@ -80,6 +85,9 @@ def _print_anchor_hints(alpha: np.ndarray) -> None:
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 3:
+    flags = [a for a in sys.argv[1:] if a.startswith("--")]
+    args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    if len(args) not in (2, 3) or set(flags) - {"--webp"}:
         sys.exit(__doc__)
-    main(sys.argv[1], sys.argv[2])
+    main(args[0], args[1], args[2] if len(args) == 3 else "assets/slippers",
+         "--webp" in flags)

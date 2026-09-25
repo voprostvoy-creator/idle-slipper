@@ -1,0 +1,116 @@
+import '../slipper.dart';
+import 'enemies.dart';
+
+/// Один бой главы.
+class Stage {
+  const Stage({
+    required this.kind,
+    required this.levels,
+    required this.coins,
+    this.name,
+    this.elite = false,
+    this.boss = false,
+    this.rewardKindId,
+  });
+
+  final EnemyKind kind;
+
+  /// Уровни статов противника: удар, прочность, здоровье, скорость.
+  final (int, int, int, int) levels;
+
+  /// Монеты за первую победу.
+  final int coins;
+
+  /// Своё имя у элитных версий; иначе — имя вида.
+  final String? name;
+  final bool elite;
+  final bool boss;
+
+  /// Тапок, который гарантированно выпадает за первую победу.
+  final String? rewardKindId;
+
+  /// Повторная победа даёт примерно треть.
+  int get replayCoins => (coins / 3).round();
+
+  Enemy get enemy {
+    final (a, d, h, s) = levels;
+    return Enemy(
+      kind: kind,
+      levels: {Stat.attack: a, Stat.defense: d, Stat.health: h, Stat.speed: s},
+      name: name,
+      elite: elite,
+      boss: boss,
+    );
+  }
+}
+
+class Chapter {
+  const Chapter({
+    required this.id,
+    required this.number,
+    required this.title,
+    required this.intro,
+    required this.stages,
+  });
+
+  final String id;
+  final int number;
+  final String title;
+  final String intro;
+  final List<Stage> stages;
+}
+
+class StoryCatalog {
+  StoryCatalog._();
+
+  static const chapter1 = Chapter(
+    id: 'kitchen',
+    number: 1,
+    title: 'Ночная кухня',
+    intro: 'Ночью на кухне завелись насекомые. Тапок выходит на дежурство.',
+    stages: [
+      Stage(kind: EnemyCatalog.fly, levels: (1, 1, 1, 2), coins: 10),
+      Stage(kind: EnemyCatalog.cockroach, levels: (2, 1, 2, 1), coins: 12),
+      Stage(kind: EnemyCatalog.mosquito, levels: (3, 1, 2, 3), coins: 15),
+      Stage(kind: EnemyCatalog.cockroach, levels: (3, 2, 4, 3), coins: 18),
+      Stage(kind: EnemyCatalog.rhinoBeetle, levels: (5, 7, 6, 2), coins: 30),
+      Stage(
+        kind: EnemyCatalog.fly,
+        levels: (4, 3, 5, 6),
+        coins: 25,
+        name: 'Жирная муха',
+        elite: true,
+      ),
+      Stage(
+        kind: EnemyCatalog.mosquito,
+        levels: (6, 3, 6, 7),
+        coins: 30,
+        name: 'Кровосос',
+        elite: true,
+      ),
+      Stage(
+        kind: EnemyCatalog.rhinoBeetle,
+        levels: (9, 11, 10, 3),
+        coins: 35,
+        name: 'Бронированный жук',
+        elite: true,
+      ),
+      Stage(
+        kind: EnemyCatalog.cockroach,
+        levels: (8, 6, 8, 6),
+        coins: 40,
+        name: 'Таракан-ветеран',
+        elite: true,
+      ),
+      Stage(
+        kind: EnemyCatalog.roachKing,
+        levels: (9, 8, 10, 6),
+        coins: 100,
+        boss: true,
+        rewardKindId: 'blue_slide',
+      ),
+    ],
+  );
+
+  static const chapters = [chapter1];
+}

@@ -69,3 +69,8 @@ abstract class Combatant {
 
   SkillSet get skills;
 }
+
+/// Суммарная «сила» бойца — одна шкала для тапков и насекомых,
+/// чтобы игрок мог сравнить себя с противником.
+int combatPower(Combatant c) =>
+    (c.attack * 3 + c.defense * 2 + c.maxHp / 5 + c.speed * 2).round();

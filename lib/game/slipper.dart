@@ -72,8 +72,7 @@ class Slipper implements Combatant {
   double get sizeFactor => 1 - 0.4 * pow(0.99, level(Stat.health) - 1);
 
   /// Суммарная «сила» — для подбора соперников и отображения.
-  int get power =>
-      (attack * 3 + defense * 2 + maxHp / 5 + speed * 2).round();
+  int get power => combatPower(this);
 
   int get totalLevel => levels.values.fold(0, (a, b) => a + b);
 

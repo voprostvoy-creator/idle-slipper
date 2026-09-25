@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import '../../game/battle/battle_sim.dart';
 import '../../game/battle/combatant.dart';
 import '../../game/battle/skills.dart';
+import '../../game/slipper.dart';
+import '../../game/slipper_kind.dart';
 import '../attack_animation.dart';
 import '../format.dart';
 import '../battle_effects.dart';
@@ -20,15 +22,27 @@ class BattleScreen extends StatefulWidget {
     required this.player,
     required this.opponent,
     required this.result,
-    required this.ratingDelta,
-    required this.threadsDelta,
+    this.ratingDelta,
+    this.threadsDelta = 0,
+    this.coinsDelta = 0,
+    this.rewardKind,
+    this.exitLabel = 'На арену',
   });
 
   final Combatant player;
   final Combatant opponent;
   final BattleResult result;
-  final int ratingDelta;
+
+  /// Изменение рейтинга; null — бой без рейтинга (сюжет).
+  final int? ratingDelta;
   final int threadsDelta;
+  final int coinsDelta;
+
+  /// Тапок, выпавший за победу.
+  final SlipperKind? rewardKind;
+
+  /// Подпись кнопки выхода после боя.
+  final String exitLabel;
 
   @override
   State<BattleScreen> createState() => _BattleScreenState();
@@ -478,6 +492,9 @@ class _BattleScreenState extends State<BattleScreen>
                 won: won,
                 ratingDelta: widget.ratingDelta,
                 threadsDelta: widget.threadsDelta,
+                coinsDelta: widget.coinsDelta,
+                rewardKind: widget.rewardKind,
+                exitLabel: widget.exitLabel,
               )
             else
               Container(
@@ -970,16 +987,36 @@ class _ResultPanel extends StatelessWidget {
     required this.won,
     required this.ratingDelta,
     required this.threadsDelta,
+    required this.coinsDelta,
+    required this.rewardKind,
+    required this.exitLabel,
   });
 
   final bool won;
-  final int ratingDelta;
+  final int? ratingDelta;
   final int threadsDelta;
+  final int coinsDelta;
+  final SlipperKind? rewardKind;
+  final String exitLabel;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final color = won ? GameColors.green : GameColors.red;
+    final rating = ratingDelta;
+    final kind = rewardKind;
+    final items = <Widget>[
+      if (threadsDelta != 0)
+        _RewardItem(icon: const ThreadIcon(size: 22), text: '+$threadsDelta'),
+      if (coinsDelta != 0)
+        _RewardItem(icon: const CoinIcon(size: 22), text: '+$coinsDelta'),
+      if (rating != null)
+        _RewardItem(
+          icon: const Icon(Icons.emoji_events, color: GameColors.blue, size: 22),
+          text: '${rating >= 0 ? '+' : ''}$rating',
+          color: color,
+        ),
+    ];
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       child: GamePanel(
@@ -989,33 +1026,73 @@ class _ResultPanel extends StatelessWidget {
           children: [
             StrokeText(won ? 'ПОБЕДА!' : 'ПОРАЖЕНИЕ', size: 32, color: color),
             const SizedBox(height: 10),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const ThreadIcon(size: 22),
-                const SizedBox(width: 5),
-                Text('+$threadsDelta', style: theme.textTheme.titleMedium),
-                const SizedBox(width: 22),
-                const Icon(Icons.emoji_events, color: GameColors.blue, size: 22),
-                const SizedBox(width: 5),
-                Text(
-                  '${ratingDelta >= 0 ? '+' : ''}$ratingDelta',
-                  style: theme.textTheme.titleMedium?.copyWith(color: color),
-                ),
-              ],
-            ),
+            if (items.isNotEmpty)
+              Wrap(spacing: 22, alignment: WrapAlignment.center, children: items)
+            else if (!won)
+              Text(
+                'Прокачай тапок и попробуй снова',
+                style: theme.textTheme.bodySmall,
+              ),
+            if (kind != null) ...[
+              const SizedBox(height: 10),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  SlipperSprite(
+                    fighter: Slipper(name: kind.name, kindId: kind.id),
+                    width: 84,
+                    animate: false,
+                    showSize: false,
+                  ),
+                  const SizedBox(width: 10),
+                  Flexible(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Новый тапок!', style: theme.textTheme.bodySmall),
+                        Text(kind.name, style: theme.textTheme.titleMedium),
+                        GameBadge(text: kind.rarity.label, color: kind.rarity.color),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ],
             const SizedBox(height: 14),
             SizedBox(
               width: double.infinity,
               child: GameButton(
                 color: GameColors.gold,
                 onPressed: () => Navigator.of(context).pop(),
-                child: const Text('На арену'),
+                child: Text(exitLabel),
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _RewardItem extends StatelessWidget {
+  const _RewardItem({required this.icon, required this.text, this.color});
+
+  final Widget icon;
+  final String text;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        icon,
+        const SizedBox(width: 5),
+        Text(
+          text,
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(color: color),
+        ),
+      ],
     );
   }
 }

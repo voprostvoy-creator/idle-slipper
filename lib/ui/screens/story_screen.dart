@@ -1,43 +1,257 @@
 import 'package:flutter/material.dart';
 
 import '../../game/game_state.dart';
+import '../../game/slipper_kind.dart';
+import '../../game/story/chapters.dart';
+import '../slipper_sprite.dart';
 import '../theme.dart';
 import '../widgets/game_widgets.dart';
 import 'battle_hub_screen.dart';
+import 'battle_screen.dart';
 
-/// Сюжет: главы с боссами. Пока заглушка — главы появятся следующим шагом.
+/// Сюжет: глава из десяти боёв подряд, в конце — босс.
+/// Бои открываются по одному; пройденные можно переигрывать за часть награды.
 class StoryScreen extends StatelessWidget {
   const StoryScreen({super.key, required this.game, required this.onBack});
 
   final GameState game;
   final VoidCallback onBack;
 
+  static const chapter = StoryCatalog.chapter1;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: game,
+      builder: (context, _) {
+        final cleared = game.cleared(chapter);
+        final done = cleared >= chapter.stages.length;
+        return ListView(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+          children: [
+            BackToModes(title: 'Сюжет', onBack: onBack),
+            const SizedBox(height: 12),
+            _ChapterHeader(chapter: chapter, cleared: cleared),
+            const SizedBox(height: 14),
+            for (final (i, stage) in chapter.stages.indexed) ...[
+              _StageCard(
+                number: i + 1,
+                stage: stage,
+                state: i < cleared
+                    ? _StageState.cleared
+                    : i == cleared
+                        ? _StageState.current
+                        : _StageState.locked,
+                onFight: () => _fight(context, i),
+              ),
+              const SizedBox(height: 10),
+            ],
+            if (done)
+              GamePanel(
+                color: GameColors.panelDark,
+                padding: const EdgeInsets.all(14),
+                child: Text(
+                  'Глава пройдена! Следующая скоро появится.',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _fight(BuildContext context, int index) {
+    // Как и на арене: бой считается сразу, экран лишь проигрывает запись.
+    final me = game.slipper;
+    final outcome = game.fightStage(chapter, index);
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => BattleScreen(
+          player: me,
+          opponent: chapter.stages[index].enemy,
+          result: outcome.result,
+          coinsDelta: outcome.coins,
+          rewardKind: outcome.kind,
+          exitLabel: 'К главе',
+        ),
+      ),
+    );
+  }
+}
+
+class _ChapterHeader extends StatelessWidget {
+  const _ChapterHeader({required this.chapter, required this.cleared});
+
+  final Chapter chapter;
+  final int cleared;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-      children: [
-        BackToModes(title: 'Сюжет', onBack: onBack),
-        const SizedBox(height: 16),
-        GamePanel(
-          color: GameColors.panelDark,
-          padding: const EdgeInsets.all(18),
-          child: Column(
-            children: [
-              const Icon(Icons.menu_book_rounded, size: 48, color: GameColors.orange),
-              const SizedBox(height: 10),
-              Text('Главы скоро появятся', style: theme.textTheme.titleMedium),
-              const SizedBox(height: 6),
-              Text(
-                'Бои с насекомыми, босс в конце каждой главы, '
-                'монеты и тапки в награду.',
-                textAlign: TextAlign.center,
-                style: theme.textTheme.bodySmall,
-              ),
-            ],
+    final total = chapter.stages.length;
+    return GamePanel(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+      child: Column(
+        children: [
+          Text('Глава ${chapter.number}', style: theme.textTheme.bodySmall),
+          StrokeText(chapter.title, size: 26, color: GameColors.gold),
+          const SizedBox(height: 4),
+          Text(
+            chapter.intro,
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodySmall,
           ),
+          const SizedBox(height: 10),
+          GameBar(
+            value: cleared / total,
+            color: GameColors.orange,
+            label: 'Пройдено $cleared из $total',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+enum _StageState { cleared, current, locked }
+
+class _StageCard extends StatelessWidget {
+  const _StageCard({
+    required this.number,
+    required this.stage,
+    required this.state,
+    required this.onFight,
+  });
+
+  final int number;
+  final Stage stage;
+  final _StageState state;
+  final VoidCallback onFight;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final enemy = stage.enemy;
+    final locked = state == _StageState.locked;
+    final current = state == _StageState.current;
+    final reward = stage.rewardKindId == null
+        ? null
+        : SlipperCatalog.byId(stage.rewardKindId!);
+
+    final card = GamePanel(
+      padding: const EdgeInsets.all(10),
+      color: current ? GameColors.panelLight : GameColors.panel,
+      onTap: locked ? null : onFight,
+      child: Row(
+        children: [
+          Container(
+            width: 88,
+            height: 62,
+            decoration: BoxDecoration(
+              color: GameColors.panelDark,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: stage.boss ? GameColors.gold : GameColors.outline,
+                width: 2.5,
+              ),
+            ),
+            child: SlipperSprite(
+              fighter: enemy,
+              width: 82,
+              flip: true,
+              animate: false,
+              // В списке все в одном масштабе, иначе муха теряется.
+              showSize: false,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text('Бой $number', style: theme.textTheme.labelSmall),
+                    if (stage.boss) ...[
+                      const SizedBox(width: 6),
+                      const GameBadge(text: 'Босс', color: GameColors.gold),
+                    ] else if (stage.elite) ...[
+                      const SizedBox(width: 6),
+                      const GameBadge(text: '★ Элита', color: GameColors.red),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  enemy.name,
+                  style: theme.textTheme.titleMedium,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+                _Reward(stage: stage, cleared: state == _StageState.cleared, kind: reward),
+              ],
+            ),
+          ),
+          const SizedBox(width: 6),
+          switch (state) {
+            _StageState.cleared =>
+              const Icon(Icons.check_circle, color: GameColors.green, size: 30),
+            _StageState.current => Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: GameColors.red,
+                  border: Border.all(color: GameColors.outline, width: 2.5),
+                ),
+                child: const Icon(Icons.sports_mma, size: 20, color: GameColors.outline),
+              ),
+            _StageState.locked =>
+              const Icon(Icons.lock_rounded, color: GameColors.textDim, size: 24),
+          },
+        ],
+      ),
+    );
+    // Закрытые бои видны заранее, но приглушены — понятно, что впереди.
+    return locked ? Opacity(opacity: 0.5, child: card) : card;
+  }
+}
+
+/// Награда этапа: полная за первую победу, треть — за повтор.
+class _Reward extends StatelessWidget {
+  const _Reward({required this.stage, required this.cleared, required this.kind});
+
+  final Stage stage;
+  final bool cleared;
+  final SlipperKind? kind;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final style = theme.textTheme.bodySmall?.copyWith(color: GameColors.text);
+    return Wrap(
+      spacing: 8,
+      runSpacing: 2,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const CoinIcon(size: 16),
+            const SizedBox(width: 3),
+            Text(
+              cleared ? 'повтор +${stage.replayCoins}' : '+${stage.coins}',
+              style: style,
+            ),
+          ],
         ),
+        if (kind != null && !cleared)
+          Text(
+            '+ тапок «${kind!.name}»',
+            style: style?.copyWith(color: kind!.rarity.color),
+          ),
       ],
     );
   }

@@ -12,6 +12,7 @@ import 'case_box.dart';
 import 'rating.dart';
 import 'slipper.dart';
 import 'slipper_kind.dart';
+import 'story/chapters.dart';
 
 /// Единственный источник правды для UI. Сохраняется в SharedPreferences.
 class GameState extends ChangeNotifier with WidgetsBindingObserver {
@@ -42,6 +43,9 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
   int rating = Rating.initial;
   int wins = 0;
   int losses = 0;
+
+  /// Сюжет: id главы → сколько боёв подряд пройдено с начала.
+  Map<String, int> storyCleared = {};
 
   /// Сид текущего набора соперников. Меняется после каждого боя.
   int _opponentSeed = 1;
@@ -175,6 +179,38 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
     return result;
   }
 
+  // --- Сюжет ------------------------------------------------------------
+
+  int cleared(Chapter chapter) => storyCleared[chapter.id] ?? 0;
+
+  /// Доступны пройденные бои и первый непройденный.
+  bool stageOpen(Chapter chapter, int index) => index <= cleared(chapter);
+
+  /// Бой главы. Сид каждый раз новый — проигранный бой можно переиграть.
+  /// Награда за первую победу полная, за повторные — примерно треть.
+  StoryOutcome fightStage(Chapter chapter, int index) {
+    final stage = chapter.stages[index];
+    final result = BattleSim.run(slipper, stage.enemy, seed: Random().nextInt(1 << 31));
+    var coinsWon = 0;
+    SlipperKind? kindWon;
+    if (result.playerWon) {
+      final first = index == cleared(chapter);
+      coinsWon = first ? stage.coins : stage.replayCoins;
+      coins += coinsWon;
+      if (first) {
+        storyCleared[chapter.id] = index + 1;
+        final rewardId = stage.rewardKindId;
+        if (rewardId != null) {
+          kindWon = SlipperCatalog.byId(rewardId);
+          inventory[rewardId] = count(rewardId) + 1;
+        }
+      }
+      _save();
+      notifyListeners();
+    }
+    return (result: result, coins: coinsWon, kind: kindWon);
+  }
+
   void _refreshOpponents() {
     opponents = OpponentGenerator.generate(
       player: slipper,
@@ -197,6 +233,7 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
         'wins': wins,
         'losses': losses,
         'opponentSeed': _opponentSeed,
+        'story': storyCleared,
         'lastSeen': _lastSeen.toIso8601String(),
       }),
     );
@@ -225,6 +262,12 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
       wins = json['wins'] as int? ?? 0;
       losses = json['losses'] as int? ?? 0;
       _opponentSeed = json['opponentSeed'] as int? ?? 1;
+      final story = json['story'] as Map?;
+      if (story != null) {
+        storyCleared = {
+          for (final e in story.entries) e.key as String: (e.value as num).toInt(),
+        };
+      }
       final seen = DateTime.tryParse(json['lastSeen'] as String? ?? '');
       if (seen != null) {
         _collectOffline(DateTime.now().difference(seen));
@@ -287,7 +330,11 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
     wins = 0;
     losses = 0;
     _opponentSeed = 1;
+    storyCleared = {};
     _refreshOpponents();
     notifyListeners();
   }
 }
+
+/// Итог боя главы: запись для экрана боя и что выдано.
+typedef StoryOutcome = ({BattleResult result, int coins, SlipperKind? kind});
