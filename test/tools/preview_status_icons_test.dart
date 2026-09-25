@@ -10,6 +10,13 @@ import 'package:idle_slipper/ui/status_icons.dart';
 
 const _out = String.fromEnvironment('OUT');
 
+/// Цифры как в бою: у барьера, уклонения и оглушения их нет.
+int? _turnsFor(StatusKind k) => switch (k) {
+      StatusKind.barrier || StatusKind.evade || StatusKind.stun => null,
+      StatusKind.burn => 3,
+      _ => 2,
+    };
+
 void main() {
   testWidgets('preview status icons', (tester) async {
     if (_out.isEmpty) return;
@@ -38,6 +45,7 @@ void main() {
                           padding: const EdgeInsets.all(6),
                           child: StatusIcon(
                             kind: k,
+                            turns: _turnsFor(k),
                             size: 88,
                             onDialog: () {},
                             onDialogClosed: () {},
@@ -52,9 +60,11 @@ void main() {
                     children: [
                       for (final k in StatusKind.values)
                         Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 3),
+                          padding: const EdgeInsets.symmetric(horizontal: 6),
                           child: StatusIcon(
                             kind: k,
+                            turns: _turnsFor(k),
+                            size: 24,
                             onDialog: () {},
                             onDialogClosed: () {},
                           ),

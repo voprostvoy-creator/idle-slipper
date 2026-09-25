@@ -16,12 +16,12 @@ class SideSnapshot {
   const SideSnapshot({
     required this.ult,
     required this.skillReady,
-    this.burning = false,
-    this.shielded = false,
+    this.burnTurns = 0,
+    this.shieldTurns = 0,
+    this.weakenTurns = 0,
+    this.slowTurns = 0,
+    this.hasteTurns = 0,
     this.stunned = false,
-    this.weakened = false,
-    this.slowed = false,
-    this.hasted = false,
     this.barriered = false,
     this.evading = false,
   });
@@ -32,18 +32,25 @@ class SideSnapshot {
   /// Готовность активного скилла: 0 — только что применён, 1 — готов.
   final double skillReady;
 
-  /// Длящиеся эффекты: горит, под щитом, пропустит ход. UI держит их
-  /// столько, сколько они держатся в бою, а не по своему таймеру.
-  final bool burning;
-  final bool shielded;
-  final bool stunned;
+  /// Сколько ходов осталось длящимся эффектам. UI держит значок ровно
+  /// столько, сколько эффект действует в бою, и показывает этот остаток.
+  final int burnTurns;
+  final int shieldTurns;
+  final int weakenTurns;
+  final int slowTurns;
+  final int hasteTurns;
 
-  /// Ослаблен, замедлен, ускорен, под барьером, уйдёт от следующей атаки.
-  final bool weakened;
-  final bool slowed;
-  final bool hasted;
+  /// Эффекты без счёта ходов: пропустит ближайший ход, барьер на запасе
+  /// поглощения, уклонение на зарядах.
+  final bool stunned;
   final bool barriered;
   final bool evading;
+
+  bool get burning => burnTurns > 0;
+  bool get shielded => shieldTurns > 0;
+  bool get weakened => weakenTurns > 0;
+  bool get slowed => slowTurns > 0;
+  bool get hasted => hasteTurns > 0;
 }
 
 /// Одно событие боя. UI проигрывает их последовательно.
@@ -247,18 +254,31 @@ class BattleSim {
               ? 0
               : ((st.skills.activeCooldown - st.cooldown) / st.skills.activeCooldown)
                   .clamp(0.0, 1.0),
-          burning: st.burnTurns > 0,
-          shielded: st.shieldTurns > 0,
+          burnTurns: st.burnTurns,
+          shieldTurns: st.shieldTurns,
+          weakenTurns: st.weakenTurns,
+          slowTurns: st.slowTurns,
+          hasteTurns: st.hasteTurns,
           stunned: st.stunned,
-          weakened: st.weakenTurns > 0,
-          slowed: st.slowTurns > 0,
-          hasted: st.hasteTurns > 0,
           barriered: st.barrier > 0,
           evading: st.evadeCharges > 0,
         );
 
     void add(BattleEvent Function(SideSnapshot p, SideSnapshot o) make) {
       events.add(make(snap(fighters[0]), snap(fighters[1])));
+    }
+
+    /// Конец хода бойца: вредные эффекты на нём убывают только теперь,
+    /// после того как он успел под ними подействовать.
+    void endTurn(_State st) {
+      if (st.weakenTurns > 0) {
+        st.weakenTurns--;
+        if (st.weakenTurns == 0) st.weaken = 0;
+      }
+      if (st.slowTurns > 0) {
+        st.slowTurns--;
+        if (st.slowTurns == 0) st.slow = 0;
+      }
     }
 
     BattleResult finish(Side winner) => BattleResult(
@@ -304,6 +324,8 @@ class BattleSim {
         // Снимок берём до сброса, иначе звёзды оглушения не попадут в событие.
         add((p, o) => StunEvent(side: side, player: p, opponent: o));
         me.stunned = false;
+        // Пропущенный ход — всё равно ход: вредные эффекты на нём убывают.
+        endTurn(me);
         continue;
       }
 
@@ -322,14 +344,6 @@ class BattleSim {
       if (me.shieldTurns > 0) {
         me.shieldTurns--;
         if (me.shieldTurns == 0) me.shield = 0;
-      }
-      if (me.weakenTurns > 0) {
-        me.weakenTurns--;
-        if (me.weakenTurns == 0) me.weaken = 0;
-      }
-      if (me.slowTurns > 0) {
-        me.slowTurns--;
-        if (me.slowTurns == 0) me.slow = 0;
       }
       if (me.hasteTurns > 0) {
         me.hasteTurns--;
@@ -511,6 +525,7 @@ class BattleSim {
 
       // Ход прошёл — немного ульты за сам факт действия.
       me.ult = min(1, me.ult + _ultPerTurn);
+      endTurn(me);
     }
 
     // Лимит ходов: побеждает тот, у кого больше процент здоровья.

@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 
 import '../game/battle/battle_sim.dart';
+import 'format.dart';
 import 'theme.dart';
 import 'widgets/game_widgets.dart';
 
@@ -26,16 +27,27 @@ enum StatusKind {
   final bool positive;
 }
 
+/// Эффект на бойце вместе с тем, сколько ходов ему осталось.
+class ActiveStatus {
+  const ActiveStatus(this.kind, [this.turns]);
+
+  final StatusKind kind;
+
+  /// Остаток ходов; null — эффект не считается ходами (барьер держится на
+  /// запасе поглощения, уклонение — на зарядах, оглушение всегда на один ход).
+  final int? turns;
+}
+
 /// Какие эффекты висят на стороне прямо сейчас: сначала полезные, потом вредные.
-List<StatusKind> statusesOf(SideSnapshot s) => [
-      if (s.shielded) StatusKind.shield,
-      if (s.barriered) StatusKind.barrier,
-      if (s.hasted) StatusKind.haste,
-      if (s.evading) StatusKind.evade,
-      if (s.burning) StatusKind.burn,
-      if (s.stunned) StatusKind.stun,
-      if (s.weakened) StatusKind.weaken,
-      if (s.slowed) StatusKind.slow,
+List<ActiveStatus> statusesOf(SideSnapshot s) => [
+      if (s.shielded) ActiveStatus(StatusKind.shield, s.shieldTurns),
+      if (s.barriered) const ActiveStatus(StatusKind.barrier),
+      if (s.hasted) ActiveStatus(StatusKind.haste, s.hasteTurns),
+      if (s.evading) const ActiveStatus(StatusKind.evade),
+      if (s.burning) ActiveStatus(StatusKind.burn, s.burnTurns),
+      if (s.stunned) const ActiveStatus(StatusKind.stun),
+      if (s.weakened) ActiveStatus(StatusKind.weaken, s.weakenTurns),
+      if (s.slowed) ActiveStatus(StatusKind.slow, s.slowTurns),
     ];
 
 /// Значок эффекта: схематичный рисунок в круглой рамке цвета «плюс/минус».
@@ -46,21 +58,62 @@ class StatusIcon extends StatelessWidget {
     required this.kind,
     required this.onDialog,
     required this.onDialogClosed,
+    this.turns,
     this.size = 22,
   });
 
   final StatusKind kind;
+
+  /// Сколько ходов эффекту осталось — цифрой в углу значка.
+  final int? turns;
+
   final double size;
   final VoidCallback onDialog;
   final VoidCallback onDialogClosed;
 
   @override
   Widget build(BuildContext context) {
+    final badge = size * 0.56;
     return GestureDetector(
       onTap: () => _show(context),
-      child: CustomPaint(
-        size: Size.square(size),
-        painter: _StatusPainter(kind),
+      child: SizedBox.square(
+        dimension: size,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            CustomPaint(size: Size.square(size), painter: _StatusPainter(kind)),
+            if (turns != null)
+              // Цифра остатка — плашкой в правом нижнем углу, заходя за край,
+              // чтобы не закрывать сам рисунок.
+              Positioned(
+                right: -badge * 0.3,
+                bottom: -badge * 0.25,
+                child: Container(
+                  constraints: BoxConstraints(minWidth: badge, minHeight: badge),
+                  padding: EdgeInsets.symmetric(horizontal: badge * 0.12),
+                  decoration: BoxDecoration(
+                    color: GameColors.text,
+                    borderRadius: BorderRadius.circular(badge / 2),
+                    border: Border.all(color: GameColors.outline, width: 1.5),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    '$turns',
+                    style: TextStyle(
+                      color: GameColors.outline,
+                      fontSize: badge * 0.72,
+                      height: 1,
+                      // Значок может оказаться вне Material — без подчёркивания.
+                      decoration: TextDecoration.none,
+                      fontFamily: 'Nunito',
+                      fontVariations: const [FontVariation('wght', 900)],
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -88,7 +141,23 @@ class StatusIcon extends StatelessWidget {
             ),
           ],
         ),
-        content: Text(kind.description, style: theme.textTheme.bodyMedium),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(kind.description, style: theme.textTheme.bodyMedium),
+            if (turns != null) ...[
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  const Icon(Icons.timer_outlined, size: 16, color: GameColors.textDim),
+                  const SizedBox(width: 6),
+                  Text('Осталось: ${fmtTurns(turns!)}', style: theme.textTheme.bodySmall),
+                ],
+              ),
+            ],
+          ],
+        ),
         actions: [
           GameButton(
             color: GameColors.panelLight,

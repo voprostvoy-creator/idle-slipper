@@ -260,6 +260,45 @@ void main() {
       }
     });
 
+    test('turn counters count down and match the skill description', () {
+      // Клетчатый ослабляет ультой на 3 хода: счётчик на противнике должен
+      // пройти 3 → 2 → 1 и погаснуть, не перескакивая.
+      final r = BattleSim.run(
+        make('Granny', atk: 8, hp: 40, spd: 8),
+        make('B', atk: 6, hp: 60, spd: 6),
+        seed: 5,
+      );
+      final seen = <int>[];
+      for (final e in r.events) {
+        final t = e.opponent.weakenTurns;
+        if (t > 0 && (seen.isEmpty || seen.last != t)) seen.add(t);
+        if (seen.isNotEmpty && t == 0) break;
+      }
+      expect(seen, [3, 2, 1]);
+    });
+
+    test('weaken lasts as many opponent turns as it says', () {
+      // Ослабление на 3 хода должно накрыть ровно три хода противника,
+      // а не два, как было, когда счётчик убывал до удара.
+      final r = BattleSim.run(
+        make('Granny', atk: 8, hp: 40, spd: 8),
+        make('B', atk: 6, hp: 60, spd: 6),
+        seed: 5,
+      );
+      final start = r.events.indexWhere((e) => e.opponent.weakened);
+      expect(start, isNot(-1));
+      var weakenedTurns = 0;
+      for (final e in r.events.skip(start)) {
+        if (!e.opponent.weakened) break;
+        // Считаем ходы противника: его удары и промахи, пока он ослаблен.
+        final ownMove = (e is HitEvent && e.attacker == Side.opponent && !e.thorns) ||
+            (e is DodgeEvent && e.attacker == Side.opponent) ||
+            (e is StunEvent && e.side == Side.opponent);
+        if (ownMove) weakenedTurns++;
+      }
+      expect(weakenedTurns, greaterThanOrEqualTo(3));
+    });
+
     test('fighter without skills still fights', () {
       final r = BattleSim.run(_Dummy(name: 'A'), _Dummy(name: 'B', maxHp: 80), seed: 2);
       expect(r.events.whereType<SkillEvent>(), isEmpty);

@@ -6,6 +6,7 @@ import '../../game/battle/battle_sim.dart';
 import '../../game/battle/combatant.dart';
 import '../../game/battle/skills.dart';
 import '../attack_animation.dart';
+import '../format.dart';
 import '../battle_effects.dart';
 import '../skill_vfx.dart';
 import '../status_icons.dart';
@@ -596,16 +597,12 @@ class _SkillSlot extends StatelessWidget {
 
   /// Чем скилл ограничен: откат в ходах, шкала или ничего (у пассивки).
   String? get _recharge => switch (index) {
-        1 => 'Перезарядка: ${_turns(cooldown)}',
+        1 => 'Перезарядка: ${fmtTurns(cooldown)}',
         2 => null,
         _ => 'Заряжается от урона: нанесённого и полученного',
       };
 
-  static String _turns(int n) {
-    final tail = n % 100 >= 11 && n % 100 <= 14 ? 0 : n % 10;
-    final word = switch (tail) { 1 => 'ход', 2 || 3 || 4 => 'хода', _ => 'ходов' };
-    return '$n $word';
-  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -947,12 +944,13 @@ class _HpBar extends StatelessWidget {
         SizedBox(
           height: 24,
           child: Wrap(
-            spacing: 4,
+            spacing: 9,
             alignment: alignEnd ? WrapAlignment.end : WrapAlignment.start,
             children: [
-              for (final kind in statusesOf(snapshot))
+              for (final status in statusesOf(snapshot))
                 StatusIcon(
-                  kind: kind,
+                  kind: status.kind,
+                  turns: status.turns,
                   size: 24,
                   onDialog: onDialog,
                   onDialogClosed: onDialogClosed,
