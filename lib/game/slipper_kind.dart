@@ -124,6 +124,19 @@ class SlipperCatalog {
         Bonus.income: 0.1,
       },
     ),
+    SlipperKind(
+      id: 'yin_yang',
+      name: 'Инь-Ян',
+      rarity: Rarity.mythic,
+      asset: 'assets/slippers/yin_yang.webp',
+      attack: AttackStyle.flow,
+      bonuses: {
+        Bonus.damage: 0.22,
+        Bonus.dodge: 0.08,
+        Bonus.crit: 0.12,
+        Bonus.hp: 0.2,
+      },
+    ),
   ];
 
   static final Map<String, SlipperKind> _byId = {for (final k in all) k.id: k};

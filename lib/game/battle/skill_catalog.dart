@@ -28,6 +28,37 @@ class SkillCatalog {
   );
 
   static const _byKind = <String, SkillSet>{
+    // Инь-Ян: равновесие — бьёт и лечится, крепнет, когда тяжело,
+    // а в ульте разит светом и тьмой.
+    'yin_yang': SkillSet(
+      active: ActiveSkill(
+        name: 'Равновесие',
+        description:
+            'Атака с уроном ×1.5, лечение на 10% здоровья и −20% урона противника (2 хода).',
+        damageMul: 1.5,
+        healPercent: 0.1,
+        weaken: 0.2,
+        weakenTurns: 2,
+      ),
+      activeCooldown: 3,
+      passive: PassiveSkill(
+        name: 'Гармония',
+        description:
+            '+2% здоровья каждый ход, +25% урона ниже половины HP, +5% к шансу уворота.',
+        regenPercent: 0.02,
+        lowHpDamageBonus: 0.25,
+        dodgeBonus: 0.05,
+      ),
+      ultimate: ActiveSkill(
+        name: 'Великий предел',
+        description:
+            'Две атаки по ×2 — светом и тьмой, игнорируют 30% защиты, барьер на 20% здоровья.',
+        damageMul: 2,
+        hits: 2,
+        pierce: 0.3,
+        barrierPercent: 0.2,
+      ),
+    ),
     // Клетчатый: держится за счёт лечения и переживает чужие серии.
     'basic': SkillSet(
       active: ActiveSkill(

@@ -31,7 +31,11 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
   static const double startingThreads = 0;
 
   /// На старте — только базовый тапок, остальные выбиваются из кейсов.
-  static Map<String, int> get startingInventory => {SlipperCatalog.defaultId: 1};
+  /// TODO: убрать Инь-Ян перед релизом — выдан со старта для тестов.
+  static Map<String, int> get startingInventory =>
+      {SlipperCatalog.defaultId: 1, _testKindId: 1};
+
+  static const _testKindId = 'yin_yang';
 
   /// Основная валюта: нитки. Тратятся на прокачку и кейсы.
   double threads = startingThreads;
@@ -277,6 +281,8 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
           for (final e in inv.entries) e.key as String: (e.value as num).toInt(),
         };
       }
+      // TODO: убрать перед релизом — тестовый тапок и в старых сохранениях.
+      inventory[_testKindId] = max(1, inventory[_testKindId] ?? 0);
       // Надетый тапок всегда присутствует в инвентаре.
       inventory[slipper.kindId] = max(1, inventory[slipper.kindId] ?? 0);
       rating = json['rating'] as int? ?? rating;

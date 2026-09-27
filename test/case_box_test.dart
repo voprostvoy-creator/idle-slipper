@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -63,7 +65,12 @@ void main() {
 
   test('every catalog entry has a normalized asset path', () {
     for (final k in SlipperCatalog.all) {
-      expect(k.asset, 'assets/slippers/${k.id}.png');
+      // Старые тапки в PNG, новые — в WebP (легче в 6-7 раз).
+      expect(
+        k.asset,
+        anyOf('assets/slippers/${k.id}.png', 'assets/slippers/${k.id}.webp'),
+      );
+      expect(File(k.asset).existsSync(), isTrue, reason: k.asset);
     }
   });
 }
