@@ -32,7 +32,8 @@ class ResourceHeader extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.bolt, color: GameColors.orange, size: 18),
+                    const PowerIcon(size: 20),
+                    const SizedBox(width: 3),
                     Text('${game.slipper.power}', style: theme.textTheme.titleMedium),
                   ],
                 ),

@@ -3,7 +3,6 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 
 import '../../game/game_state.dart';
-import '../../game/leaderboard.dart';
 import '../../game/slipper.dart';
 import '../slipper_sprite.dart';
 import '../theme.dart';
@@ -20,7 +19,7 @@ class LeaderboardScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final place = game.arenaPlace;
     final rows = <(Slipper, int, bool)>[
-      for (final b in Leaderboard.bots) (b.slipper, b.rating, false),
+      for (final b in game.leaderboard) (b.slipper, b.rating, false),
     ]..insert(place - 1, (game.slipper, game.rating, true));
     // Сразу показываем игрока, а не верх списка.
     final controller = ScrollController(
@@ -141,7 +140,8 @@ class _Row extends StatelessWidget {
                 ),
                 Row(
                   children: [
-                    const Icon(Icons.bolt, color: GameColors.orange, size: 15),
+                    const PowerIcon(size: 14),
+                    const SizedBox(width: 3),
                     Text('${slipper.power}', style: theme.textTheme.bodySmall),
                     if (slipper.stars > 0) ...[
                       const SizedBox(width: 6),

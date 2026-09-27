@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../game/daily.dart';
 import '../../game/game_state.dart';
 import '../../game/leaderboard.dart';
-import '../format.dart';
 import '../slipper_sprite.dart';
 import '../theme.dart';
 import '../widgets/game_widgets.dart';
@@ -26,14 +24,11 @@ class ArenaScreen extends StatelessWidget {
     return ListenableBuilder(
       listenable: game,
       builder: (context, _) {
-        final canFight = game.canFightArena;
         return ListView(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
           children: [
             BackToModes(title: 'Арена', onBack: onBack),
             const SizedBox(height: 12),
-            _TicketsBar(game: game),
-            const SizedBox(height: 14),
             GamePanel(
               padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
               onTap: () => _openLeaderboard(context),
@@ -79,20 +74,15 @@ class ArenaScreen extends StatelessWidget {
             SizedBox(
               width: double.infinity,
               child: GameButton(
-                color: canFight ? GameColors.red : GameColors.panelLight,
+                color: GameColors.red,
                 height: 60,
                 onPressed: () => _fight(context),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.search_rounded, size: 26),
-                    const SizedBox(width: 8),
-                    const Text('Найти соперника', style: TextStyle(fontSize: 20)),
-                    const SizedBox(width: 10),
-                    GameBadge(
-                      text: '−1 ⚔',
-                      color: canFight ? GameColors.gold : GameColors.panelDark,
-                    ),
+                  children: const [
+                    Icon(Icons.search_rounded, size: 26),
+                    SizedBox(width: 8),
+                    Text('Найти соперника', style: TextStyle(fontSize: 20)),
                   ],
                 ),
               ),
@@ -100,7 +90,8 @@ class ArenaScreen extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               'Соперник — тапок, который стоит в рейтинге сразу над тобой. '
-              'Победа даёт очки и нитки.',
+              'Победишь — заберёшь его очки и получишь нитки, проиграешь — '
+              'ничего не потеряешь.',
               textAlign: TextAlign.center,
               style: theme.textTheme.bodySmall,
             ),
@@ -120,14 +111,6 @@ class ArenaScreen extends StatelessWidget {
     // Бой считается мгновенно; экран боя лишь проигрывает запись.
     final me = game.slipper;
     final outcome = game.fightArena();
-    if (outcome == null) {
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(const SnackBar(
-          content: Text('Попытки кончились — новая скоро восстановится'),
-        ));
-      return;
-    }
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => BattleScreen(
@@ -173,43 +156,6 @@ class _BigStat extends StatelessWidget {
         ),
         Text(label, style: Theme.of(context).textTheme.bodySmall),
       ],
-    );
-  }
-}
-
-/// Попытки арены: значки мечей и таймер до следующей.
-class _TicketsBar extends StatelessWidget {
-  const _TicketsBar({required this.game});
-  final GameState game;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final t = game.tickets;
-    final next = t.nextIn(game.clock());
-    return GamePanel(
-      color: GameColors.panelDark,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      child: Row(
-        children: [
-          for (var i = 0; i < ArenaTickets.max; i++)
-            Padding(
-              padding: const EdgeInsets.only(right: 4),
-              child: Icon(
-                Icons.sports_mma,
-                size: 22,
-                color: i < t.count ? GameColors.red : GameColors.panelLight,
-              ),
-            ),
-          const SizedBox(width: 6),
-          Text('${t.count}/${ArenaTickets.max}', style: theme.textTheme.titleMedium),
-          const Spacer(),
-          Text(
-            next == null ? 'Попытки полные' : '+1 через ${fmtClock(next)}',
-            style: theme.textTheme.bodySmall,
-          ),
-        ],
-      ),
     );
   }
 }

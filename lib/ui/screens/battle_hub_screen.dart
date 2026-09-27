@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../game/game_state.dart';
+import '../../game/slipper_kind.dart';
+import '../../game/story/enemies.dart';
 import '../theme.dart';
 import '../widgets/game_widgets.dart';
 import 'arena_screen.dart';
@@ -63,7 +65,7 @@ class _ModePicker extends StatelessWidget {
                 child: _ModeCard(
                   title: 'Сюжет',
                   subtitle: 'Главы с боссами. Награда — монеты и тапки.',
-                  icon: Icons.menu_book_rounded,
+                  art: const _StoryArt(),
                   color: GameColors.orange,
                   onTap: () => onMode(BattleMode.story),
                 ),
@@ -73,7 +75,7 @@ class _ModePicker extends StatelessWidget {
                 child: _ModeCard(
                   title: 'Арена',
                   subtitle: 'Тапки других игроков. Награда — нитки и рейтинг.',
-                  icon: Icons.emoji_events_rounded,
+                  art: const _ArenaArt(),
                   color: GameColors.blue,
                   onTap: () => onMode(BattleMode.arena),
                 ),
@@ -91,14 +93,14 @@ class _ModeCard extends StatelessWidget {
   const _ModeCard({
     required this.title,
     required this.subtitle,
-    required this.icon,
+    required this.art,
     required this.color,
     required this.onTap,
   });
 
   final String title;
   final String subtitle;
-  final IconData icon;
+  final Widget art;
   final Color color;
   final VoidCallback onTap;
 
@@ -122,11 +124,9 @@ class _ModeCard extends StatelessWidget {
                   colors: [Color.lerp(color, Colors.white, 0.3)!, color],
                 ),
               ),
-              child: FittedBox(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Icon(icon, size: 56, color: GameColors.outline),
-                ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(15),
+                child: art,
               ),
             ),
           ),
@@ -140,6 +140,100 @@ class _ModeCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Картинка «Сюжета»: тапок замахивается на таракана, рядом кружит муха.
+class _StoryArt extends StatelessWidget {
+  const _StoryArt();
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, box) {
+        final s = box.maxWidth;
+        return Stack(
+          children: [
+            Positioned(
+              right: -s * 0.12,
+              bottom: s * 0.02,
+              width: s * 1.0,
+              child: Transform.flip(
+                flipX: true,
+                child: Image.asset(EnemyCatalog.cockroach.asset),
+              ),
+            ),
+            Positioned(
+              right: s * 0.02,
+              top: s * 0.04,
+              width: s * 0.42,
+              child: Transform.rotate(
+                angle: -0.2,
+                child: Transform.flip(
+                  flipX: true,
+                  child: Image.asset(EnemyCatalog.fly.asset),
+                ),
+              ),
+            ),
+            Positioned(
+              left: -s * 0.1,
+              top: s * 0.1,
+              width: s * 0.8,
+              child: Transform.rotate(
+                angle: -0.55,
+                child: Image.asset(SlipperCatalog.byId('basic').asset),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// Картинка «Арены»: два тапка скрещены, как мечи, под ними кубок.
+class _ArenaArt extends StatelessWidget {
+  const _ArenaArt();
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, box) {
+        final s = box.maxWidth;
+        Widget slipper(String id, double angle, {bool flip = false}) => Positioned(
+              left: s * 0.06,
+              top: s * 0.14,
+              width: s * 0.88,
+              child: Transform.rotate(
+                angle: angle,
+                child: Transform.flip(
+                  flipX: flip,
+                  child: Image.asset(SlipperCatalog.byId(id).asset),
+                ),
+              ),
+            );
+        return Stack(
+          children: [
+            slipper('red_spike', -0.95),
+            slipper('blue_slide', 0.95, flip: true),
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: s * 0.03,
+              child: Icon(
+                Icons.emoji_events_rounded,
+                size: s * 0.28,
+                color: GameColors.gold,
+                shadows: const [
+                  Shadow(color: GameColors.outline, blurRadius: 0, offset: Offset(0, 2)),
+                  Shadow(color: GameColors.outline, blurRadius: 4),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

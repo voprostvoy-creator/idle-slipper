@@ -12,8 +12,8 @@ class LeaderboardEntry {
   String get name => slipper.name;
 }
 
-/// Рейтинг арены. Пока без сервера: 20 заготовленных тапков разной силы,
-/// их очки не меняются. Игрок встаёт между ними по своим очкам.
+/// Рейтинг арены. Пока без сервера: 20 заготовленных тапков разной силы.
+/// Игрок встаёт между ними по своим очкам; побеждённый бот теряет 10 очков.
 class Leaderboard {
   Leaderboard._();
 
@@ -67,16 +67,24 @@ class Leaderboard {
     return levels;
   }
 
+  /// Рейтинг с текущими очками ботов (их меняют поражения от игрока),
+  /// по убыванию очков.
+  static List<LeaderboardEntry> standings(Map<String, int> ratings) => [
+        for (final b in bots)
+          LeaderboardEntry(slipper: b.slipper, rating: ratings[b.name] ?? b.rating),
+      ]..sort((a, b) => b.rating.compareTo(a.rating));
+
   /// Место игрока: сколько ботов выше него, плюс один.
   /// При равных очках игрок стоит выше.
-  static int placeOf(int rating) => bots.where((b) => b.rating > rating).length + 1;
+  static int placeOf(int rating, List<LeaderboardEntry> table) =>
+      table.where((b) => b.rating > rating).length + 1;
 
   static int get size => bots.length + 1;
 
   /// Соперник — тот, кто стоит в рейтинге сразу над игроком.
   /// Лидеру достаётся второй номер.
-  static LeaderboardEntry nextOpponent(int rating) {
-    final above = bots.where((b) => b.rating > rating);
-    return above.isEmpty ? bots.first : above.last;
+  static LeaderboardEntry nextOpponent(int rating, List<LeaderboardEntry> table) {
+    final above = table.where((b) => b.rating > rating);
+    return above.isEmpty ? table.first : above.last;
   }
 }

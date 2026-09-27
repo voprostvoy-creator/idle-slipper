@@ -96,10 +96,15 @@ void main() {
   });
 
   test('leaderboard: place and next opponent is the one right above', () {
-    expect(Leaderboard.placeOf(1000), 19);
-    expect(Leaderboard.nextOpponent(1000).rating, 1040);
-    expect(Leaderboard.placeOf(9999), 1);
-    expect(Leaderboard.nextOpponent(9999), Leaderboard.bots.first);
+    final table = Leaderboard.standings({});
+    expect(Leaderboard.placeOf(1000, table), 19);
+    expect(Leaderboard.nextOpponent(1000, table).rating, 1040);
+    expect(Leaderboard.placeOf(9999, table), 1);
+    expect(Leaderboard.nextOpponent(9999, table).name, Leaderboard.bots.first.name);
+    // Побеждённый бот с −10 очков опускается ниже игрока.
+    final after = Leaderboard.standings({'Левый Резиновый': 1030});
+    expect(Leaderboard.placeOf(1040, after), 18);
+    expect(Leaderboard.nextOpponent(1040, after).name, 'Пыльный Тапок');
   });
 
   group('skills', () {

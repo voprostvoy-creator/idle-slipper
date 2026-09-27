@@ -1177,7 +1177,7 @@ class _ResultPanel extends StatelessWidget {
         _RewardItem(icon: const ThreadIcon(size: 22), text: '+$threadsDelta'),
       if (coinsDelta != 0)
         _RewardItem(icon: const CoinIcon(size: 22), text: '+$coinsDelta'),
-      if (rating != null)
+      if (rating != null && rating != 0)
         _RewardItem(
           icon: const Icon(Icons.emoji_events, color: GameColors.blue, size: 22),
           text: '${rating >= 0 ? '+' : ''}$rating',

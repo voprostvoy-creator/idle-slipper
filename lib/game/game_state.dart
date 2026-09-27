@@ -52,8 +52,8 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
   /// Звёзды видов в коллекции: id вида → 0..5.
   Map<String, int> stars = {};
 
-  /// Попытки арены, восстанавливаются со временем.
-  ArenaTickets tickets = ArenaTickets.full(DateTime.now());
+  /// Текущие очки ботов рейтинга, если отличаются от стартовых.
+  Map<String, int> botRatings = {};
 
   /// День, когда забран ежедневный кейс.
   String dailyCaseDay = '';
@@ -111,7 +111,6 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
 
   /// Раз в секунду: попытки, смена дня и таймеры на экране.
   void _tick() {
-    tickets = tickets.refill(clock());
     _rollDay();
     notifyListeners();
   }
@@ -150,33 +149,31 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
     notifyListeners();
   }
 
-  bool get canFightArena => tickets.count > 0;
+  /// Рейтинг арены с текущими очками ботов.
+  List<LeaderboardEntry> get leaderboard => Leaderboard.standings(botRatings);
 
   /// Место в рейтинге арены.
-  int get arenaPlace => Leaderboard.placeOf(rating);
+  int get arenaPlace => Leaderboard.placeOf(rating, leaderboard);
 
-  /// Бой с тем, кто стоит в рейтинге сразу выше. Считается сразу целиком,
-  /// экран боя лишь проигрывает запись. Стоит одну попытку; без попыток — null.
-  ArenaOutcome? fightArena() {
-    tickets = tickets.refill(clock());
-    if (!canFightArena) return null;
-    tickets = tickets.spend(clock());
-    final opponent = Leaderboard.nextOpponent(rating);
+  /// Бой с тем, кто стоит в рейтинге сразу выше. Попытки не ограничены.
+  /// Победа над тем, кто выше: игрок забирает его очки и нитки, у него −10.
+  /// Поражение ничего не даёт и ничего не отнимает. Лидер бьётся со вторым
+  /// номером без награды — иначе его можно было бы фармить бесконечно.
+  ArenaOutcome fightArena() {
+    final opponent = Leaderboard.nextOpponent(rating, leaderboard);
     final result =
         BattleSim.run(slipper, opponent.slipper, seed: Random().nextInt(1 << 31));
-    final won = result.playerWon;
-    final threadsWon =
-        Economy.arenaReward(slipper, won: won, opponentPower: opponent.slipper.power);
-    threads += threadsWon;
-    final ratingDelta = Rating.delta(mine: rating, theirs: opponent.rating, won: won);
     final before = rating;
-    rating = max(100, rating + ratingDelta);
-    // Победа над тем, кто выше, ставит игрока над ним: одного соперника
-    // не нужно побеждать несколько раз подряд.
-    if (won && rating <= opponent.rating) rating = opponent.rating + 5;
-    if (won) {
+    var threadsWon = 0;
+    if (result.playerWon) {
       wins++;
       _progress(QuestKind.arenaWins);
+      if (opponent.rating > rating) {
+        rating = opponent.rating;
+        botRatings[opponent.name] = opponent.rating - 10;
+        threadsWon = Economy.arenaReward(slipper, opponentPower: opponent.slipper.power);
+        threads += threadsWon;
+      }
     } else {
       losses++;
     }
@@ -252,8 +249,7 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
         'losses': losses,
         'story': storyCleared,
         'stars': stars,
-        'tickets': tickets.count,
-        'ticketsAt': tickets.since.toIso8601String(),
+        'botRatings': botRatings,
         'dailyCaseDay': dailyCaseDay,
         'questDay': questDay,
         'questProgress': questProgress,
@@ -294,12 +290,11 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
         };
       }
       slipper = slipper.copyWith(stars: starsOf(slipper.kindId));
-      final ticketsAt = DateTime.tryParse(json['ticketsAt'] as String? ?? '');
-      if (ticketsAt != null) {
-        tickets = ArenaTickets(
-          count: (json['tickets'] as num?)?.toInt() ?? ArenaTickets.max,
-          since: ticketsAt,
-        ).refill(clock());
+      final bots = json['botRatings'] as Map?;
+      if (bots != null) {
+        botRatings = {
+          for (final e in bots.entries) e.key as String: (e.value as num).toInt(),
+        };
       }
       dailyCaseDay = json['dailyCaseDay'] as String? ?? '';
       questDay = json['questDay'] as String? ?? '';
@@ -486,9 +481,8 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
     notifyListeners();
   }
 
-  /// Для отладки: как будто наступил новый день и попытки восстановились.
+  /// Для отладки: как будто наступил новый день.
   void cheatNewDay() {
-    tickets = ArenaTickets.full(clock());
     chestSince = clock().subtract(Economy.chestFillTime);
     dailyCaseDay = '';
     questDay = '';
@@ -516,7 +510,7 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
     losses = 0;
     storyCleared = {};
     stars = {};
-    tickets = ArenaTickets.full(clock());
+    botRatings = {};
     chestSince = clock();
     dailyCaseDay = '';
     questDay = '';

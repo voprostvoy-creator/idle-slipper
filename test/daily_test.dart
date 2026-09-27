@@ -11,33 +11,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 void main() {
   final t0 = DateTime(2026, 9, 27, 10);
 
-  group('попытки арены', () {
-    test('копятся по одной раз в 2 часа, остаток времени не теряется', () {
-      var t = ArenaTickets.full(t0);
-      for (var i = 0; i < 5; i++) {
-        t = t.spend(t0);
-      }
-      expect(t.count, 0);
-      t = t.refill(t0.add(const Duration(hours: 3)));
-      expect(t.count, 1);
-      expect(t.nextIn(t0.add(const Duration(hours: 3))), const Duration(hours: 1));
-      t = t.refill(t0.add(const Duration(hours: 4)));
-      expect(t.count, 2);
-    });
-
-    test('выше максимума не копятся', () {
-      final t = ArenaTickets(count: 4, since: t0).refill(t0.add(const Duration(days: 2)));
-      expect(t.count, ArenaTickets.max);
-      expect(t.nextIn(t0), isNull);
-    });
-
-    test('трата из полного запаса запускает отсчёт с этого момента', () {
-      final later = t0.add(const Duration(hours: 5));
-      final t = ArenaTickets.full(t0).spend(later);
-      expect(t.nextIn(later), ArenaTickets.period);
-    });
-  });
-
   group('задания', () {
     test('три разных задания, весь день одни и те же', () {
       final morning = DailyQuests.forDay(DateTime(2026, 9, 27, 8));
@@ -83,23 +56,49 @@ void main() {
 
     tearDown(() => game.dispose());
 
-    test('бой на арене тратит попытку, без попыток боя нет', () {
-      for (var i = 0; i < ArenaTickets.max; i++) {
-        expect(game.fightArena(), isNotNull);
+    test('арена: попытки бесконечны, поражение ничего не меняет', () {
+      var losses = 0;
+      for (var i = 0; i < 30; i++) {
+        final rating = game.rating;
+        final threads = game.threads;
+        final outcome = game.fightArena();
+        if (outcome.result.playerWon) continue;
+        losses++;
+        expect(outcome.ratingDelta, 0);
+        expect(game.rating, rating);
+        expect(game.threads, threads);
       }
-      expect(game.canFightArena, isFalse);
-      expect(game.fightArena(), isNull);
-      now = now.add(ArenaTickets.period);
-      expect(game.fightArena(), isNotNull);
+      // Слабый тапок против тех, кто выше, почти всегда проигрывает.
+      expect(losses, greaterThan(0));
     });
 
-    test('победа на арене поднимает над соперником', () {
+    test('арена: победа забирает очки соперника, у него −10', () {
       game.slipper = Slipper(name: 'я', levels: {for (final s in Stat.values) s: 30});
       final place = game.arenaPlace;
-      final outcome = game.fightArena()!;
+      final threads = game.threads;
+      final outcome = game.fightArena();
       expect(outcome.result.playerWon, isTrue);
-      expect(game.rating, greaterThan(outcome.opponent.rating));
+      expect(game.rating, outcome.opponent.rating);
+      expect(
+        game.leaderboard.firstWhere((e) => e.name == outcome.opponent.name).rating,
+        outcome.opponent.rating - 10,
+      );
       expect(game.arenaPlace, place - 1);
+      expect(game.threads, greaterThan(threads));
+    });
+
+    test('арена: лидер бьётся со вторым без награды', () {
+      game.slipper = Slipper(name: 'я', levels: {for (final s in Stat.values) s: 200});
+      for (var i = 0; i < 25; i++) {
+        game.fightArena();
+      }
+      expect(game.arenaPlace, 1);
+      final rating = game.rating;
+      final threads = game.threads;
+      final outcome = game.fightArena();
+      expect(outcome.result.playerWon, isTrue);
+      expect(game.rating, rating);
+      expect(game.threads, threads);
     });
 
     test('ежедневный кейс — раз в день', () {

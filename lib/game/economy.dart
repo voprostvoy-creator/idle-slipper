@@ -25,12 +25,9 @@ class Economy {
   static int withBonus(num threads, Slipper s) =>
       (threads * (1 + s.kind.bonus(Bonus.income))).round();
 
-  /// Нитки за бой на арене: растут с силой соперника.
-  /// Проигрыш тоже что-то даёт, чтобы не было обидно.
-  static int arenaReward(Slipper s, {required bool won, required int opponentPower}) {
-    final base = 15 + opponentPower * 0.15;
-    return withBonus(won ? base : base * 0.25, s);
-  }
+  /// Нитки за победу на арене над тем, кто выше: растут с силой соперника.
+  static int arenaReward(Slipper s, {required int opponentPower}) =>
+      withBonus(15 + opponentPower * 0.15, s);
 
   /// Сундук дежурства наполняется за это время.
   static const Duration chestFillTime = Duration(hours: 8);
