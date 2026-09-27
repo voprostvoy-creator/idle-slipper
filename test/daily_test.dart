@@ -93,6 +93,15 @@ void main() {
       expect(game.fightArena(), isNotNull);
     });
 
+    test('победа на арене поднимает над соперником', () {
+      game.slipper = Slipper(name: 'я', levels: {for (final s in Stat.values) s: 30});
+      final place = game.arenaPlace;
+      final outcome = game.fightArena()!;
+      expect(outcome.result.playerWon, isTrue);
+      expect(game.rating, greaterThan(outcome.opponent.rating));
+      expect(game.arenaPlace, place - 1);
+    });
+
     test('ежедневный кейс — раз в день', () {
       const daily = CaseCatalog.dailyCase;
       expect(game.canOpen(daily), isTrue);

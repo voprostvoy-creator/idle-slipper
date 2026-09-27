@@ -171,6 +171,9 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
     final ratingDelta = Rating.delta(mine: rating, theirs: opponent.rating, won: won);
     final before = rating;
     rating = max(100, rating + ratingDelta);
+    // Победа над тем, кто выше, ставит игрока над ним: одного соперника
+    // не нужно побеждать несколько раз подряд.
+    if (won && rating <= opponent.rating) rating = opponent.rating + 5;
     if (won) {
       wins++;
       _progress(QuestKind.arenaWins);

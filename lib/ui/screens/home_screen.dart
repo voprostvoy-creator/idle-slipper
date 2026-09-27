@@ -55,7 +55,9 @@ class _HomeScreenState extends State<HomeScreen>
                     behavior: HitTestBehavior.opaque,
                     child: SizedBox(
                       width: c.maxWidth,
-                      height: spriteW / SlipperSprite.aspect + 24,
+                      // Тапок рисуется уменьшенным (размер от Здоровья) и прижат
+                      // к низу — высота по реальному размеру, без пустоты сверху.
+                      height: spriteW / SlipperSprite.aspect * game.slipper.sizeFactor + 20,
                       child: Stack(
                         alignment: Alignment.bottomCenter,
                         clipBehavior: Clip.none,
