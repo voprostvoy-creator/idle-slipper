@@ -41,7 +41,6 @@ class AttackAnimation {
     required bool flip,
     required double reach,
     required Widget child,
-    bool sharp = false,
   }) {
     if (progress <= 0.001) return child;
     // Движение всегда «к противнику»: для правого бойца — в другую сторону.
@@ -57,29 +56,12 @@ class AttackAnimation {
       AttackStyle.laser => _laser(progress, dir, reach, child),
       AttackStyle.uppercut => _uppercut(progress, dir, reach, child),
       AttackStyle.charge => _charge(progress, dir, reach, child),
-      AttackStyle.flow => sharp
-          ? _flowCut(progress, dir, reach, child)
-          : _flow(progress, dir, reach, child),
+      AttackStyle.flow => _flowCut(progress, dir, reach, child),
     };
   }
 
-  /// Поток: тапок плавно скользит к противнику по волне и так же плавно
-  /// возвращается — без рывков, как течение.
-  static Widget _flow(double t, double dir, double reach, Widget child) {
-    final wave = sin(pi * t);
-    return Transform.translate(
-      offset: Offset(reach * 0.75 * Curves.easeInOutSine.transform(wave) * dir,
-          -reach * 0.18 * sin(2 * pi * t)),
-      child: Transform.rotate(
-        angle: 0.12 * sin(2 * pi * t) * dir,
-        alignment: Alignment.bottomCenter,
-        child: child,
-      ),
-    );
-  }
-
-  /// Режущий удар потока: короткий замах, молниеносный рывок и
-  /// бело-чёрный росчерк, как у знака инь-ян.
+  /// Разрез: короткий замах, молниеносный рывок с наклоном, как взмах
+  /// клинка, короткая пауза у цели и плавный возврат.
   static Widget _flowCut(double t, double dir, double reach, Widget child) {
     double x;
     double angle;
@@ -99,25 +81,13 @@ class AttackAnimation {
       x = 1 - r;
       angle = 0.35 * (1 - r);
     }
-    final slash = t < 0.3 ? 0.0 : ((t - 0.3) / 0.45).clamp(0.0, 1.0);
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        Transform.translate(
-          offset: Offset(reach * x * dir, 0),
-          child: Transform.rotate(
-            angle: angle * dir,
-            alignment: Alignment.bottomCenter,
-            child: child,
-          ),
-        ),
-        if (slash > 0 && slash < 1)
-          Positioned.fill(
-            child: CustomPaint(
-              painter: _SlashPainter(progress: slash, dir: dir, reach: reach),
-            ),
-          ),
-      ],
+    return Transform.translate(
+      offset: Offset(reach * x * dir, 0),
+      child: Transform.rotate(
+        angle: angle * dir,
+        alignment: Alignment.bottomCenter,
+        child: child,
+      ),
     );
   }
 
@@ -447,61 +417,4 @@ class _LaserPainter extends CustomPainter {
   @override
   bool shouldRepaint(_LaserPainter old) =>
       old.charge != charge || old.fire != fire || old.dir != dir;
-}
-
-/// Росчерк режущего удара: две дуги — белая и чёрная, как инь и ян.
-/// Дуга быстро прочерчивается и тает.
-class _SlashPainter extends CustomPainter {
-  _SlashPainter({required this.progress, required this.dir, required this.reach});
-
-  /// 0..1: первая половина — прочерчивается, вторая — гаснет.
-  final double progress;
-  final double dir;
-  final double reach;
-
-  @override
-  void paint(Canvas c, Size size) {
-    // Там, где в пике рывка оказывается носок тапка — у противника.
-    final center = Offset(size.width / 2 + dir * (reach + size.width * 0.42), size.height * 0.5);
-    final radius = size.height * 0.75;
-    final draw = Curves.easeOutCubic.transform((progress * 2).clamp(0.0, 1.0));
-    final fade = progress < 0.5 ? 1.0 : 1 - (progress - 0.5) * 2;
-    // Дуги смотрят выпуклостью к атакующему.
-    final start = dir > 0 ? pi * 0.62 : -pi * 0.38;
-    const sweep = pi * 0.76;
-
-    void arc(Offset shift, Color fill, Color edge) {
-      final rect = Rect.fromCircle(center: center + shift, radius: radius);
-      final s = dir > 0 ? start : start + sweep * (1 - draw);
-      c.drawArc(
-        rect,
-        s,
-        sweep * draw,
-        false,
-        Paint()
-          ..color = edge.withValues(alpha: fade)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 11
-          ..strokeCap = StrokeCap.round,
-      );
-      c.drawArc(
-        rect,
-        s,
-        sweep * draw,
-        false,
-        Paint()
-          ..color = fill.withValues(alpha: fade)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 6
-          ..strokeCap = StrokeCap.round,
-      );
-    }
-
-    final gap = radius * 0.16 * dir;
-    arc(Offset(-gap, 0), Colors.white, const Color(0xFF14091F));
-    arc(Offset(gap, 0), const Color(0xFF14091F), Colors.white);
-  }
-
-  @override
-  bool shouldRepaint(_SlashPainter old) => old.progress != progress;
 }

@@ -125,9 +125,6 @@ class _BattleScreenState extends State<BattleScreen>
   );
   Side? _lunging;
 
-  /// Текущий удар — крит: у стилей с двумя манерами (поток) он резкий.
-  bool _sharp = false;
-
   /// Спрайт при атаке оборачивается в анимацию, в покое — нет. С постоянным
   /// ключом он переносится между обёртками, а не создаётся заново — иначе
   /// аура и дыхание каждый раз начинались бы сначала.
@@ -221,7 +218,6 @@ class _BattleScreenState extends State<BattleScreen>
             _log.insert(0, '${nameOf(attacker)}: шипы на $damage');
           } else {
             _lunging = attacker;
-            _sharp = crit;
             if (_mood[attacker] != SlipperMood.dead) {
               _mood[attacker] = SlipperMood.attack;
             }
@@ -233,7 +229,6 @@ class _BattleScreenState extends State<BattleScreen>
         case DodgeEvent(:final attacker):
           final target = attacker.other;
           _lunging = attacker;
-          _sharp = false;
           _mood = {attacker: SlipperMood.attack, target: SlipperMood.idle};
           _popups.add(_Popup(side: target, text: 'мимо', crit: false));
           _log.insert(0, '${nameOf(attacker)} промахивается');
@@ -462,7 +457,6 @@ class _BattleScreenState extends State<BattleScreen>
                               width: w,
                               reach: reach,
                               attack: _lunging == Side.player ? _lunge.value : 0,
-                              sharp: _sharp,
                               effects: _effects[Side.player]!,
                               hits: _hits[Side.player]!,
                               softHit: _soft[Side.player]!,
@@ -480,7 +474,6 @@ class _BattleScreenState extends State<BattleScreen>
                               flip: true,
                               reach: reach,
                               attack: _lunging == Side.opponent ? _lunge.value : 0,
-                              sharp: _sharp,
                               effects: _effects[Side.opponent]!,
                               hits: _hits[Side.opponent]!,
                               softHit: _soft[Side.opponent]!,
@@ -928,7 +921,6 @@ class _Fighter extends StatelessWidget {
     required this.hits,
     required this.softHit,
     this.flip = false,
-    this.sharp = false,
   });
 
   final GlobalKey spriteKey;
@@ -942,9 +934,6 @@ class _Fighter extends StatelessWidget {
 
   /// 0 — стоит, 1 — пик замаха.
   final double attack;
-
-  /// Удар резкий (крит) — для стилей с двумя манерами.
-  final bool sharp;
 
   /// Что показать поверх бойца: оглушение, горение, щит, лечение.
   final Set<BattleEffect> effects;
@@ -988,7 +977,6 @@ class _Fighter extends StatelessWidget {
             progress: attack,
             flip: flip,
             reach: reach,
-            sharp: sharp,
             child: SlipperSprite(
               key: spriteKey,
               fighter: fighter,
