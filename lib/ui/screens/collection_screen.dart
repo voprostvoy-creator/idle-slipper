@@ -8,8 +8,8 @@ import '../slipper_sprite.dart';
 import '../theme.dart';
 import '../widgets/game_widgets.dart';
 
-/// Коллекция: все тапки каталога. Свои можно надеть, чужие показаны
-/// тёмным силуэтом — видно, что ещё предстоит выбить из кейсов.
+/// Коллекция: тапки по редкостям, от обычных к мифическим. Свои можно
+/// открыть — там надеть и улучшить; чужие показаны тёмным силуэтом.
 class CollectionScreen extends StatelessWidget {
   const CollectionScreen({super.key, required this.game});
   final GameState game;
@@ -33,14 +33,51 @@ class CollectionScreen extends StatelessWidget {
                 style: theme.textTheme.bodySmall,
               ),
             ),
-            const SizedBox(height: 14),
-            for (final kind in kinds) ...[
-              _KindCard(game: game, kind: kind),
-              const SizedBox(height: 10),
-            ],
+            for (final rarity in Rarity.values)
+              if (SlipperCatalog.byRarity(rarity).isNotEmpty) ...[
+                const SizedBox(height: 16),
+                _RarityHeader(game: game, rarity: rarity),
+                const SizedBox(height: 8),
+                GridView(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    mainAxisSpacing: 10,
+                    crossAxisSpacing: 10,
+                    mainAxisExtent: 156,
+                  ),
+                  children: [
+                    for (final kind in SlipperCatalog.byRarity(rarity))
+                      _KindCard(game: game, kind: kind),
+                  ],
+                ),
+              ],
           ],
         );
       },
+    );
+  }
+}
+
+class _RarityHeader extends StatelessWidget {
+  const _RarityHeader({required this.game, required this.rarity});
+
+  final GameState game;
+  final Rarity rarity;
+
+  @override
+  Widget build(BuildContext context) {
+    final kinds = SlipperCatalog.byRarity(rarity);
+    final owned = kinds.where((k) => game.count(k.id) > 0).length;
+    return Row(
+      children: [
+        StrokeText(rarity.label, size: 22, color: rarity.color),
+        const SizedBox(width: 8),
+        Expanded(child: Container(height: 3, color: rarity.color.withValues(alpha: 0.5))),
+        const SizedBox(width: 8),
+        Text('$owned/${kinds.length}', style: Theme.of(context).textTheme.bodySmall),
+      ],
     );
   }
 }
@@ -57,92 +94,117 @@ class _KindCard extends StatelessWidget {
     final count = game.count(kind.id);
     final have = count > 0;
     final equipped = kind.id == game.slipper.kindId;
+    final stars = game.starsOf(kind.id);
 
     final sprite = SlipperSprite(
       fighter: Slipper(name: kind.id, kindId: kind.id),
-      width: 116,
+      width: 136,
       animate: false,
       showSize: false,
     );
 
     return GamePanel(
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
       color: equipped ? GameColors.panelLight : GameColors.panel,
-      onTap: have && !equipped ? () => game.equip(kind.id) : null,
-      child: Row(
+      onTap: have ? () => showKindSheet(context, game, kind) : null,
+      child: Stack(
         children: [
-          // Нераскрытый тапок — чёрный силуэт: форму видно, детали нет.
-          have
-              ? sprite
-              : ColorFiltered(
-                  colorFilter: const ColorFilter.mode(
-                    Color(0xFF120A1C),
-                    BlendMode.srcIn,
-                  ),
-                  child: Opacity(opacity: 0.85, child: sprite),
-                ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        have ? kind.name : '???',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          color: have ? GameColors.text : GameColors.textDim,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
+          Column(
+            children: [
+              // Нераскрытый тапок — чёрный силуэт: форму видно, детали нет.
+              have
+                  ? sprite
+                  : ColorFiltered(
+                      colorFilter: const ColorFilter.mode(Color(0xFF120A1C), BlendMode.srcIn),
+                      child: Opacity(opacity: 0.85, child: sprite),
                     ),
-                    if (count > 1) ...[
-                      const SizedBox(width: 6),
-                      GameBadge(text: '×$count', color: GameColors.panelLight),
-                    ],
-                  ],
+              const SizedBox(height: 6),
+              Text(
+                have ? kind.name : '???',
+                style: theme.textTheme.titleSmall?.copyWith(
+                  color: have ? GameColors.text : GameColors.textDim,
                 ),
-                const SizedBox(height: 4),
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 4,
-                  children: [
-                    GameBadge(
-                      text: '${kind.rarity.label} · ${kind.rarity.tier}',
-                      color: kind.rarity.color,
-                    ),
-                    if (have)
-                      for (final e in kind.bonuses.entries)
-                        GameBadge(text: e.key.format(e.value), color: GameColors.green),
-                  ],
-                ),
-                if (!have) ...[
-                  const SizedBox(height: 4),
-                  Text('Выпадает из кейсов', style: theme.textTheme.bodySmall),
-                ] else ...[
-                  const SizedBox(height: 6),
-                  _StarsRow(game: game, kind: kind),
-                ],
-              ],
-            ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 4),
+              if (have)
+                _StarsLine(stars: stars, size: 16)
+              else
+                Text('Из кейсов', style: theme.textTheme.labelSmall),
+            ],
           ),
-          const SizedBox(width: 8),
           if (equipped)
-            const Icon(Icons.check_circle, color: GameColors.gold, size: 28)
-          else if (have)
-            const Icon(Icons.chevron_right, color: GameColors.textDim)
-          else
-            const Icon(Icons.lock_rounded, color: GameColors.textDim, size: 22),
+            const Positioned(
+              right: 0,
+              top: 0,
+              child: Icon(Icons.check_circle, color: GameColors.gold, size: 24),
+            )
+          else if (!have)
+            const Positioned(
+              right: 0,
+              top: 0,
+              child: Icon(Icons.lock_rounded, color: GameColors.textDim, size: 20),
+            ),
+          if (count > 1)
+            Positioned(
+              left: 0,
+              top: 0,
+              child: GameBadge(text: '×$count', color: GameColors.blue),
+            ),
+          // Можно улучшить — золотая звезда в углу, чтобы было видно из списка.
+          if (game.canStarUp(kind.id))
+            const Positioned(
+              right: 0,
+              bottom: 0,
+              child: Icon(Icons.arrow_circle_up_rounded, color: GameColors.gold, size: 24),
+            ),
         ],
       ),
     );
   }
 }
 
-/// Звёзды вида, копии к следующей и кнопка улучшения.
-class _StarsRow extends StatelessWidget {
-  const _StarsRow({required this.game, required this.kind});
+class _StarsLine extends StatelessWidget {
+  const _StarsLine({required this.stars, required this.size});
+  final int stars;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (var i = 0; i < Stars.max; i++)
+          Icon(
+            i < stars ? Icons.star_rounded : Icons.star_outline_rounded,
+            size: size,
+            color: i < stars ? GameColors.gold : GameColors.textDim,
+          ),
+      ],
+    );
+  }
+}
+
+/// Окно тапка: что даёт, что нужно для следующей звезды, надеть и улучшить.
+Future<void> showKindSheet(BuildContext context, GameState game, SlipperKind kind) {
+  return showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: GameColors.panel,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      side: BorderSide(color: GameColors.outline, width: 3),
+    ),
+    builder: (_) => ListenableBuilder(
+      listenable: game,
+      builder: (context, _) => _KindSheet(game: game, kind: kind),
+    ),
+  );
+}
+
+class _KindSheet extends StatelessWidget {
+  const _KindSheet({required this.game, required this.kind});
 
   final GameState game;
   final SlipperKind kind;
@@ -152,80 +214,151 @@ class _StarsRow extends StatelessWidget {
     final theme = Theme.of(context);
     final stars = game.starsOf(kind.id);
     final cost = game.nextStarCost(kind.id);
-    return Row(
-      children: [
-        for (var i = 0; i < Stars.max; i++)
-          Icon(
-            i < stars ? Icons.star_rounded : Icons.star_outline_rounded,
-            size: 15,
-            color: i < stars ? GameColors.gold : GameColors.textDim,
-          ),
-        const SizedBox(width: 6),
-        if (cost == null)
-          Text('Максимум', style: theme.textTheme.labelSmall)
-        else if (game.canStarUp(kind.id))
-          GameButton(
-            color: GameColors.gold,
-            height: 28,
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            onPressed: () => _confirm(context, cost),
-            child: const Text('★ Улучшить', style: TextStyle(fontSize: 12)),
-          )
-        else
-          Flexible(
-            child: Text(
-              'копии ${game.copiesOf(kind.id)}/${cost.copies}',
-              style: theme.textTheme.labelSmall,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-      ],
-    );
-  }
+    final equipped = kind.id == game.slipper.kindId;
+    final copies = game.copiesOf(kind.id);
+    final bonusNow = (Stars.perStar * stars * 100).round();
 
-  Future<void> _confirm(BuildContext context, ({int copies, int coins}) cost) async {
-    final next = game.starsOf(kind.id) + 1;
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: StrokeText('${kind.name}: ★$next', size: 20),
-        content: Column(
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+        child: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Удар, прочность и здоровье: '
-                '+${(Stars.perStar * 100).round()}% за звезду.'),
+            SlipperSprite(
+              fighter: Slipper(name: kind.name, kindId: kind.id, stars: stars),
+              width: 220,
+              showSize: false,
+            ),
+            const SizedBox(height: 6),
+            StrokeText(kind.name, size: 24, color: kind.rarity.color),
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 6,
+              runSpacing: 4,
+              alignment: WrapAlignment.center,
+              children: [
+                GameBadge(text: '${kind.rarity.label} · ${kind.rarity.tier}', color: kind.rarity.color),
+                for (final e in kind.bonuses.entries)
+                  GameBadge(text: e.key.format(e.value), color: GameColors.green),
+              ],
+            ),
             const SizedBox(height: 10),
+            _StarsLine(stars: stars, size: 30),
+            if (stars > 0)
+              Text(
+                'Сейчас: удар, прочность и здоровье +$bonusNow%',
+                style: theme.textTheme.bodySmall,
+              ),
+            const SizedBox(height: 12),
+            GamePanel(
+              color: GameColors.panelDark,
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+              child: cost == null
+                  ? Text('Максимум звёзд', style: theme.textTheme.titleMedium)
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Для ★${stars + 1} нужно собрать:',
+                          style: theme.textTheme.titleSmall,
+                        ),
+                        const SizedBox(height: 8),
+                        _Need(
+                          icon: const Icon(Icons.layers_rounded, color: GameColors.blue, size: 22),
+                          label: 'Копии тапка',
+                          have: copies,
+                          need: cost.copies,
+                          color: GameColors.blue,
+                        ),
+                        const SizedBox(height: 8),
+                        _Need(
+                          icon: const CoinIcon(size: 22),
+                          label: 'Монеты',
+                          have: game.coins,
+                          need: cost.coins,
+                          color: GameColors.gold,
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Звезда: удар, прочность и здоровье '
+                          '+${(Stars.perStar * 100).round()}%. '
+                          'Копии выпадают из кейсов.',
+                          style: theme.textTheme.bodySmall,
+                        ),
+                      ],
+                    ),
+            ),
+            const SizedBox(height: 14),
             Row(
               children: [
-                Text('Цена: ${cost.copies} ${_copiesWord(cost.copies)} и '),
-                const CoinIcon(size: 16),
-                Text(' ${cost.coins}'),
+                Expanded(
+                  child: GameButton(
+                    color: equipped ? GameColors.panelDark : GameColors.blue,
+                    height: 50,
+                    onPressed: equipped ? null : () => game.equip(kind.id),
+                    child: Text(equipped ? 'Надет' : 'Использовать'),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: GameButton(
+                    color: game.canStarUp(kind.id) ? GameColors.gold : GameColors.panelDark,
+                    height: 50,
+                    onPressed: game.canStarUp(kind.id) ? () => game.starUp(kind.id) : null,
+                    child: const Text('Улучшить'),
+                  ),
+                ),
               ],
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Отмена'),
-          ),
-          GameButton(
-            color: GameColors.gold,
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Улучшить'),
-          ),
-        ],
       ),
     );
-    if (ok == true) game.starUp(kind.id);
   }
+}
 
-  static String _copiesWord(int n) {
-    final mod10 = n % 10;
-    final mod100 = n % 100;
-    if (mod10 == 1 && mod100 != 11) return 'копия';
-    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return 'копии';
-    return 'копий';
+/// Строка требования: иконка, название, полоса «есть/нужно».
+class _Need extends StatelessWidget {
+  const _Need({
+    required this.icon,
+    required this.label,
+    required this.have,
+    required this.need,
+    required this.color,
+  });
+
+  final Widget icon;
+  final String label;
+  final int have;
+  final int need;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final done = have >= need;
+    return Row(
+      children: [
+        icon,
+        const SizedBox(width: 8),
+        SizedBox(
+          width: 96,
+          child: Text(label, style: Theme.of(context).textTheme.bodyMedium),
+        ),
+        Expanded(
+          child: GameBar(
+            value: need == 0 ? 1 : have / need,
+            height: 18,
+            color: done ? GameColors.green : color,
+            label: '${have > need ? need : have}/$need',
+          ),
+        ),
+        const SizedBox(width: 6),
+        Icon(
+          done ? Icons.check_circle : Icons.radio_button_unchecked,
+          size: 20,
+          color: done ? GameColors.green : GameColors.textDim,
+        ),
+      ],
+    );
   }
 }
