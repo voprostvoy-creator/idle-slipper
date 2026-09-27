@@ -71,13 +71,12 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
   int _opponentSeed = 1;
   List<Opponent> opponents = const [];
 
-  /// Нитки, накопленные пока приложение было закрыто. UI показывает и сбрасывает.
-  double pendingOfflineThreads = 0;
-  Duration pendingOfflineDuration = Duration.zero;
+  /// Сундук дежурства: наполняется с этого момента.
+  DateTime chestSince = DateTime.now();
 
-  DateTime _lastSeen = DateTime.now();
-
-  double get incomePerSecond => Economy.incomePerSecond(slipper, rating);
+  /// Повторы боёв сюжета за сегодня — их не больше [storyReplaysPerDay].
+  static const storyReplaysPerDay = 10;
+  int storyReplaysUsed = 0;
 
   static Future<GameState> load() async {
     final prefs = await SharedPreferences.getInstance();
@@ -109,46 +108,20 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
       case AppLifecycleState.inactive:
       case AppLifecycleState.hidden:
       case AppLifecycleState.detached:
-        _lastSeen = DateTime.now();
         _save();
       case AppLifecycleState.resumed:
-        _collectOffline(DateTime.now().difference(_lastSeen));
+        notifyListeners();
     }
   }
 
+  /// Раз в секунду: попытки, смена дня и таймеры на экране.
   void _tick() {
-    threads += incomePerSecond;
     tickets = tickets.refill(clock());
     _rollDay();
-    _lastSeen = DateTime.now();
-    notifyListeners();
-    // Сохраняемся раз в 10 секунд, чтобы не дёргать диск каждый тик.
-    if (DateTime.now().second % 10 == 0) _save();
-  }
-
-  void _collectOffline(Duration away) {
-    if (away < const Duration(seconds: 30)) return;
-    final capped = away > Economy.maxOffline ? Economy.maxOffline : away;
-    final earned = incomePerSecond * capped.inSeconds;
-    threads += earned;
-    pendingOfflineThreads = earned;
-    pendingOfflineDuration = capped;
-    notifyListeners();
-  }
-
-  void acknowledgeOffline() {
-    pendingOfflineThreads = 0;
-    pendingOfflineDuration = Duration.zero;
     notifyListeners();
   }
 
   // --- Действия игрока -------------------------------------------------
-
-  void tap() {
-    threads += Economy.tapReward(slipper);
-    _progress(QuestKind.taps);
-    notifyListeners();
-  }
 
   int upgradeCost(Stat stat) => Economy.upgradeCost(stat, slipper.level(stat));
 
@@ -195,7 +168,7 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
     tickets = tickets.spend(clock());
     final result = BattleSim.run(slipper, opponent.slipper, seed: opponent.battleSeed);
     final won = result.playerWon;
-    threads += Economy.battleReward(won: won, opponentPower: opponent.slipper.power);
+    threads += Economy.arenaReward(slipper, won: won, opponentPower: opponent.slipper.power);
     rating = max(100, rating + Rating.delta(mine: rating, theirs: opponent.rating, won: won));
     if (won) {
       wins++;
@@ -218,19 +191,31 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
   /// Доступны пройденные бои и первый непройденный.
   bool stageOpen(Chapter chapter, int index) => index <= cleared(chapter);
 
+  int get storyReplaysLeft => max(0, storyReplaysPerDay - storyReplaysUsed);
+
   /// Бой главы. Сид каждый раз новый — проигранный бой можно переиграть.
-  /// Награда за первую победу полная, за повторные — примерно треть.
-  StoryOutcome fightStage(Chapter chapter, int index) {
+  /// Первый непройденный бой бесплатный: нитки, монеты и, у босса, тапок.
+  /// Повтор пройденного тратит дневной лимит и даёт треть ниток.
+  /// Без повторов в запасе — null.
+  StoryOutcome? fightStage(Chapter chapter, int index) {
     final stage = chapter.stages[index];
+    final first = index == cleared(chapter);
+    _rollDay();
+    if (!first) {
+      if (storyReplaysLeft == 0) return null;
+      storyReplaysUsed++;
+    }
     final result = BattleSim.run(slipper, stage.enemy, seed: Random().nextInt(1 << 31));
+    var threadsWon = 0;
     var coinsWon = 0;
     SlipperKind? kindWon;
     if (result.playerWon) {
       _progress(QuestKind.storyWins);
-      final first = index == cleared(chapter);
-      coinsWon = first ? stage.coins : stage.replayCoins;
-      coins += coinsWon;
+      threadsWon = Economy.withBonus(first ? stage.threads : stage.replayThreads, slipper);
+      threads += threadsWon;
       if (first) {
+        coinsWon = stage.coins;
+        coins += coinsWon;
         storyCleared[chapter.id] = index + 1;
         final rewardId = stage.rewardKindId;
         if (rewardId != null) {
@@ -238,10 +223,10 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
           inventory[rewardId] = count(rewardId) + 1;
         }
       }
-      _save();
-      notifyListeners();
     }
-    return (result: result, coins: coinsWon, kind: kindWon);
+    _save();
+    notifyListeners();
+    return (result: result, threads: threadsWon, coins: coinsWon, kind: kindWon);
   }
 
   void _refreshOpponents() {
@@ -275,7 +260,8 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
         'questProgress': questProgress,
         'questClaimed': questClaimed.toList(),
         'questBonus': questBonusClaimed,
-        'lastSeen': _lastSeen.toIso8601String(),
+        'chestSince': chestSince.toIso8601String(),
+        'storyReplays': storyReplaysUsed,
       }),
     );
   }
@@ -334,10 +320,11 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
           for (final e in story.entries) e.key as String: (e.value as num).toInt(),
         };
       }
-      final seen = DateTime.tryParse(json['lastSeen'] as String? ?? '');
-      if (seen != null) {
-        _collectOffline(DateTime.now().difference(seen));
-      }
+      // Старые сохранения без сундука: считаем с последнего визита.
+      final chestAt = DateTime.tryParse(json['chestSince'] as String? ?? '') ??
+          DateTime.tryParse(json['lastSeen'] as String? ?? '');
+      if (chestAt != null) chestSince = chestAt;
+      storyReplaysUsed = (json['storyReplays'] as num?)?.toInt() ?? 0;
     } catch (e) {
       debugPrint('Save corrupted, starting fresh: $e');
     }
@@ -393,6 +380,7 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
     questProgress = {};
     questClaimed = {};
     questBonusClaimed = false;
+    storyReplaysUsed = 0;
   }
 
   void _progress(QuestKind kind) {
@@ -430,6 +418,33 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
 
   /// Есть что забрать — для красной точки на вкладке.
   bool get questsReady => quests.any(canClaimQuest) || canClaimQuestBonus;
+
+  // --- Сундук дежурства ---------------------------------------------------
+
+  int get chestCapacity => Economy.chestCapacity(slipper);
+
+  /// Заполненность 0..1.
+  double get chestFill =>
+      (clock().difference(chestSince).inSeconds / Economy.chestFillTime.inSeconds)
+          .clamp(0.0, 1.0);
+
+  int get chestThreads => (chestCapacity * chestFill).floor();
+
+  bool get chestFull => chestFill >= 1;
+
+  /// Через сколько сундук заполнится; null — уже полный.
+  Duration? get chestFullIn =>
+      chestFull ? null : chestSince.add(Economy.chestFillTime).difference(clock());
+
+  void collectChest() {
+    final amount = chestThreads;
+    if (amount <= 0) return;
+    threads += amount;
+    chestSince = clock();
+    _progress(QuestKind.chest);
+    _save();
+    notifyListeners();
+  }
 
   // --- Звёзды -------------------------------------------------------------
 
@@ -477,6 +492,7 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
   /// Для отладки: как будто наступил новый день и попытки восстановились.
   void cheatNewDay() {
     tickets = ArenaTickets.full(clock());
+    chestSince = clock().subtract(Economy.chestFillTime);
     dailyCaseDay = '';
     questDay = '';
     _rollDay();
@@ -505,6 +521,7 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
     storyCleared = {};
     stars = {};
     tickets = ArenaTickets.full(clock());
+    chestSince = clock();
     dailyCaseDay = '';
     questDay = '';
     _rollDay();
@@ -514,4 +531,4 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
 }
 
 /// Итог боя главы: запись для экрана боя и что выдано.
-typedef StoryOutcome = ({BattleResult result, int coins, SlipperKind? kind});
+typedef StoryOutcome = ({BattleResult result, int threads, int coins, SlipperKind? kind});

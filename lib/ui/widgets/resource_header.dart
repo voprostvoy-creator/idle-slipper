@@ -21,13 +21,7 @@ class ResourceHeader extends StatelessWidget {
           children: [
             const ThreadIcon(size: 30),
             const SizedBox(width: 6),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                StrokeText(fmtNum(game.threads.floor()), size: 20, color: GameColors.thread),
-                Text('+${fmtNum(game.incomePerSecond)} / с', style: theme.textTheme.bodySmall),
-              ],
-            ),
+            StrokeText(fmtNum(game.threads.floor()), size: 20, color: GameColors.thread),
             const SizedBox(width: 12),
             const CoinIcon(size: 30),
             const SizedBox(width: 6),

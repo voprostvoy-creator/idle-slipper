@@ -3,7 +3,6 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 
 import 'game/game_state.dart';
-import 'ui/format.dart';
 import 'ui/screens/battle_hub_screen.dart';
 import 'ui/screens/collection_screen.dart';
 import 'ui/screens/home_screen.dart';
@@ -58,65 +57,6 @@ class _RootShellState extends State<RootShell> {
   });
 
   @override
-  void initState() {
-    super.initState();
-    widget.game.addListener(_maybeShowOffline);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _maybeShowOffline());
-  }
-
-  @override
-  void dispose() {
-    widget.game.removeListener(_maybeShowOffline);
-    super.dispose();
-  }
-
-  bool _offlineDialogOpen = false;
-
-  /// Показывает «пока тебя не было…» один раз на каждое возвращение.
-  void _maybeShowOffline() {
-    final game = widget.game;
-    if (game.pendingOfflineThreads <= 0 || _offlineDialogOpen || !mounted) {
-      return;
-    }
-    _offlineDialogOpen = true;
-    final threads = game.pendingOfflineThreads;
-    final away = game.pendingOfflineDuration;
-    game.acknowledgeOffline();
-    showDialog<void>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const StrokeText('С возвращением!', size: 22),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('Пока тебя не было (${fmtDuration(away)}), тапок заработал:'),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const ThreadIcon(size: 28),
-                const SizedBox(width: 8),
-                StrokeText(
-                  fmtNum(threads.floor()),
-                  size: 28,
-                  color: GameColors.thread,
-                ),
-              ],
-            ),
-          ],
-        ),
-        actions: [
-          GameButton(
-            color: GameColors.green,
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Забрать'),
-          ),
-        ],
-      ),
-    ).whenComplete(() => _offlineDialogOpen = false);
-  }
-
-  @override
   Widget build(BuildContext context) {
     final game = widget.game;
     final pages = [
@@ -157,9 +97,9 @@ class _RootShellState extends State<RootShell> {
         builder: (context, _) => _GameNavBar(
           tab: _tab,
           onChanged: _select,
-          // Точка — есть что забрать: награда за задание или ежедневный кейс.
+          // Точка — есть что забрать: задание, полный сундук, ежедневный кейс.
           dots: {
-            if (game.questsReady) _Tab.home,
+            if (game.questsReady || game.chestFull) _Tab.home,
             if (game.dailyCaseAvailable) _Tab.shop,
           },
         ),

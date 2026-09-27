@@ -4,6 +4,9 @@ import 'slipper.dart';
 import 'slipper_kind.dart';
 
 /// Все числа экономики в одном месте, чтобы балансировать не бегая по коду.
+///
+/// Нитки приходят только из боёв (сюжет и арена) и сундука дежурства —
+/// пассивного дохода нет, прокачка идёт за победы.
 class Economy {
   Economy._();
 
@@ -18,22 +21,20 @@ class Economy {
     return (base * pow(1.18, currentLevel - 1)).ceil();
   }
 
-  /// Пассивный доход в секунду: растёт от общего уровня тапка и рейтинга.
-  static double incomePerSecond(Slipper s, int rating) {
-    final fromLevels = 0.5 + s.totalLevel * 0.35;
-    final fromRating = max(0, rating - 1000) * 0.01;
-    return (fromLevels + fromRating) * (1 + s.kind.bonus(Bonus.income));
+  /// Бонус вида «+% ниток за бои».
+  static int withBonus(num threads, Slipper s) =>
+      (threads * (1 + s.kind.bonus(Bonus.income))).round();
+
+  /// Нитки за бой на арене: растут с силой соперника.
+  /// Проигрыш тоже что-то даёт, чтобы не было обидно.
+  static int arenaReward(Slipper s, {required bool won, required int opponentPower}) {
+    final base = 15 + opponentPower * 0.15;
+    return withBonus(won ? base : base * 0.25, s);
   }
 
-  /// Награда за бой. Проигрыш тоже что-то даёт, чтобы не было обидно.
-  static int battleReward({required bool won, required int opponentPower}) {
-    final base = 20 + opponentPower * 0.6;
-    return (won ? base : base * 0.25).round();
-  }
+  /// Сундук дежурства наполняется за это время.
+  static const Duration chestFillTime = Duration(hours: 8);
 
-  /// Максимум офлайн-накопления — 8 часов.
-  static const Duration maxOffline = Duration(hours: 8);
-
-  /// Тап по тапку даёт мгновенные монеты — привычная idle-механика.
-  static int tapReward(Slipper s) => 1 + s.totalLevel ~/ 4;
+  /// Сколько ниток в полном сундуке: растёт с силой тапка.
+  static int chestCapacity(Slipper s) => withBonus(40 + s.power * 0.5, s);
 }

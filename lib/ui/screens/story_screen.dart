@@ -31,7 +31,11 @@ class StoryScreen extends StatelessWidget {
           children: [
             BackToModes(title: 'Сюжет', onBack: onBack),
             const SizedBox(height: 12),
-            _ChapterHeader(chapter: chapter, cleared: cleared),
+            _ChapterHeader(
+              chapter: chapter,
+              cleared: cleared,
+              replaysLeft: game.storyReplaysLeft,
+            ),
             const SizedBox(height: 14),
             for (final (i, stage) in chapter.stages.indexed) ...[
               _StageCard(
@@ -66,12 +70,21 @@ class StoryScreen extends StatelessWidget {
     // Как и на арене: бой считается сразу, экран лишь проигрывает запись.
     final me = game.slipper;
     final outcome = game.fightStage(chapter, index);
+    if (outcome == null) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(const SnackBar(
+          content: Text('Повторы на сегодня кончились — завтра будут новые'),
+        ));
+      return;
+    }
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => BattleScreen(
           player: me,
           opponent: chapter.stages[index].enemy,
           result: outcome.result,
+          threadsDelta: outcome.threads,
           coinsDelta: outcome.coins,
           rewardKind: outcome.kind,
           exitLabel: 'К главе',
@@ -82,10 +95,15 @@ class StoryScreen extends StatelessWidget {
 }
 
 class _ChapterHeader extends StatelessWidget {
-  const _ChapterHeader({required this.chapter, required this.cleared});
+  const _ChapterHeader({
+    required this.chapter,
+    required this.cleared,
+    required this.replaysLeft,
+  });
 
   final Chapter chapter;
   final int cleared;
+  final int replaysLeft;
 
   @override
   Widget build(BuildContext context) {
@@ -109,6 +127,13 @@ class _ChapterHeader extends StatelessWidget {
             color: GameColors.orange,
             label: 'Пройдено $cleared из $total',
           ),
+          if (cleared > 0) ...[
+            const SizedBox(height: 6),
+            Text(
+              'Повторов сегодня: $replaysLeft из ${GameState.storyReplaysPerDay}',
+              style: theme.textTheme.bodySmall,
+            ),
+          ],
         ],
       ),
     );
@@ -219,13 +244,18 @@ class _StageCard extends StatelessWidget {
   }
 }
 
-/// Награда этапа: полная за первую победу, треть — за повтор.
+/// Награда этапа: нитки и монеты за первую победу, треть ниток — за повтор.
 class _Reward extends StatelessWidget {
   const _Reward({required this.stage, required this.cleared, required this.kind});
 
   final Stage stage;
   final bool cleared;
   final SlipperKind? kind;
+
+  static Widget _item(Widget icon, String text, TextStyle? style) => Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [icon, const SizedBox(width: 3), Text(text, style: style)],
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -236,17 +266,12 @@ class _Reward extends StatelessWidget {
       runSpacing: 2,
       crossAxisAlignment: WrapCrossAlignment.center,
       children: [
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const CoinIcon(size: 16),
-            const SizedBox(width: 3),
-            Text(
-              cleared ? 'повтор +${stage.replayCoins}' : '+${stage.coins}',
-              style: style,
-            ),
-          ],
+        _item(
+          const ThreadIcon(size: 16),
+          cleared ? 'повтор +${stage.replayThreads}' : '+${stage.threads}',
+          style,
         ),
+        if (!cleared) _item(const CoinIcon(size: 16), '+${stage.coins}', style),
         if (kind != null && !cleared)
           Text(
             '+ тапок «${kind!.name}»',

@@ -29,7 +29,7 @@ enum Bonus {
   hp('Здоровье'),
   crit('Шанс крита'),
   dodge('Шанс уворота'),
-  income('Доход');
+  income('ниток за бои');
 
   const Bonus(this.label);
   final String label;

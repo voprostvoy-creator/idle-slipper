@@ -54,7 +54,7 @@ class ArenaTickets {
 }
 
 /// Что считают задания.
-enum QuestKind { arenaWins, arenaFights, storyWins, openCases, upgrades, taps }
+enum QuestKind { arenaWins, arenaFights, storyWins, openCases, upgrades, chest }
 
 class QuestSpec {
   const QuestSpec({
@@ -85,7 +85,7 @@ class DailyQuests {
     QuestSpec(kind: QuestKind.storyWins, title: 'Выиграй 2 боя в сюжете', target: 2, coins: 30),
     QuestSpec(kind: QuestKind.openCases, title: 'Открой кейс', target: 1, coins: 25),
     QuestSpec(kind: QuestKind.upgrades, title: 'Прокачай тапок 10 раз', target: 10, coins: 30),
-    QuestSpec(kind: QuestKind.taps, title: 'Тапни по тапку 100 раз', target: 100, coins: 20),
+    QuestSpec(kind: QuestKind.chest, title: 'Забери сундук дежурства', target: 1, coins: 20),
   ];
 
   /// Задания дня. Набор зависит только от даты — одинаков весь день

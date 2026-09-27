@@ -35,8 +35,8 @@ void main() {
     }
   });
 
-  test('повтор даёт треть награды', () {
-    expect(chapter.stages.first.replayCoins, (chapter.stages.first.coins / 3).round());
+  test('повтор даёт треть ниток', () {
+    expect(chapter.stages.first.replayThreads, (chapter.stages.first.threads / 3).round());
   });
 
   test('первый бой проходится без прокачки, босс — нет', () {

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
-import '../../game/economy.dart';
 import '../../game/game_state.dart';
 import '../../game/slipper.dart';
 import '../format.dart';
+import '../duty_chest.dart';
 import '../quests_sheet.dart';
 import '../slipper_sprite.dart';
 import '../theme.dart';
@@ -28,30 +28,14 @@ class _HomeScreenState extends State<HomeScreen>
     duration: const Duration(milliseconds: 160),
   );
 
-  // Всплывающие «+N» при тапе.
-  final List<_FloatingCoin> _floats = [];
-
   @override
   void dispose() {
     _tapAnim.dispose();
     super.dispose();
   }
 
-  void _onTap(TapDownDetails d) {
-    widget.game.tap();
-    _tapAnim.forward(from: 0);
-    final id = DateTime.now().microsecondsSinceEpoch;
-    setState(() {
-      _floats.add(_FloatingCoin(
-        id: id,
-        at: d.localPosition,
-        amount: Economy.tapReward(widget.game.slipper),
-      ));
-    });
-    Future.delayed(const Duration(milliseconds: 700), () {
-      if (mounted) setState(() => _floats.removeWhere((f) => f.id == id));
-    });
-  }
+  /// Тапок пружинит от тапа — просто приятно, наград за это нет.
+  void _onTap(TapDownDetails d) => _tapAnim.forward(from: 0);
 
   @override
   Widget build(BuildContext context) {
@@ -94,12 +78,6 @@ class _HomeScreenState extends State<HomeScreen>
                               child: SlipperSprite(fighter: game.slipper, width: spriteW),
                             ),
                           ),
-                          for (final f in _floats)
-                            Positioned(
-                              left: f.at.dx - 20,
-                              top: f.at.dy - 30,
-                              child: _FloatingLabel(text: '+${f.amount}'),
-                            ),
                         ],
                       ),
                     ),
@@ -118,15 +96,16 @@ class _HomeScreenState extends State<HomeScreen>
             ),
             SliverToBoxAdapter(
               child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+                child: DutyChestTile(game: game),
+              ),
+            ),
+            SliverToBoxAdapter(
+              child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 18, 20, 10),
                 child: Row(
                   children: [
                     const StrokeText('Прокачка', size: 24),
-                    const Spacer(),
-                    Text(
-                      'Тапни по тапку — +${Economy.tapReward(game.slipper)}',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
                   ],
                 ),
               ),
@@ -142,32 +121,6 @@ class _HomeScreenState extends State<HomeScreen>
           ],
         );
       },
-    );
-  }
-}
-
-class _FloatingCoin {
-  _FloatingCoin({required this.id, required this.at, required this.amount});
-  final int id;
-  final Offset at;
-  final int amount;
-}
-
-class _FloatingLabel extends StatelessWidget {
-  const _FloatingLabel({required this.text});
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0, end: 1),
-      duration: const Duration(milliseconds: 700),
-      curve: Curves.easeOut,
-      builder: (_, t, child) => Opacity(
-        opacity: 1 - t,
-        child: Transform.translate(offset: Offset(0, -40 * t), child: child),
-      ),
-      child: StrokeText(text, size: 24, color: GameColors.thread),
     );
   }
 }
