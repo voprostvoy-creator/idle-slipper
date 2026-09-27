@@ -48,6 +48,10 @@ class Enemy implements Combatant {
     this.boss = false,
   }) : name = name ?? kind.name;
 
+  /// Скиллы по рангу, как звёзды у тапков: обычный — только активный,
+  /// элита — ещё и пассивный, босс — все три.
+  int get _skillStars => boss ? 5 : (elite ? 3 : 1);
+
   final EnemyKind kind;
   final Map<Stat, int> levels;
 
@@ -96,7 +100,7 @@ class Enemy implements Combatant {
           : null;
 
   @override
-  SkillSet get skills => kind.skills;
+  SkillSet get skills => kind.skills.unlockedAt(_skillStars);
 
   int get power => combatPower(this);
 }
@@ -111,8 +115,8 @@ class EnemyCatalog {
     name: 'Муха',
     attackStyle: AttackStyle.blink,
     size: 0.55,
-    hp: 0.7,
-    attack: 0.9,
+    hp: 0.6,
+    attack: 0.75,
     defense: 0.6,
     speed: 1.25,
     skills: SkillSet(

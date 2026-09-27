@@ -479,6 +479,15 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
     notifyListeners();
   }
 
+  /// Для отладки: по одному экземпляру каждого тапка из каталога.
+  void cheatOneOfEach() {
+    for (final k in SlipperCatalog.all) {
+      inventory[k.id] = count(k.id) + 1;
+    }
+    _save();
+    notifyListeners();
+  }
+
   /// Для отладки: монеты.
   void cheatCoins(int amount) {
     coins += amount;

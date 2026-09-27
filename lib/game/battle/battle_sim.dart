@@ -260,7 +260,7 @@ class BattleSim {
 
     SideSnapshot snap(_State st) => SideSnapshot(
           ult: st.ult,
-          skillReady: st.skills.isEmpty
+          skillReady: !st.skills.hasActive
               ? 0
               : ((st.skills.activeCooldown - st.cooldown) / st.skills.activeCooldown)
                   .clamp(0.0, 1.0),
@@ -372,11 +372,11 @@ class BattleSim {
       // --- Выбор действия: ульта → скилл по откату → обычный удар ---
       ActiveSkill? skill;
       var isUltimate = false;
-      if (!me.skills.isEmpty && me.ult >= 1) {
+      if (me.skills.hasUltimate && me.ult >= 1) {
         skill = me.skills.ultimate;
         isUltimate = true;
         me.ult = 0;
-      } else if (!me.skills.isEmpty && me.cooldown <= 0) {
+      } else if (me.skills.hasActive && me.cooldown <= 0) {
         skill = me.skills.active;
         me.cooldown = me.skills.activeCooldown;
       }

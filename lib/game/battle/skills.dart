@@ -177,5 +177,22 @@ class SkillSet {
   /// Срабатывает, когда шкала ульты заполнится (см. `BattleSim`).
   final ActiveSkill ultimate;
 
-  bool get isEmpty => active.name.isEmpty;
+  bool get hasActive => active.name.isNotEmpty;
+  bool get hasPassive => passive.name.isNotEmpty;
+  bool get hasUltimate => ultimate.name.isNotEmpty;
+  bool get isEmpty => !hasActive && !hasPassive && !hasUltimate;
+
+  /// На какой звезде открывается скилл: активный, пассивный, ульта.
+  /// Чётные звёзды дают только прибавку к характеристикам.
+  static const activeStar = 1;
+  static const passiveStar = 3;
+  static const ultimateStar = 5;
+
+  /// Набор с учётом звёзд тапка: закрытые скиллы — пустые заглушки.
+  SkillSet unlockedAt(int stars) => SkillSet(
+        active: stars >= activeStar ? active : none.active,
+        activeCooldown: activeCooldown,
+        passive: stars >= passiveStar ? passive : none.passive,
+        ultimate: stars >= ultimateStar ? ultimate : none.ultimate,
+      );
 }

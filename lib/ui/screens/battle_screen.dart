@@ -407,6 +407,7 @@ class _BattleScreenState extends State<BattleScreen>
                       max: widget.result.playerMaxHp,
                       color: GameColors.green,
                       snapshot: _snapPlayer,
+                      ultUnlocked: widget.player.skills.hasUltimate,
                       onDialog: _pause,
                       onDialogClosed: _resume,
                     ),
@@ -423,6 +424,7 @@ class _BattleScreenState extends State<BattleScreen>
                       color: GameColors.red,
                       alignEnd: true,
                       snapshot: _snapOpponent,
+                      ultUnlocked: widget.opponent.skills.hasUltimate,
                       onDialog: _pause,
                       onDialogClosed: _resume,
                     ),
@@ -721,7 +723,17 @@ class _SkillSlot extends StatelessWidget {
     this.cooldown = 0,
     this.skill,
     this.passive,
+    this.locked = false,
   });
+
+  /// Скилл ещё не открыт звёздами — замок вместо номера.
+  final bool locked;
+
+  int get _unlockStar => switch (index) {
+        1 => SkillSet.activeStar,
+        2 => SkillSet.passiveStar,
+        _ => SkillSet.ultimateStar,
+      };
 
   /// Порядковый номер: 1 — активный, 2 — пассивный, 3 — ульта.
   final int index;
@@ -741,8 +753,10 @@ class _SkillSlot extends StatelessWidget {
 
   static const _size = 38.0;
 
-  String get _name => skill?.name ?? passive!.name;
-  String get _description => skill?.description ?? passive!.description;
+  String get _name => locked ? 'Закрыт' : (skill?.name ?? passive!.name);
+  String get _description => locked
+      ? 'Откроется, когда у тапка будет ★$_unlockStar.'
+      : (skill?.description ?? passive!.description);
 
   String get _kindLabel => switch (index) {
         1 => 'Скилл',
@@ -761,6 +775,21 @@ class _SkillSlot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (locked) {
+      return GestureDetector(
+        onTap: () => _show(context),
+        child: Container(
+          width: _size,
+          height: _size,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(7),
+            border: Border.all(color: GameColors.outline, width: 2.5),
+            color: GameColors.panelDark,
+          ),
+          child: const Icon(Icons.lock_rounded, size: 18, color: GameColors.textDim),
+        ),
+      );
+    }
     final done = ready >= 1;
     return GestureDetector(
       onTap: () => _show(context),
@@ -838,7 +867,7 @@ class _SkillSlot extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(_description, style: theme.textTheme.bodyMedium),
-            if (_recharge != null) ...[
+            if (_recharge != null && !locked) ...[
               const SizedBox(height: 10),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1040,7 +1069,12 @@ class _HpBar extends StatelessWidget {
     required this.onDialog,
     required this.onDialogClosed,
     this.alignEnd = false,
+    this.ultUnlocked = true,
   });
+
+  /// Ульта открыта — иначе её шкалы нет (место остаётся, чтобы вёрстка
+  /// у бойцов совпадала).
+  final bool ultUnlocked;
 
   final String name;
   final double hp;
@@ -1073,12 +1107,15 @@ class _HpBar extends StatelessWidget {
         ),
         const SizedBox(height: 3),
         // Тонкая шкала ульты под здоровьем: залилась — сработает.
-        GameBar(
-          value: snapshot.ult,
-          color: snapshot.ult >= 1 ? GameColors.gold : GameColors.blue,
-          height: 8,
-          alignEnd: alignEnd,
-        ),
+        if (ultUnlocked)
+          GameBar(
+            value: snapshot.ult,
+            color: snapshot.ult >= 1 ? GameColors.gold : GameColors.blue,
+            height: 8,
+            alignEnd: alignEnd,
+          )
+        else
+          const SizedBox(height: 8),
         const SizedBox(height: 5),
         // Что висит на бойце. Высота фиксирована, чтобы при появлении
         // и снятии эффектов вёрстка не прыгала.
@@ -1120,13 +1157,13 @@ class _SkillRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (skills.isEmpty) return const SizedBox.shrink();
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         _SkillSlot(
           index: 1,
           skill: skills.active,
+          locked: !skills.hasActive,
           ready: snapshot.skillReady,
           color: GameColors.blue,
           cooldown: skills.activeCooldown,
@@ -1137,6 +1174,7 @@ class _SkillRow extends StatelessWidget {
         _SkillSlot(
           index: 2,
           passive: skills.passive,
+          locked: !skills.hasPassive,
           ready: 1,
           color: GameColors.green,
           onDialog: onDialog,
@@ -1146,6 +1184,7 @@ class _SkillRow extends StatelessWidget {
         _SkillSlot(
           index: 3,
           skill: skills.ultimate,
+          locked: !skills.hasUltimate,
           ready: snapshot.ult,
           color: GameColors.gold,
           onDialog: onDialog,

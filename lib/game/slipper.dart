@@ -95,7 +95,8 @@ class Slipper implements Combatant {
   AttackStyle get attackStyle => kind.attack;
 
   @override
-  SkillSet get skills => SkillCatalog.forKind(kindId);
+  /// Скиллы открываются звёздами: ★1 — активный, ★3 — пассивный, ★5 — ульта.
+  SkillSet get skills => SkillCatalog.forKind(kindId).unlockedAt(stars);
 
   /// Цвет ауры — по стату, который прокачан сильнее всех.
   static const _auraColors = {

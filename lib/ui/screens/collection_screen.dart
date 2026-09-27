@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../game/battle/skill_catalog.dart';
+import '../../game/battle/skills.dart';
 import '../../game/game_state.dart';
 import '../../game/slipper.dart';
 import '../../game/slipper_kind.dart';
@@ -290,6 +291,8 @@ class _KindSheet extends StatelessWidget {
                 Expanded(
                   child: _SkillTile(
                     index: 1,
+                    unlockStar: SkillSet.activeStar,
+                    stars: stars,
                     name: skills.active.name,
                     description: skills.active.description,
                     note: 'Перезарядка: ${fmtTurns(skills.activeCooldown)}',
@@ -300,6 +303,8 @@ class _KindSheet extends StatelessWidget {
                 Expanded(
                   child: _SkillTile(
                     index: 2,
+                    unlockStar: SkillSet.passiveStar,
+                    stars: stars,
                     name: skills.passive.name,
                     description: skills.passive.description,
                     color: GameColors.green,
@@ -309,6 +314,8 @@ class _KindSheet extends StatelessWidget {
                 Expanded(
                   child: _SkillTile(
                     index: 3,
+                    unlockStar: SkillSet.ultimateStar,
+                    stars: stars,
                     name: skills.ultimate.name,
                     description: skills.ultimate.description,
                     note: 'Заряжается от урона: нанесённого и полученного',
@@ -352,8 +359,9 @@ class _KindSheet extends StatelessWidget {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'Звезда: удар, прочность и здоровье '
-                          '+${(Stars.perStar * 100).round()}%. '
+                          '★${stars + 1}: удар, прочность и здоровье '
+                          '+${(Stars.perStar * 100).round()}%'
+                          '${_unlocks(skills, stars + 1)}. '
                           'Копии выпадают из кейсов.',
                           style: theme.textTheme.bodySmall,
                         ),
@@ -401,11 +409,19 @@ class _SkillTile extends StatelessWidget {
     required this.name,
     required this.description,
     required this.color,
+    required this.unlockStar,
+    required this.stars,
     this.note,
   });
 
   /// 1 — активный, 2 — пассивный, 3 — ульта.
   final int index;
+
+  /// На какой звезде открывается и сколько звёзд у тапка сейчас.
+  final int unlockStar;
+  final int stars;
+
+  bool get _locked => stars < unlockStar;
   final String name;
   final String description;
   final Color color;
@@ -431,18 +447,20 @@ class _SkillTile extends StatelessWidget {
             height: 32,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: color,
+              color: _locked ? GameColors.panelDark : color,
               borderRadius: BorderRadius.circular(7),
               border: Border.all(color: GameColors.outline, width: 2.5),
             ),
-            child: Text(
-              '$index',
-              style: const TextStyle(
-                color: GameColors.outline,
-                fontWeight: FontWeight.w900,
-                fontSize: 15,
-              ),
-            ),
+            child: _locked
+                ? const Icon(Icons.lock_rounded, size: 16, color: GameColors.textDim)
+                : Text(
+                    '$index',
+                    style: const TextStyle(
+                      color: GameColors.outline,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 15,
+                    ),
+                  ),
           ),
           const SizedBox(height: 5),
           Text(
@@ -450,8 +468,15 @@ class _SkillTile extends StatelessWidget {
             textAlign: TextAlign.center,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.labelSmall?.copyWith(color: GameColors.text),
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: _locked ? GameColors.textDim : GameColors.text,
+            ),
           ),
+          if (_locked)
+            Text(
+              '★$unlockStar',
+              style: theme.textTheme.labelSmall?.copyWith(color: GameColors.gold),
+            ),
         ],
       ),
     );
@@ -474,6 +499,13 @@ class _SkillTile extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (_locked) ...[
+              Text(
+                'Откроется на ★$unlockStar',
+                style: theme.textTheme.titleSmall?.copyWith(color: GameColors.gold),
+              ),
+              const SizedBox(height: 6),
+            ],
             Text(description),
             if (note != null) ...[
               const SizedBox(height: 8),
@@ -492,6 +524,14 @@ class _SkillTile extends StatelessWidget {
     );
   }
 }
+
+/// Какой скилл откроет звезда [star] — хвост фразы или пустая строка.
+String _unlocks(SkillSet skills, int star) => switch (star) {
+      SkillSet.activeStar => ' и откроет скилл «${skills.active.name}»',
+      SkillSet.passiveStar => ' и откроет пассивку «${skills.passive.name}»',
+      SkillSet.ultimateStar => ' и откроет ульту «${skills.ultimate.name}»',
+      _ => '',
+    };
 
 /// Строка требования: иконка, название, полоса «есть/нужно».
 class _Need extends StatelessWidget {

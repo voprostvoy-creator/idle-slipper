@@ -169,6 +169,13 @@ class RatingScreen extends StatelessWidget {
                 ),
               ],
             ),
+            const SizedBox(height: 10),
+            GameButton(
+              color: GameColors.green,
+              height: 38,
+              onPressed: game.cheatOneOfEach,
+              child: const Text('+1 каждого тапка'),
+            ),
             const SizedBox(height: 16),
             Center(
               child: TextButton.icon(

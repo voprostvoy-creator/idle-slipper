@@ -41,8 +41,14 @@ class _Dummy implements Combatant {
 
 void main() {
   Slipper make(String name,
-          {int atk = 1, int def = 1, int hp = 1, int spd = 1, String kind = 'basic'}) =>
-      Slipper(name: name, kindId: kind, levels: {
+          {int atk = 1,
+          int def = 1,
+          int hp = 1,
+          int spd = 1,
+          String kind = 'basic',
+          // Все скиллы открыты — тесты проверяют их механику.
+          int stars = 5}) =>
+      Slipper(name: name, kindId: kind, stars: stars, levels: {
         Stat.attack: atk,
         Stat.defense: def,
         Stat.health: hp,
@@ -108,7 +114,8 @@ void main() {
   });
 
   test('dark form: ultimate transforms for 5 turns, counting down', () {
-    final yy = Slipper(name: 'yy', kindId: 'yin_yang', levels: {for (final s in Stat.values) s: 15});
+    final yy = Slipper(
+        name: 'yy', kindId: 'yin_yang', stars: 5, levels: {for (final s in Stat.values) s: 15});
     final foe = Slipper(name: 'o', kindId: 'carbon_sport', levels: {for (final s in Stat.values) s: 15});
     for (var seed = 0; seed < 50; seed++) {
       final r = BattleSim.run(yy, foe, seed: seed);
@@ -123,6 +130,24 @@ void main() {
       }
     }
     fail('тёмная форма не продержалась 3 хода ни в одном бою');
+  });
+
+  test('skills unlock with stars: ★1 active, ★3 passive, ★5 ultimate', () {
+    SkillSet at(int stars) => make('a', stars: stars).skills;
+    expect(at(0).isEmpty, isTrue);
+    expect([at(1).hasActive, at(1).hasPassive, at(1).hasUltimate], [true, false, false]);
+    expect([at(2).hasActive, at(2).hasPassive, at(2).hasUltimate], [true, false, false]);
+    expect([at(3).hasActive, at(3).hasPassive, at(3).hasUltimate], [true, true, false]);
+    expect([at(4).hasActive, at(4).hasPassive, at(4).hasUltimate], [true, true, false]);
+    expect([at(5).hasActive, at(5).hasPassive, at(5).hasUltimate], [true, true, true]);
+  });
+
+  test('locked skills never fire in battle', () {
+    final a = make('A', atk: 10, def: 10, hp: 10, spd: 10, stars: 0);
+    final b = make('B', atk: 10, def: 10, hp: 10, spd: 10, stars: 0);
+    for (var seed = 0; seed < 20; seed++) {
+      expect(BattleSim.run(a, b, seed: seed).events.whereType<SkillEvent>(), isEmpty);
+    }
   });
 
   group('skills', () {
