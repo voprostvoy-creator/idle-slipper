@@ -267,7 +267,7 @@ class _KindSheet extends StatelessWidget {
               alignment: WrapAlignment.center,
               children: [
                 GameBadge(
-                  text: '${kind.rarity.label} · ${kind.rarity.tier}',
+                  text: kind.rarity.label,
                   color: kind.rarity.color,
                 ),
                 for (final e in kind.bonuses.entries)

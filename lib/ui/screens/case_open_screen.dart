@@ -167,7 +167,7 @@ class _CaseOpenScreenState extends State<CaseOpenScreen>
             runSpacing: 4,
             alignment: WrapAlignment.center,
             children: [
-              GameBadge(text: '${kind.rarity.label} · ${kind.rarity.tier}', color: kind.rarity.color),
+              GameBadge(text: kind.rarity.label, color: kind.rarity.color),
               for (final e in kind.bonuses.entries)
                 GameBadge(text: e.key.format(e.value), color: GameColors.green),
               if (count > 1 && !_sold)
