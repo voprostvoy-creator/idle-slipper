@@ -131,10 +131,10 @@ class SlipperCatalog {
       asset: 'assets/slippers/yin_yang.webp',
       attack: AttackStyle.taichi,
       bonuses: {
-        Bonus.damage: 0.22,
+        Bonus.damage: 0.15,
         Bonus.dodge: 0.08,
         Bonus.crit: 0.12,
-        Bonus.hp: 0.2,
+        Bonus.hp: 0.15,
       },
     ),
   ];

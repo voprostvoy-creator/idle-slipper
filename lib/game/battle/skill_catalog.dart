@@ -43,20 +43,21 @@ class SkillCatalog {
       activeCooldown: 3,
       passive: PassiveSkill(
         name: 'Гармония',
-        description:
-            '+2% здоровья каждый ход, +25% урона ниже половины HP, +5% к шансу уворота.',
+        description: '+2% здоровья каждый ход, +20% урона ниже половины HP, '
+            'ульта копится на 60% быстрее.',
         regenPercent: 0.02,
-        lowHpDamageBonus: 0.25,
-        dodgeBonus: 0.05,
+        lowHpDamageBonus: 0.2,
+        ultCharge: 0.6,
       ),
       ultimate: ActiveSkill(
         name: 'Великий предел',
-        description:
-            'Две атаки по ×2 — светом и тьмой, игнорируют 30% защиты, барьер на 20% здоровья.',
-        damageMul: 2,
-        hits: 2,
-        pierce: 0.3,
-        barrierPercent: 0.2,
+        description: 'Атака с уроном ×1.3 и тёмная форма на 5 ходов: '
+            '+30% урона, −20% входящего урона, +20% скорости.',
+        damageMul: 1.3,
+        formTurns: 5,
+        formDamage: 0.3,
+        formGuard: 0.2,
+        formSpeed: 0.2,
       ),
     ),
     // Клетчатый: держится за счёт лечения и переживает чужие серии.

@@ -60,46 +60,38 @@ class AttackAnimation {
     };
   }
 
-  /// Круговорот: полный круг, как контур знака инь-ян. Вперёд — по верхней
-  /// дуге, как есть («ян»), назад — по нижней, с инвертированными цветами
-  /// («инь»): белое становится чёрным, обводка — белой. В момент удара
-  /// у цели вспыхивает и тает небольшой вращающийся знак.
+  /// Призыв инь-ян: тапок сам почти не двигается — приподнимается,
+  /// поднимает носок и коротким кивком «бросает» знак. У цели вспыхивает
+  /// вращающийся знак инь-ян — он и наносит удар.
   static Widget _taichi(double t, double dir, double reach, Widget child) {
-    const hit = 0.45;
-    final r = reach * 0.5;
     double x;
     double y;
     double tilt;
-    double yin;
-    if (t < hit) {
-      // Верхняя полудуга: от исходной точки через верх к цели.
-      final a = pi * (1 - Curves.easeInOutSine.transform(t / hit));
-      x = r + r * cos(a);
-      y = -r * 1.5 * sin(a);
-      tilt = -0.35 * cos(a);
-      yin = 0;
+    if (t < 0.3) {
+      final e = Curves.easeOutCubic.transform(t / 0.3);
+      x = 0.05 * e;
+      y = -0.2 * e;
+      tilt = -0.14 * e;
+    } else if (t < 0.4) {
+      final e = Curves.easeOutQuart.transform((t - 0.3) / 0.1);
+      x = 0.05 + 0.17 * e;
+      y = -0.2 + 0.12 * e;
+      tilt = -0.14 + 0.26 * e;
     } else {
-      // Нижняя полудуга: от цели понизу обратно; тапок темнеет и светлеет.
-      final p = (t - hit) / (1 - hit);
-      final a = pi * Curves.easeInOutSine.transform(p);
-      x = r + r * cos(a);
-      y = r * 0.35 * sin(a);
-      tilt = 0.25 * sin(a);
-      // Переход в тёмный и обратно — быстрый щелчок: при плавной смеси
-      // с негативом тапок на полпути становится грязно-серым.
-      yin = (p / 0.06).clamp(0.0, 1.0) * (1 - ((p - 0.8) / 0.06).clamp(0.0, 1.0));
+      final e = Curves.easeInOutCubic.transform((t - 0.4) / 0.6);
+      x = 0.22 * (1 - e);
+      y = -0.08 * (1 - e);
+      tilt = 0.12 * (1 - e);
     }
     final body = Transform.translate(
-      offset: Offset(x * dir, y),
+      offset: Offset(reach * x * dir, reach * y),
       child: Transform.rotate(
         angle: tilt * dir,
-        alignment: Alignment.center,
-        child: ColorFiltered(colorFilter: _yinFilter(yin), child: child),
+        alignment: Alignment.bottomCenter,
+        child: child,
       ),
     );
-    final mark = t < hit - 0.03
-        ? 0.0
-        : ((t - (hit - 0.03)) / 0.4).clamp(0.0, 1.0);
+    final mark = t < 0.36 ? 0.0 : ((t - 0.36) / 0.5).clamp(0.0, 1.0);
     return Stack(
       clipBehavior: Clip.none,
       children: [
@@ -108,44 +100,12 @@ class AttackAnimation {
           Positioned.fill(
             child: IgnorePointer(
               child: CustomPaint(
-                painter: _YinYangMarkPainter(
-                  progress: mark,
-                  dir: dir,
-                  reach: reach,
-                ),
+                painter: _YinYangMarkPainter(progress: mark, dir: dir, reach: reach),
               ),
             ),
           ),
       ],
     );
-  }
-
-  /// Смесь обычных цветов и инверсии: 0 — как есть, 1 — негатив.
-  static ColorFilter _yinFilter(double k) {
-    final a = 1 - 2 * k;
-    final b = 255 * k;
-    return ColorFilter.matrix([
-      a,
-      0,
-      0,
-      0,
-      b,
-      0,
-      a,
-      0,
-      0,
-      b,
-      0,
-      0,
-      a,
-      0,
-      b,
-      0,
-      0,
-      0,
-      1,
-      0,
-    ]);
   }
 
   /// Базовый выпад: подаётся вперёд и клюёт носком.
@@ -514,7 +474,7 @@ class _YinYangMarkPainter extends CustomPainter {
 
   @override
   void paint(Canvas c, Size size) {
-    // Там, куда в момент удара дотягивается носок, — у противника.
+    // У противника: там, куда дотягиваются удары других тапков.
     final center = Offset(
       size.width / 2 + dir * (reach + size.width * 0.42),
       size.height * 0.45,

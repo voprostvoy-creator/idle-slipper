@@ -457,6 +457,7 @@ class _BattleScreenState extends State<BattleScreen>
                               width: w,
                               reach: reach,
                               attack: _lunging == Side.player ? _lunge.value : 0,
+                              dark: !_finished && _snapPlayer.transformed,
                               effects: _effects[Side.player]!,
                               hits: _hits[Side.player]!,
                               softHit: _soft[Side.player]!,
@@ -474,6 +475,7 @@ class _BattleScreenState extends State<BattleScreen>
                               flip: true,
                               reach: reach,
                               attack: _lunging == Side.opponent ? _lunge.value : 0,
+                              dark: !_finished && _snapOpponent.transformed,
                               effects: _effects[Side.opponent]!,
                               hits: _hits[Side.opponent]!,
                               softHit: _soft[Side.opponent]!,
@@ -921,6 +923,7 @@ class _Fighter extends StatelessWidget {
     required this.hits,
     required this.softHit,
     this.flip = false,
+    this.dark = false,
   });
 
   final GlobalKey spriteKey;
@@ -934,6 +937,9 @@ class _Fighter extends StatelessWidget {
 
   /// 0 — стоит, 1 — пик замаха.
   final double attack;
+
+  /// Тёмная форма — спрайт рисуется негативом.
+  final bool dark;
 
   /// Что показать поверх бойца: оглушение, горение, щит, лечение.
   final Set<BattleEffect> effects;
@@ -985,6 +991,7 @@ class _Fighter extends StatelessWidget {
               width: width,
               impulse: hits,
               shake: !softHit,
+              negative: dark,
             ),
           ),
           // Эффекты живут поверх спрайта, но под цифрами урона.

@@ -107,6 +107,24 @@ void main() {
     expect(Leaderboard.nextOpponent(1040, after).name, 'Пыльный Тапок');
   });
 
+  test('dark form: ultimate transforms for 5 turns, counting down', () {
+    final yy = Slipper(name: 'yy', kindId: 'yin_yang', levels: {for (final s in Stat.values) s: 15});
+    final foe = Slipper(name: 'o', kindId: 'carbon_sport', levels: {for (final s in Stat.values) s: 15});
+    for (var seed = 0; seed < 50; seed++) {
+      final r = BattleSim.run(yy, foe, seed: seed);
+      final seq = <int>[];
+      for (final e in r.events) {
+        final f = e.player.formTurns;
+        if (f > 0 && (seq.isEmpty || seq.last != f)) seq.add(f);
+      }
+      if (seq.length >= 3) {
+        expect(seq.take(3), [5, 4, 3]);
+        return;
+      }
+    }
+    fail('тёмная форма не продержалась 3 хода ни в одном бою');
+  });
+
   group('skills', () {
     test('every catalog slipper has three named skills', () {
       for (final k in SlipperCatalog.all) {

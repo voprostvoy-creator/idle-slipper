@@ -21,6 +21,7 @@ class SideSnapshot {
     this.weakenTurns = 0,
     this.slowTurns = 0,
     this.hasteTurns = 0,
+    this.formTurns = 0,
     this.stunned = false,
     this.barriered = false,
     this.evading = false,
@@ -40,6 +41,9 @@ class SideSnapshot {
   final int slowTurns;
   final int hasteTurns;
 
+  /// Сколько ходов ещё длится преображение (тёмная форма).
+  final int formTurns;
+
   /// Эффекты без счёта ходов: пропустит ближайший ход, барьер на запасе
   /// поглощения, уклонение на зарядах.
   final bool stunned;
@@ -51,6 +55,7 @@ class SideSnapshot {
   bool get weakened => weakenTurns > 0;
   bool get slowed => slowTurns > 0;
   bool get hasted => hasteTurns > 0;
+  bool get transformed => formTurns > 0;
 }
 
 /// Одно событие боя. UI проигрывает их последовательно.
@@ -208,9 +213,15 @@ class _State {
   /// Сколько ближайших атак по бойцу пройдут мимо.
   int evadeCharges = 0;
 
-  /// Скорость с учётом замедления и ускорения.
-  double get speedNow =>
-      (who.speed * (1 + haste - slow)).clamp(who.speed * 0.25, who.speed * 3);
+  /// Преображение: сколько своих ходов длится и что даёт.
+  int formTurns = 0;
+  double formDamage = 0;
+  double formGuard = 0;
+  double formSpeed = 0;
+
+  /// Скорость с учётом замедления, ускорения и преображения.
+  double get speedNow => (who.speed * (1 + haste + formSpeed - slow))
+      .clamp(who.speed * 0.25, who.speed * 3);
 
   /// Поджог: сколько своих ходов гореть и по сколько урона за ход.
   int burnTurns = 0;
@@ -223,6 +234,9 @@ class _State {
   PassiveSkill get passive => who.skills.passive;
 
   bool get lowHp => hp < who.maxHp / 2;
+
+  /// Множитель накопления ульты от пассивки.
+  double get ultGain => 1 + passive.ultCharge;
 }
 
 /// Чистая функция боя: (боец, боец, seed) → результат.
@@ -255,6 +269,7 @@ class BattleSim {
           weakenTurns: st.weakenTurns,
           slowTurns: st.slowTurns,
           hasteTurns: st.hasteTurns,
+          formTurns: st.formTurns,
           stunned: st.stunned,
           barriered: st.barrier > 0,
           evading: st.evadeCharges > 0,
@@ -345,6 +360,14 @@ class BattleSim {
         me.hasteTurns--;
         if (me.hasteTurns == 0) me.haste = 0;
       }
+      if (me.formTurns > 0) {
+        me.formTurns--;
+        if (me.formTurns == 0) {
+          me.formDamage = 0;
+          me.formGuard = 0;
+          me.formSpeed = 0;
+        }
+      }
 
       // --- Выбор действия: ульта → скилл по откату → обычный удар ---
       ActiveSkill? skill;
@@ -384,6 +407,12 @@ class BattleSim {
           me.hasteTurns = skill.hasteTurns;
         }
         if (skill.evadeTurns > 0) me.evadeCharges = skill.evadeTurns;
+        if (skill.formTurns > 0) {
+          me.formTurns = skill.formTurns;
+          me.formDamage = skill.formDamage;
+          me.formGuard = skill.formGuard;
+          me.formSpeed = skill.formSpeed;
+        }
         if (skill.healPercent > 0) {
           final before = me.hp;
           me.hp = min(me.who.maxHp, me.hp + me.who.maxHp * skill.healPercent);
@@ -418,9 +447,11 @@ class BattleSim {
         // Пробитие срезает часть защиты цели.
         final pierce = skill?.pierce ?? 0;
         final defense = (foe.who.defense + foe.passive.defenseBonus) * (1 - pierce);
-        final mitigation = 100 / (100 + defense) * (1 - foe.shield);
+        final mitigation =
+            100 / (100 + defense) * (1 - foe.shield) * (1 - foe.formGuard);
 
-        var raw = me.who.attack * (1 + me.passive.damageBonus - me.weaken);
+        var raw = me.who.attack *
+            (1 + me.passive.damageBonus + me.formDamage - me.weaken);
         if (me.lowHp) raw *= 1 + me.passive.lowHpDamageBonus;
         // Добивание: по еле живой цели удар проходит вдвое сильнее.
         if (me.passive.executeThreshold > 0 &&
@@ -453,8 +484,8 @@ class BattleSim {
         dealtTotal += damage;
 
         // Заряд ульты: бьющему за нанесённый урон, цели — за полученный.
-        me.ult = min(1, me.ult + _ultPerDamageDealt * damage / max(1, foe.who.maxHp));
-        foe.ult = min(1, foe.ult + _ultPerDamageTaken * damage / max(1, foe.who.maxHp));
+        me.ult = min(1, me.ult + me.ultGain * _ultPerDamageDealt * damage / max(1, foe.who.maxHp));
+        foe.ult = min(1, foe.ult + foe.ultGain * _ultPerDamageTaken * damage / max(1, foe.who.maxHp));
 
         add((p, o) => HitEvent(
               attacker: side,
@@ -518,7 +549,7 @@ class BattleSim {
       }
 
       // Ход прошёл — немного ульты за сам факт действия.
-      me.ult = min(1, me.ult + _ultPerTurn);
+      me.ult = min(1, me.ult + me.ultGain * _ultPerTurn);
       endTurn(me);
     }
 

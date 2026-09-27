@@ -13,6 +13,8 @@ enum StatusKind {
   barrier('Барьер', 'Поглощает урон, пока не иссякнет.', positive: true),
   haste('Ускорение', 'Ходит чаще обычного.', positive: true),
   evade('Уклонение', 'Следующая атака по нему пройдёт мимо.', positive: true),
+  form('Тёмная форма', 'Ушёл во тьму: бьёт сильнее, получает меньше урона и ходит чаще.',
+      positive: true),
   burn('Горение', 'Теряет здоровье в начале каждого своего хода.', positive: false),
   stun('Оглушение', 'Пропустит следующий ход.', positive: false),
   weaken('Ослабление', 'Наносит меньше урона.', positive: false),
@@ -44,6 +46,7 @@ List<ActiveStatus> statusesOf(SideSnapshot s) => [
       if (s.barriered) const ActiveStatus(StatusKind.barrier),
       if (s.hasted) ActiveStatus(StatusKind.haste, s.hasteTurns),
       if (s.evading) const ActiveStatus(StatusKind.evade),
+      if (s.transformed) ActiveStatus(StatusKind.form, s.formTurns),
       if (s.burning) ActiveStatus(StatusKind.burn, s.burnTurns),
       if (s.stunned) const ActiveStatus(StatusKind.stun),
       if (s.weakened) ActiveStatus(StatusKind.weaken, s.weakenTurns),
@@ -202,6 +205,8 @@ class _StatusPainter extends CustomPainter {
         _haste(c, s);
       case StatusKind.evade:
         _evade(c, s);
+      case StatusKind.form:
+        _form(c, s);
       case StatusKind.burn:
         _burn(c, s);
       case StatusKind.stun:
@@ -263,6 +268,25 @@ class _StatusPainter extends CustomPainter {
         paint,
       );
     }
+  }
+
+  /// Тёмная форма — маленький знак инь-ян.
+  void _form(Canvas c, double s) {
+    final r = s * 0.24;
+    final o = Offset(s / 2, s / 2);
+    c.drawCircle(o, r, _fill(Colors.white));
+    final whole = Rect.fromCircle(center: o, radius: r);
+    c.drawPath(
+      Path()
+        ..addArc(whole, -pi / 2, pi)
+        ..addArc(Rect.fromCircle(center: o + Offset(0, r / 2), radius: r / 2), pi / 2, pi)
+        ..close(),
+      _fill(GameColors.outline),
+    );
+    c.drawCircle(o + Offset(0, -r / 2), r / 2, _fill(Colors.white));
+    c.drawCircle(o + Offset(0, r / 2), r / 2, _fill(GameColors.outline));
+    c.drawCircle(o + Offset(0, -r / 2), r * 0.15, _fill(GameColors.outline));
+    c.drawCircle(o + Offset(0, r / 2), r * 0.15, _fill(Colors.white));
   }
 
   /// Уклонение — два завитка ветра.

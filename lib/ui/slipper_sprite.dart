@@ -20,6 +20,7 @@ class SlipperSprite extends StatefulWidget {
     this.showSize = true,
     this.impulse = 0,
     this.shake = true,
+    this.negative = false,
   });
 
   final Combatant fighter;
@@ -39,6 +40,10 @@ class SlipperSprite extends StatefulWidget {
   /// Трясти ли при уроне. У ответного урона от шипов тряски нет —
   /// боец в этот момент не отшатывается, только вспыхивает красным.
   final bool shake;
+
+  /// Рисовать негативом — тёмная форма преображения: белое становится
+  /// чёрным, чёрная обводка — белой.
+  final bool negative;
 
   static const double aspect = 2;
 
@@ -146,6 +151,17 @@ class _SlipperSpriteState extends State<SlipperSprite>
     );
 
     sprite = _applyMoodColor(sprite);
+    if (widget.negative) {
+      sprite = ColorFiltered(
+        colorFilter: const ColorFilter.matrix([
+          -1, 0, 0, 0, 255,
+          0, -1, 0, 0, 255,
+          0, 0, -1, 0, 255,
+          0, 0, 0, 1, 0,
+        ]),
+        child: sprite,
+      );
+    }
     if (widget.showSize) {
       sprite = Transform.scale(
         scale: widget.fighter.sizeFactor,

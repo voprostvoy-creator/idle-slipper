@@ -30,6 +30,10 @@ class ActiveSkill {
     this.evadeTurns = 0,
     this.extraTurn = false,
     this.alwaysCrit = false,
+    this.formTurns = 0,
+    this.formDamage = 0,
+    this.formGuard = 0,
+    this.formSpeed = 0,
   });
 
   final String name;
@@ -84,6 +88,14 @@ class ActiveSkill {
 
   /// Удары скилла всегда критуют.
   final bool alwaysCrit;
+
+  /// Преображение на [formTurns] своих ходов: +[formDamage] урона,
+  /// −[formGuard] входящего урона, +[formSpeed] скорости. На экране боец
+  /// в это время рисуется негативом («тёмная форма»).
+  final int formTurns;
+  final double formDamage;
+  final double formGuard;
+  final double formSpeed;
 }
 
 /// Постоянный эффект — работает весь бой без срабатываний.
@@ -101,6 +113,7 @@ class PassiveSkill {
     this.regenPercent = 0,
     this.lowHpDamageBonus = 0,
     this.executeThreshold = 0,
+    this.ultCharge = 0,
   });
 
   final String name;
@@ -132,6 +145,9 @@ class PassiveSkill {
 
   /// Добивание: если у цели осталось меньше этой доли HP, удар удваивается.
   final double executeThreshold;
+
+  /// Ульта копится быстрее на эту долю.
+  final double ultCharge;
 }
 
 /// Набор из трёх скиллов бойца.
