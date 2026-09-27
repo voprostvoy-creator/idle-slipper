@@ -14,26 +14,26 @@ class AttackAnimation {
 
   /// Сколько длится замах и возврат для каждого стиля.
   static Duration duration(AttackStyle style) => switch (style) {
-        AttackStyle.lunge => const Duration(milliseconds: 260),
-        AttackStyle.dash => const Duration(milliseconds: 210),
-        AttackStyle.slam => const Duration(milliseconds: 320),
-        AttackStyle.blink => const Duration(milliseconds: 240),
-        AttackStyle.spin => const Duration(milliseconds: 340),
-        AttackStyle.meteor => const Duration(milliseconds: 420),
-        AttackStyle.stomp => const Duration(milliseconds: 360),
-        AttackStyle.laser => const Duration(milliseconds: 320),
-        AttackStyle.uppercut => const Duration(milliseconds: 300),
-        // Таран возвращается сам, поэтому это длина всего цикла.
-        AttackStyle.charge => const Duration(milliseconds: 600),
-        AttackStyle.sword => const Duration(milliseconds: 600),
-      };
+    AttackStyle.lunge => const Duration(milliseconds: 260),
+    AttackStyle.dash => const Duration(milliseconds: 210),
+    AttackStyle.slam => const Duration(milliseconds: 320),
+    AttackStyle.blink => const Duration(milliseconds: 240),
+    AttackStyle.spin => const Duration(milliseconds: 340),
+    AttackStyle.meteor => const Duration(milliseconds: 420),
+    AttackStyle.stomp => const Duration(milliseconds: 360),
+    AttackStyle.laser => const Duration(milliseconds: 320),
+    AttackStyle.uppercut => const Duration(milliseconds: 300),
+    // Таран возвращается сам, поэтому это длина всего цикла.
+    AttackStyle.charge => const Duration(milliseconds: 600),
+    AttackStyle.taichi => const Duration(milliseconds: 620),
+  };
 
   /// Стили, которые сами возвращают бойца на место за один проход 0 → 1.
   /// Для них экран не проигрывает анимацию в обратную сторону: у тарана
   /// обратный ход прошёл бы через замах, то есть откатил бы назад дальше
   /// исходной точки.
   static bool returnsOnItsOwn(AttackStyle style) =>
-      style == AttackStyle.charge || style == AttackStyle.sword;
+      style == AttackStyle.charge || style == AttackStyle.taichi;
 
   static Widget apply({
     required AttackStyle style,
@@ -41,7 +41,6 @@ class AttackAnimation {
     required bool flip,
     required double reach,
     required Widget child,
-    bool special = false,
   }) {
     if (progress <= 0.001) return child;
     // Движение всегда «к противнику»: для правого бойца — в другую сторону.
@@ -57,77 +56,96 @@ class AttackAnimation {
       AttackStyle.laser => _laser(progress, dir, reach, child),
       AttackStyle.uppercut => _uppercut(progress, dir, reach, child),
       AttackStyle.charge => _charge(progress, dir, reach, child),
-      AttackStyle.sword => special
-          ? _swordDouble(progress, dir, reach, child)
-          : _swordSlash(progress, dir, reach, child),
+      AttackStyle.taichi => _taichi(progress, dir, reach, child),
     };
   }
 
-  /// Меч, основной удар: тапок заносится носком вверх, как клинок,
-  /// и молниеносно рубит сверху вниз с шагом вперёд. Поворот идёт вокруг
-  /// пятки — как меч вокруг рукояти.
-  static Widget _swordSlash(double t, double dir, double reach, Widget child) {
+  /// Круговорот: полный круг, как контур знака инь-ян. Вперёд — по верхней
+  /// дуге, как есть («ян»), назад — по нижней, с инвертированными цветами
+  /// («инь»): белое становится чёрным, обводка — белой. В момент удара
+  /// у цели вспыхивает и тает небольшой вращающийся знак.
+  static Widget _taichi(double t, double dir, double reach, Widget child) {
+    const hit = 0.45;
+    final r = reach * 0.5;
     double x;
-    double angle;
-    if (t < 0.22) {
-      final w = Curves.easeOutCubic.transform(t / 0.22);
-      x = -0.12 * w;
-      angle = -0.55 * w;
-    } else if (t < 0.34) {
-      final c = Curves.easeOutQuart.transform((t - 0.22) / 0.12);
-      x = -0.12 + 0.84 * c;
-      angle = -0.55 + 1.1 * c;
-    } else if (t < 0.5) {
-      final h = (t - 0.34) / 0.16;
-      x = 0.72;
-      angle = 0.55 - 0.12 * h;
+    double y;
+    double tilt;
+    double yin;
+    if (t < hit) {
+      // Верхняя полудуга: от исходной точки через верх к цели.
+      final a = pi * (1 - Curves.easeInOutSine.transform(t / hit));
+      x = r + r * cos(a);
+      y = -r * 1.5 * sin(a);
+      tilt = -0.35 * cos(a);
+      yin = 0;
     } else {
-      final r = Curves.easeInOutCubic.transform((t - 0.5) / 0.5);
-      x = 0.72 * (1 - r);
-      angle = 0.43 * (1 - r);
+      // Нижняя полудуга: от цели понизу обратно; тапок темнеет и светлеет.
+      final p = (t - hit) / (1 - hit);
+      final a = pi * Curves.easeInOutSine.transform(p);
+      x = r + r * cos(a);
+      y = r * 0.35 * sin(a);
+      tilt = 0.25 * sin(a);
+      // Переход в тёмный и обратно — быстрый щелчок: при плавной смеси
+      // с негативом тапок на полпути становится грязно-серым.
+      yin = (p / 0.06).clamp(0.0, 1.0) * (1 - ((p - 0.8) / 0.06).clamp(0.0, 1.0));
     }
-    return _swordPose(x, angle, dir, reach, child);
-  }
-
-  /// Меч, каждый третий удар: присед, длинный рывок с восходящим разрезом
-  /// и сразу нисходящий — крест-накрест.
-  static Widget _swordDouble(double t, double dir, double reach, Widget child) {
-    double x;
-    double angle;
-    if (t < 0.15) {
-      final w = Curves.easeOut.transform(t / 0.15);
-      x = -0.2 * w;
-      angle = 0.25 * w;
-    } else if (t < 0.27) {
-      final c = Curves.easeOutExpo.transform((t - 0.15) / 0.12);
-      x = -0.2 + 1.25 * c;
-      angle = 0.25 - 0.9 * c;
-    } else if (t < 0.4) {
-      final d = Curves.easeOutQuart.transform((t - 0.27) / 0.13);
-      x = 1.05;
-      angle = -0.65 + 1.25 * d;
-    } else if (t < 0.5) {
-      x = 1.05;
-      angle = 0.6;
-    } else {
-      final r = Curves.easeInOutCubic.transform((t - 0.5) / 0.5);
-      x = 1.05 * (1 - r);
-      angle = 0.6 * (1 - r);
-    }
-    return _swordPose(x, angle, dir, reach, child);
-  }
-
-  /// Поза меча: сдвиг к противнику и поворот вокруг пятки.
-  /// Пятка — сзади тапка: слева у левого бойца, справа у зеркального.
-  static Widget _swordPose(double x, double angle, double dir, double reach, Widget child) {
-    return Transform.translate(
-      offset: Offset(reach * x * dir, 0),
+    final body = Transform.translate(
+      offset: Offset(x * dir, y),
       child: Transform.rotate(
-        angle: angle * dir,
-        alignment: Alignment(-0.6 * dir, 0.3),
-        child: child,
+        angle: tilt * dir,
+        alignment: Alignment.center,
+        child: ColorFiltered(colorFilter: _yinFilter(yin), child: child),
       ),
     );
+    final mark = t < hit - 0.03
+        ? 0.0
+        : ((t - (hit - 0.03)) / 0.4).clamp(0.0, 1.0);
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        body,
+        if (mark > 0 && mark < 1)
+          Positioned.fill(
+            child: IgnorePointer(
+              child: CustomPaint(
+                painter: _YinYangMarkPainter(
+                  progress: mark,
+                  dir: dir,
+                  reach: reach,
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  /// Смесь обычных цветов и инверсии: 0 — как есть, 1 — негатив.
+  static ColorFilter _yinFilter(double k) {
+    final a = 1 - 2 * k;
+    final b = 255 * k;
+    return ColorFilter.matrix([
+      a,
+      0,
+      0,
+      0,
+      b,
+      0,
+      a,
+      0,
+      0,
+      b,
+      0,
+      0,
+      a,
+      0,
+      b,
+      0,
+      0,
+      0,
+      1,
+      0,
+    ]);
   }
 
   /// Базовый выпад: подаётся вперёд и клюёт носком.
@@ -167,7 +185,9 @@ class AttackAnimation {
     // Взлёт занимает чуть меньше половины, падение — быстрее и резче.
     const peak = 0.42;
     final rise = t < peak ? Curves.easeOutQuad.transform(t / peak) : 1.0;
-    final fall = t < peak ? 0.0 : Curves.easeInQuart.transform((t - peak) / (1 - peak));
+    final fall = t < peak
+        ? 0.0
+        : Curves.easeInQuart.transform((t - peak) / (1 - peak));
     final height = rise - fall;
     // Вперёд смещается в основном на падении — приземляется на противника.
     final advance = rise * 0.3 + fall * 0.7;
@@ -267,7 +287,12 @@ class AttackAnimation {
       children: [
         Positioned.fill(
           child: CustomPaint(
-            painter: _LaserPainter(charge: charge, fire: fire, dir: dir, reach: reach),
+            painter: _LaserPainter(
+              charge: charge,
+              fire: fire,
+              dir: dir,
+              reach: reach,
+            ),
           ),
         ),
         Transform.translate(
@@ -313,14 +338,17 @@ class AttackAnimation {
     final windup = t < windupEnd
         ? Curves.easeOutCubic.transform(t / windupEnd)
         : t < hitAt
-            ? 1 - Curves.easeInCubic.transform((t - windupEnd) / (hitAt - windupEnd))
-            : 0.0;
+        ? 1 -
+              Curves.easeInCubic.transform(
+                (t - windupEnd) / (hitAt - windupEnd),
+              )
+        : 0.0;
     // Бросок: резкий разгон до удара, потом плавный отход прямо на место.
     final dash = t < windupEnd
         ? 0.0
         : t < hitAt
-            ? Curves.easeInQuart.transform((t - windupEnd) / (hitAt - windupEnd))
-            : 1 - Curves.easeInOutCubic.transform((t - hitAt) / (1 - hitAt));
+        ? Curves.easeInQuart.transform((t - windupEnd) / (hitAt - windupEnd))
+        : 1 - Curves.easeInOutCubic.transform((t - hitAt) / (1 - hitAt));
     // Дистанция на 10% короче прежней: бросок 0.88, замах 0.27.
     final x = -reach * 0.27 * windup + reach * 0.88 * dash;
     return Transform.translate(
@@ -350,10 +378,7 @@ class AttackAnimation {
       child: Transform.rotate(
         angle: (0.9 * rise + 1.6 * fall) * dir,
         alignment: Alignment.center,
-        child: Transform.scale(
-          scale: 1 - 0.25 * height,
-          child: child,
-        ),
+        child: Transform.scale(scale: 1 - 0.25 * height, child: child),
       ),
     );
   }
@@ -401,7 +426,11 @@ class _LaserPainter extends CustomPainter {
       // Копим заряд — светящийся шар у носка.
       final r = reach * 0.1 * charge;
       c.drawCircle(muzzle, r * 2.4, Paint()..color = const Color(0x554FD8FF));
-      c.drawCircle(muzzle, r, Paint()..color = Colors.white.withValues(alpha: 0.9));
+      c.drawCircle(
+        muzzle,
+        r,
+        Paint()..color = Colors.white.withValues(alpha: 0.9),
+      );
       return;
     }
 
@@ -448,12 +477,88 @@ class _LaserPainter extends CustomPainter {
         ..strokeWidth = reach * 0.07 * alpha,
     );
     // Вспышка у носка и точка попадания.
-    c.drawCircle(muzzle, reach * 0.22 * alpha, Paint()..color = Colors.white.withValues(alpha: 0.8 * alpha));
-    c.drawCircle(end, reach * 0.3 * alpha, Paint()..color = const Color(0xFFB06BFF).withValues(alpha: 0.7 * alpha));
-    c.drawCircle(end, reach * 0.14 * alpha, Paint()..color = Colors.white.withValues(alpha: 0.9 * alpha));
+    c.drawCircle(
+      muzzle,
+      reach * 0.22 * alpha,
+      Paint()..color = Colors.white.withValues(alpha: 0.8 * alpha),
+    );
+    c.drawCircle(
+      end,
+      reach * 0.3 * alpha,
+      Paint()..color = const Color(0xFFB06BFF).withValues(alpha: 0.7 * alpha),
+    );
+    c.drawCircle(
+      end,
+      reach * 0.14 * alpha,
+      Paint()..color = Colors.white.withValues(alpha: 0.9 * alpha),
+    );
   }
 
   @override
   bool shouldRepaint(_LaserPainter old) =>
       old.charge != charge || old.fire != fire || old.dir != dir;
+}
+
+/// Знак инь-ян у цели в момент удара: выскакивает, делает оборот и тает.
+/// Размером с тапок, чтобы не перекрывать экран.
+class _YinYangMarkPainter extends CustomPainter {
+  _YinYangMarkPainter({
+    required this.progress,
+    required this.dir,
+    required this.reach,
+  });
+
+  final double progress;
+  final double dir;
+  final double reach;
+
+  @override
+  void paint(Canvas c, Size size) {
+    // Там, куда в момент удара дотягивается носок, — у противника.
+    final center = Offset(
+      size.width / 2 + dir * (reach + size.width * 0.42),
+      size.height * 0.45,
+    );
+    final pop = Curves.easeOutBack.transform((progress / 0.3).clamp(0.0, 1.0));
+    final fade = progress < 0.6 ? 1.0 : 1 - (progress - 0.6) / 0.4;
+    final radius = size.height * 0.32 * pop;
+    if (radius <= 0.5) return;
+
+    c.save();
+    c.translate(center.dx, center.dy);
+    c.rotate(dir * 2 * pi * Curves.easeOutCubic.transform(progress));
+    final light = Paint()..color = Colors.white.withValues(alpha: fade);
+    final dark = Paint()
+      ..color = const Color(0xFF14091F).withValues(alpha: fade);
+    final whole = Rect.fromCircle(center: Offset.zero, radius: radius);
+
+    // Светлый круг, тёмная половина с «каплей»: полукруг + малые круги.
+    c.drawCircle(Offset.zero, radius, light);
+    final yin = Path()
+      ..addArc(whole, -pi / 2, pi)
+      ..addArc(
+        Rect.fromCircle(center: Offset(0, radius / 2), radius: radius / 2),
+        pi / 2,
+        pi,
+      )
+      ..close();
+    c.drawPath(yin, dark);
+    c.drawCircle(Offset(0, -radius / 2), radius / 2, light);
+    c.drawCircle(Offset(0, radius / 2), radius / 2, dark);
+    // Глазки: тёмный в светлой части, светлый в тёмной.
+    c.drawCircle(Offset(0, -radius / 2), radius * 0.14, dark);
+    c.drawCircle(Offset(0, radius / 2), radius * 0.14, light);
+    c.drawCircle(
+      Offset.zero,
+      radius,
+      Paint()
+        ..color = const Color(0xFF14091F).withValues(alpha: fade)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3,
+    );
+    c.restore();
+  }
+
+  @override
+  bool shouldRepaint(_YinYangMarkPainter old) => old.progress != progress;
 }

@@ -129,7 +129,7 @@ class SlipperCatalog {
       name: 'Инь-Ян',
       rarity: Rarity.mythic,
       asset: 'assets/slippers/yin_yang.webp',
-      attack: AttackStyle.sword,
+      attack: AttackStyle.taichi,
       bonuses: {
         Bonus.damage: 0.22,
         Bonus.dodge: 0.08,
