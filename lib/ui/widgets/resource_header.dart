@@ -12,7 +12,6 @@ class ResourceHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return ListenableBuilder(
       listenable: game,
       builder: (context, _) => GamePanel(
@@ -27,25 +26,9 @@ class ResourceHeader extends StatelessWidget {
             const SizedBox(width: 6),
             StrokeText(fmtNum(game.coins), size: 20, color: GameColors.gold),
             const Spacer(),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Row(
-                  children: [
-                    const PowerIcon(size: 20),
-                    const SizedBox(width: 3),
-                    Text('${game.slipper.power}', style: theme.textTheme.titleMedium),
-                  ],
-                ),
-                Row(
-                  children: [
-                    const Icon(Icons.emoji_events, color: GameColors.blue, size: 16),
-                    const SizedBox(width: 2),
-                    Text('${game.rating}', style: theme.textTheme.bodySmall),
-                  ],
-                ),
-              ],
-            ),
+            const PowerIcon(size: 22),
+            const SizedBox(width: 4),
+            StrokeText('${game.slipper.power}', size: 20),
           ],
         ),
       ),
