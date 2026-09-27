@@ -25,7 +25,7 @@ class AttackAnimation {
         AttackStyle.uppercut => const Duration(milliseconds: 300),
         // Таран возвращается сам, поэтому это длина всего цикла.
         AttackStyle.charge => const Duration(milliseconds: 600),
-        AttackStyle.flow => const Duration(milliseconds: 600),
+        AttackStyle.sword => const Duration(milliseconds: 600),
       };
 
   /// Стили, которые сами возвращают бойца на место за один проход 0 → 1.
@@ -33,7 +33,7 @@ class AttackAnimation {
   /// обратный ход прошёл бы через замах, то есть откатил бы назад дальше
   /// исходной точки.
   static bool returnsOnItsOwn(AttackStyle style) =>
-      style == AttackStyle.charge || style == AttackStyle.flow;
+      style == AttackStyle.charge || style == AttackStyle.sword;
 
   static Widget apply({
     required AttackStyle style,
@@ -41,6 +41,7 @@ class AttackAnimation {
     required bool flip,
     required double reach,
     required Widget child,
+    bool special = false,
   }) {
     if (progress <= 0.001) return child;
     // Движение всегда «к противнику»: для правого бойца — в другую сторону.
@@ -56,36 +57,74 @@ class AttackAnimation {
       AttackStyle.laser => _laser(progress, dir, reach, child),
       AttackStyle.uppercut => _uppercut(progress, dir, reach, child),
       AttackStyle.charge => _charge(progress, dir, reach, child),
-      AttackStyle.flow => _flowCut(progress, dir, reach, child),
+      AttackStyle.sword => special
+          ? _swordDouble(progress, dir, reach, child)
+          : _swordSlash(progress, dir, reach, child),
     };
   }
 
-  /// Разрез: короткий замах, молниеносный рывок с наклоном, как взмах
-  /// клинка, короткая пауза у цели и плавный возврат.
-  static Widget _flowCut(double t, double dir, double reach, Widget child) {
+  /// Меч, основной удар: тапок заносится носком вверх, как клинок,
+  /// и молниеносно рубит сверху вниз с шагом вперёд. Поворот идёт вокруг
+  /// пятки — как меч вокруг рукояти.
+  static Widget _swordSlash(double t, double dir, double reach, Widget child) {
     double x;
     double angle;
-    if (t < 0.2) {
-      final w = Curves.easeOut.transform(t / 0.2);
-      x = -0.18 * w;
-      angle = -0.15 * w;
-    } else if (t < 0.4) {
-      final c = Curves.easeOutExpo.transform((t - 0.2) / 0.2);
-      x = -0.18 + 1.18 * c;
-      angle = -0.15 + 0.5 * c;
-    } else if (t < 0.55) {
-      x = 1;
-      angle = 0.35;
+    if (t < 0.22) {
+      final w = Curves.easeOutCubic.transform(t / 0.22);
+      x = -0.12 * w;
+      angle = -0.55 * w;
+    } else if (t < 0.34) {
+      final c = Curves.easeOutQuart.transform((t - 0.22) / 0.12);
+      x = -0.12 + 0.84 * c;
+      angle = -0.55 + 1.1 * c;
+    } else if (t < 0.5) {
+      final h = (t - 0.34) / 0.16;
+      x = 0.72;
+      angle = 0.55 - 0.12 * h;
     } else {
-      final r = Curves.easeInOutCubic.transform((t - 0.55) / 0.45);
-      x = 1 - r;
-      angle = 0.35 * (1 - r);
+      final r = Curves.easeInOutCubic.transform((t - 0.5) / 0.5);
+      x = 0.72 * (1 - r);
+      angle = 0.43 * (1 - r);
     }
+    return _swordPose(x, angle, dir, reach, child);
+  }
+
+  /// Меч, каждый третий удар: присед, длинный рывок с восходящим разрезом
+  /// и сразу нисходящий — крест-накрест.
+  static Widget _swordDouble(double t, double dir, double reach, Widget child) {
+    double x;
+    double angle;
+    if (t < 0.15) {
+      final w = Curves.easeOut.transform(t / 0.15);
+      x = -0.2 * w;
+      angle = 0.25 * w;
+    } else if (t < 0.27) {
+      final c = Curves.easeOutExpo.transform((t - 0.15) / 0.12);
+      x = -0.2 + 1.25 * c;
+      angle = 0.25 - 0.9 * c;
+    } else if (t < 0.4) {
+      final d = Curves.easeOutQuart.transform((t - 0.27) / 0.13);
+      x = 1.05;
+      angle = -0.65 + 1.25 * d;
+    } else if (t < 0.5) {
+      x = 1.05;
+      angle = 0.6;
+    } else {
+      final r = Curves.easeInOutCubic.transform((t - 0.5) / 0.5);
+      x = 1.05 * (1 - r);
+      angle = 0.6 * (1 - r);
+    }
+    return _swordPose(x, angle, dir, reach, child);
+  }
+
+  /// Поза меча: сдвиг к противнику и поворот вокруг пятки.
+  /// Пятка — сзади тапка: слева у левого бойца, справа у зеркального.
+  static Widget _swordPose(double x, double angle, double dir, double reach, Widget child) {
     return Transform.translate(
       offset: Offset(reach * x * dir, 0),
       child: Transform.rotate(
         angle: angle * dir,
-        alignment: Alignment.bottomCenter,
+        alignment: Alignment(-0.6 * dir, 0.3),
         child: child,
       ),
     );

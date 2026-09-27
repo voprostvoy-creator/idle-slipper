@@ -125,6 +125,16 @@ class _BattleScreenState extends State<BattleScreen>
   );
   Side? _lunging;
 
+  /// Сколько раз каждый боец замахивался: у меча каждый третий удар —
+  /// особый.
+  final _swings = {Side.player: 0, Side.opponent: 0};
+  bool _special = false;
+
+  void _countSwing(Side attacker) {
+    _swings[attacker] = _swings[attacker]! + 1;
+    _special = _swings[attacker]! % 3 == 0;
+  }
+
   /// Спрайт при атаке оборачивается в анимацию, в покое — нет. С постоянным
   /// ключом он переносится между обёртками, а не создаётся заново — иначе
   /// аура и дыхание каждый раз начинались бы сначала.
@@ -218,6 +228,7 @@ class _BattleScreenState extends State<BattleScreen>
             _log.insert(0, '${nameOf(attacker)}: шипы на $damage');
           } else {
             _lunging = attacker;
+            _countSwing(attacker);
             if (_mood[attacker] != SlipperMood.dead) {
               _mood[attacker] = SlipperMood.attack;
             }
@@ -229,6 +240,7 @@ class _BattleScreenState extends State<BattleScreen>
         case DodgeEvent(:final attacker):
           final target = attacker.other;
           _lunging = attacker;
+          _countSwing(attacker);
           _mood = {attacker: SlipperMood.attack, target: SlipperMood.idle};
           _popups.add(_Popup(side: target, text: 'мимо', crit: false));
           _log.insert(0, '${nameOf(attacker)} промахивается');
@@ -457,6 +469,7 @@ class _BattleScreenState extends State<BattleScreen>
                               width: w,
                               reach: reach,
                               attack: _lunging == Side.player ? _lunge.value : 0,
+                              special: _special,
                               effects: _effects[Side.player]!,
                               hits: _hits[Side.player]!,
                               softHit: _soft[Side.player]!,
@@ -474,6 +487,7 @@ class _BattleScreenState extends State<BattleScreen>
                               flip: true,
                               reach: reach,
                               attack: _lunging == Side.opponent ? _lunge.value : 0,
+                              special: _special,
                               effects: _effects[Side.opponent]!,
                               hits: _hits[Side.opponent]!,
                               softHit: _soft[Side.opponent]!,
@@ -921,6 +935,7 @@ class _Fighter extends StatelessWidget {
     required this.hits,
     required this.softHit,
     this.flip = false,
+    this.special = false,
   });
 
   final GlobalKey spriteKey;
@@ -934,6 +949,9 @@ class _Fighter extends StatelessWidget {
 
   /// 0 — стоит, 1 — пик замаха.
   final double attack;
+
+  /// Особый вариант удара (у меча — каждый третий).
+  final bool special;
 
   /// Что показать поверх бойца: оглушение, горение, щит, лечение.
   final Set<BattleEffect> effects;
@@ -977,6 +995,7 @@ class _Fighter extends StatelessWidget {
             progress: attack,
             flip: flip,
             reach: reach,
+            special: special,
             child: SlipperSprite(
               key: spriteKey,
               fighter: fighter,
