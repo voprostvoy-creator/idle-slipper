@@ -2,16 +2,17 @@ import 'package:flutter/material.dart';
 
 import '../../game/daily.dart';
 import '../../game/game_state.dart';
-import '../../game/opponents.dart';
-import '../../game/slipper.dart';
+import '../../game/leaderboard.dart';
 import '../format.dart';
 import '../slipper_sprite.dart';
 import '../theme.dart';
 import '../widgets/game_widgets.dart';
 import 'battle_hub_screen.dart';
 import 'battle_screen.dart';
+import 'leaderboard_screen.dart';
 
-/// Арена: три соперника на выбор.
+/// Арена: очки и место в рейтинге, кнопка поиска соперника.
+/// Соперник — тапок, стоящий в рейтинге сразу выше игрока.
 class ArenaScreen extends StatelessWidget {
   const ArenaScreen({super.key, required this.game, required this.onBack});
   final GameState game;
@@ -25,41 +26,101 @@ class ArenaScreen extends StatelessWidget {
     return ListenableBuilder(
       listenable: game,
       builder: (context, _) {
+        final canFight = game.canFightArena;
         return ListView(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
           children: [
             BackToModes(title: 'Арена', onBack: onBack),
-            const SizedBox(height: 4),
-            Text(
-              'Выбери соперника. Бой идёт сам — исход решают характеристики тапков.',
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodySmall,
-            ),
             const SizedBox(height: 12),
             _TicketsBar(game: game),
             const SizedBox(height: 14),
-            for (final (i, o) in game.opponents.indexed) ...[
-              _OpponentCard(
-                opponent: o,
-                difficulty: i,
-                onFight: () => _fight(context, o),
-                enabled: game.canFightArena,
+            GamePanel(
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+              onTap: () => _openLeaderboard(context),
+              child: Column(
+                children: [
+                  SlipperSprite(fighter: game.slipper, width: 200),
+                  const SizedBox(height: 4),
+                  StrokeText(game.slipper.name, size: 22),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _BigStat(
+                          icon: Icons.emoji_events_rounded,
+                          color: GameColors.blue,
+                          value: '${game.rating}',
+                          label: 'Очки',
+                        ),
+                      ),
+                      Container(width: 2, height: 56, color: GameColors.outline),
+                      Expanded(
+                        child: _BigStat(
+                          icon: Icons.military_tech_rounded,
+                          color: GameColors.gold,
+                          value: '#${game.arenaPlace}',
+                          label: 'Место из ${Leaderboard.size}',
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text('Открыть рейтинг', style: theme.textTheme.bodySmall),
+                      const Icon(Icons.chevron_right, size: 18, color: GameColors.textDim),
+                    ],
+                  ),
+                ],
               ),
-              const SizedBox(height: 14),
-            ],
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: GameButton(
+                color: canFight ? GameColors.red : GameColors.panelLight,
+                height: 60,
+                onPressed: () => _fight(context),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.search_rounded, size: 26),
+                    const SizedBox(width: 8),
+                    const Text('Найти соперника', style: TextStyle(fontSize: 20)),
+                    const SizedBox(width: 10),
+                    GameBadge(
+                      text: '−1 ⚔',
+                      color: canFight ? GameColors.gold : GameColors.panelDark,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Соперник — тапок, который стоит в рейтинге сразу над тобой. '
+              'Победа даёт очки и нитки.',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodySmall,
+            ),
           ],
         );
       },
     );
   }
 
-  void _fight(BuildContext context, Opponent opponent) {
+  void _openLeaderboard(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => LeaderboardScreen(game: game)),
+    );
+  }
+
+  void _fight(BuildContext context) {
     // Бой считается мгновенно; экран боя лишь проигрывает запись.
     final me = game.slipper;
-    final ratingBefore = game.rating;
-    final threadsBefore = game.threads;
-    final result = game.fight(opponent);
-    if (result == null) {
+    final outcome = game.fightArena();
+    if (outcome == null) {
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
         ..showSnackBar(const SnackBar(
@@ -71,12 +132,47 @@ class ArenaScreen extends StatelessWidget {
       MaterialPageRoute(
         builder: (_) => BattleScreen(
           player: me,
-          opponent: opponent.slipper,
-          result: result,
-          ratingDelta: game.rating - ratingBefore,
-          threadsDelta: (game.threads - threadsBefore).round(),
+          opponent: outcome.opponent.slipper,
+          result: outcome.result,
+          ratingDelta: outcome.ratingDelta,
+          threadsDelta: outcome.threads,
+          intro: BattleIntro(
+            playerRating: outcome.ratingBefore,
+            opponentRating: outcome.opponent.rating,
+          ),
         ),
       ),
+    );
+  }
+}
+
+class _BigStat extends StatelessWidget {
+  const _BigStat({
+    required this.icon,
+    required this.color,
+    required this.value,
+    required this.label,
+  });
+
+  final IconData icon;
+  final Color color;
+  final String value;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: color, size: 30),
+            const SizedBox(width: 4),
+            StrokeText(value, size: 34, color: color),
+          ],
+        ),
+        Text(label, style: Theme.of(context).textTheme.bodySmall),
+      ],
     );
   }
 }
@@ -115,110 +211,5 @@ class _TicketsBar extends StatelessWidget {
         ],
       ),
     );
-  }
-}
-
-class _OpponentCard extends StatelessWidget {
-  const _OpponentCard({
-    required this.opponent,
-    required this.difficulty,
-    required this.onFight,
-    required this.enabled,
-  });
-
-  final Opponent opponent;
-  final int difficulty;
-  final VoidCallback onFight;
-
-  /// Без попыток карточка приглушена, но нажимается — объясняем почему нельзя.
-  final bool enabled;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final s = opponent.slipper;
-    final (label, color) = switch (difficulty) {
-      0 => ('Разминка', GameColors.green),
-      1 => ('Ровня', GameColors.orange),
-      _ => ('Опасно', GameColors.red),
-    };
-    final card = GamePanel(
-      padding: const EdgeInsets.all(12),
-      onTap: onFight,
-      child: Row(
-        children: [
-          // Бейдж сложности живёт под превью — имени остаётся вся ширина строки.
-          Column(
-            children: [
-              Container(
-                width: 88,
-                height: 62,
-                decoration: BoxDecoration(
-                  color: GameColors.panelDark,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: GameColors.outline, width: 2.5),
-                ),
-                child: SlipperSprite(fighter: s, width: 82, flip: true, animate: false),
-              ),
-              const SizedBox(height: 5),
-              GameBadge(text: label, color: color),
-            ],
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  s.name,
-                  style: theme.textTheme.titleMedium,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 5),
-                Row(
-                  children: [
-                    const Icon(Icons.bolt, color: GameColors.orange, size: 16),
-                    Text('${s.power}', style: theme.textTheme.bodyMedium),
-                    const SizedBox(width: 10),
-                    const Icon(Icons.emoji_events, color: GameColors.blue, size: 15),
-                    const SizedBox(width: 2),
-                    Text('${opponent.rating}', style: theme.textTheme.bodyMedium),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Wrap(
-                  spacing: 10,
-                  runSpacing: 2,
-                  children: [
-                    for (final st in Stat.values)
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text('${st.short} ', style: theme.textTheme.labelSmall),
-                          Text('${s.level(st)}',
-                              style: theme.textTheme.bodySmall?.copyWith(color: GameColors.text)),
-                        ],
-                      ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 6),
-          // Вся карточка — кнопка боя, отдельная кнопка съедала ширину.
-          Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: GameColors.red,
-              border: Border.all(color: GameColors.outline, width: 2.5),
-            ),
-            child: const Icon(Icons.sports_mma, size: 20, color: GameColors.outline),
-          ),
-        ],
-      ),
-    );
-    return enabled ? card : Opacity(opacity: 0.5, child: card);
   }
 }

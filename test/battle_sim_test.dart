@@ -3,7 +3,7 @@ import 'package:idle_slipper/game/battle/battle_sim.dart';
 import 'package:idle_slipper/game/battle/combatant.dart';
 import 'package:idle_slipper/game/battle/skill_catalog.dart';
 import 'package:idle_slipper/game/battle/skills.dart';
-import 'package:idle_slipper/game/opponents.dart';
+import 'package:idle_slipper/game/leaderboard.dart';
 import 'package:idle_slipper/game/slipper.dart';
 import 'package:idle_slipper/game/slipper_kind.dart';
 
@@ -86,13 +86,20 @@ void main() {
     expect(wins, inInclusiveRange(150, 250));
   });
 
-  test('opponent generator is deterministic and scales with player', () {
-    final me = make('Me', atk: 10, def: 10, hp: 10, spd: 10);
-    final o1 = OpponentGenerator.generate(player: me, rating: 1000, seed: 3);
-    final o2 = OpponentGenerator.generate(player: me, rating: 1000, seed: 3);
-    expect(o1.map((o) => o.slipper.name), o2.map((o) => o.slipper.name));
-    expect(o1.length, 3);
-    expect(o1[0].slipper.totalLevel, lessThan(o1[2].slipper.totalLevel));
+  test('leaderboard: 20 bots, sorted, stronger at the top', () {
+    final bots = Leaderboard.bots;
+    expect(bots, hasLength(20));
+    for (var i = 1; i < bots.length; i++) {
+      expect(bots[i].rating, lessThan(bots[i - 1].rating));
+    }
+    expect(bots.first.slipper.power, greaterThan(bots.last.slipper.power * 5));
+  });
+
+  test('leaderboard: place and next opponent is the one right above', () {
+    expect(Leaderboard.placeOf(1000), 19);
+    expect(Leaderboard.nextOpponent(1000).rating, 1040);
+    expect(Leaderboard.placeOf(9999), 1);
+    expect(Leaderboard.nextOpponent(9999), Leaderboard.bots.first);
   });
 
   group('skills', () {

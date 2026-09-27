@@ -7,7 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'battle/battle_sim.dart';
 import 'economy.dart';
-import 'opponents.dart';
+import 'leaderboard.dart';
 import 'case_box.dart';
 import 'daily.dart';
 import 'rating.dart';
@@ -67,10 +67,6 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
   /// Сюжет: id главы → сколько боёв подряд пройдено с начала.
   Map<String, int> storyCleared = {};
 
-  /// Сид текущего набора соперников. Меняется после каждого боя.
-  int _opponentSeed = 1;
-  List<Opponent> opponents = const [];
-
   /// Сундук дежурства: наполняется с этого момента.
   DateTime chestSince = DateTime.now();
 
@@ -82,7 +78,6 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
     final prefs = await SharedPreferences.getInstance();
     final state = GameState._(prefs);
     state._restore();
-    state._refreshOpponents();
     state._start();
     return state;
   }
@@ -135,7 +130,6 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
     levels[stat] = levels[stat]! + 1;
     slipper = slipper.copyWith(levels: levels);
     _progress(QuestKind.upgrades);
-    _refreshOpponents();
     _save();
     notifyListeners();
   }
@@ -152,24 +146,31 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
   void equip(String kindId) {
     if ((inventory[kindId] ?? 0) == 0) return;
     slipper = slipper.copyWith(kindId: kindId, stars: starsOf(kindId));
-    _refreshOpponents();
     _save();
     notifyListeners();
   }
 
   bool get canFightArena => tickets.count > 0;
 
-  /// Проводит бой и сразу применяет результат. Возвращает результат
-  /// для анимации — UI показывает его уже как «запись».
-  /// Бой стоит одну попытку; без попыток — null.
-  BattleResult? fight(Opponent opponent) {
+  /// Место в рейтинге арены.
+  int get arenaPlace => Leaderboard.placeOf(rating);
+
+  /// Бой с тем, кто стоит в рейтинге сразу выше. Считается сразу целиком,
+  /// экран боя лишь проигрывает запись. Стоит одну попытку; без попыток — null.
+  ArenaOutcome? fightArena() {
     tickets = tickets.refill(clock());
     if (!canFightArena) return null;
     tickets = tickets.spend(clock());
-    final result = BattleSim.run(slipper, opponent.slipper, seed: opponent.battleSeed);
+    final opponent = Leaderboard.nextOpponent(rating);
+    final result =
+        BattleSim.run(slipper, opponent.slipper, seed: Random().nextInt(1 << 31));
     final won = result.playerWon;
-    threads += Economy.arenaReward(slipper, won: won, opponentPower: opponent.slipper.power);
-    rating = max(100, rating + Rating.delta(mine: rating, theirs: opponent.rating, won: won));
+    final threadsWon =
+        Economy.arenaReward(slipper, won: won, opponentPower: opponent.slipper.power);
+    threads += threadsWon;
+    final ratingDelta = Rating.delta(mine: rating, theirs: opponent.rating, won: won);
+    final before = rating;
+    rating = max(100, rating + ratingDelta);
     if (won) {
       wins++;
       _progress(QuestKind.arenaWins);
@@ -177,11 +178,15 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
       losses++;
     }
     _progress(QuestKind.arenaFights);
-    _opponentSeed = Random().nextInt(1 << 31);
-    _refreshOpponents();
     _save();
     notifyListeners();
-    return result;
+    return (
+      result: result,
+      opponent: opponent,
+      ratingBefore: before,
+      ratingDelta: rating - before,
+      threads: threadsWon,
+    );
   }
 
   // --- Сюжет ------------------------------------------------------------
@@ -229,14 +234,6 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
     return (result: result, threads: threadsWon, coins: coinsWon, kind: kindWon);
   }
 
-  void _refreshOpponents() {
-    opponents = OpponentGenerator.generate(
-      player: slipper,
-      rating: rating,
-      seed: _opponentSeed,
-    );
-  }
-
   // --- Сохранение ------------------------------------------------------
 
   void _save() {
@@ -250,7 +247,6 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
         'rating': rating,
         'wins': wins,
         'losses': losses,
-        'opponentSeed': _opponentSeed,
         'story': storyCleared,
         'stars': stars,
         'tickets': tickets.count,
@@ -288,7 +284,6 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
       rating = json['rating'] as int? ?? rating;
       wins = json['wins'] as int? ?? 0;
       losses = json['losses'] as int? ?? 0;
-      _opponentSeed = json['opponentSeed'] as int? ?? 1;
       final starsJson = json['stars'] as Map?;
       if (starsJson != null) {
         stars = {
@@ -476,8 +471,7 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
     stars[kindId] = starsOf(kindId) + 1;
     if (kindId == slipper.kindId) {
       slipper = slipper.copyWith(stars: starsOf(kindId));
-      _refreshOpponents();
-    }
+      }
     _save();
     notifyListeners();
   }
@@ -517,7 +511,6 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
     rating = Rating.initial;
     wins = 0;
     losses = 0;
-    _opponentSeed = 1;
     storyCleared = {};
     stars = {};
     tickets = ArenaTickets.full(clock());
@@ -525,10 +518,18 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
     dailyCaseDay = '';
     questDay = '';
     _rollDay();
-    _refreshOpponents();
     notifyListeners();
   }
 }
 
 /// Итог боя главы: запись для экрана боя и что выдано.
 typedef StoryOutcome = ({BattleResult result, int threads, int coins, SlipperKind? kind});
+
+/// Итог боя на арене: запись, соперник и что изменилось.
+typedef ArenaOutcome = ({
+  BattleResult result,
+  LeaderboardEntry opponent,
+  int ratingBefore,
+  int ratingDelta,
+  int threads,
+});

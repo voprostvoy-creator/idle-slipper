@@ -168,7 +168,9 @@ class _GameNavBar extends StatelessWidget {
         ),
       );
       return Expanded(
+        // passthrough: кнопка получает всю ширину ячейки, а не сжимается.
         child: Stack(
+          fit: StackFit.passthrough,
           clipBehavior: Clip.none,
           children: [
             button,

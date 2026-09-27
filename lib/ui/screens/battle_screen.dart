@@ -27,6 +27,7 @@ class BattleScreen extends StatefulWidget {
     this.coinsDelta = 0,
     this.rewardKind,
     this.exitLabel = 'На арену',
+    this.intro,
   });
 
   final Combatant player;
@@ -43,6 +44,9 @@ class BattleScreen extends StatefulWidget {
 
   /// Подпись кнопки выхода после боя.
   final String exitLabel;
+
+  /// Представление бойцов перед боем; null — бой начинается сразу.
+  final BattleIntro? intro;
 
   @override
   State<BattleScreen> createState() => _BattleScreenState();
@@ -121,16 +125,45 @@ class _BattleScreenState extends State<BattleScreen>
   );
   Side? _lunging;
 
+  /// Спрайт при атаке оборачивается в анимацию, в покое — нет. С постоянным
+  /// ключом он переносится между обёртками, а не создаётся заново — иначе
+  /// аура и дыхание каждый раз начинались бы сначала.
+  final _spriteKeys = {Side.player: GlobalKey(), Side.opponent: GlobalKey()};
+
   @override
   void initState() {
     super.initState();
+    if (widget.intro != null) {
+      _introShown = true;
+      _introTimer = Timer(_introDuration, _endIntro);
+      return;
+    }
     // Небольшая пауза перед первым ударом — игрок успевает увидеть соперника.
     _timer = Timer(const Duration(milliseconds: 900), _tick);
+  }
+
+  static const _introDuration = Duration(milliseconds: 2200);
+
+  /// Заставка «я VS соперник» на экране; гаснет, потом начинается бой.
+  bool _introShown = false;
+  bool _introFading = false;
+  Timer? _introTimer;
+
+  void _endIntro() {
+    if (!_introShown || _introFading || !mounted) return;
+    _introTimer?.cancel();
+    setState(() => _introFading = true);
+    _introTimer = Timer(const Duration(milliseconds: 300), () {
+      if (!mounted) return;
+      setState(() => _introShown = false);
+      _timer = Timer(const Duration(milliseconds: 500), _tick);
+    });
   }
 
   @override
   void dispose() {
     _timer?.cancel();
+    _introTimer?.cancel();
     _lunge.dispose();
     super.dispose();
   }
@@ -329,7 +362,9 @@ class _BattleScreenState extends State<BattleScreen>
     final theme = Theme.of(context);
     final won = widget.result.playerWon;
     return Scaffold(
-      body: ArtBackground(
+      body: Stack(
+        children: [
+          ArtBackground(
         asset: 'assets/ui/room_bg.jpg',
         child: SafeArea(
         child: Column(
@@ -416,6 +451,7 @@ class _BattleScreenState extends State<BattleScreen>
                             bottom: 0,
                             left: 6,
                             child: _Fighter(
+                              spriteKey: _spriteKeys[Side.player]!,
                               fighter: widget.player,
                               mood: _mood[Side.player]!,
                               width: w,
@@ -431,6 +467,7 @@ class _BattleScreenState extends State<BattleScreen>
                             bottom: 0,
                             right: 6,
                             child: _Fighter(
+                              spriteKey: _spriteKeys[Side.opponent]!,
                               fighter: widget.opponent,
                               mood: _mood[Side.opponent]!,
                               width: w,
@@ -515,6 +552,133 @@ class _BattleScreenState extends State<BattleScreen>
               ),
           ],
         ),
+        ),
+      ),
+          if (_introShown)
+            Positioned.fill(
+              child: AnimatedOpacity(
+                opacity: _introFading ? 0 : 1,
+                duration: const Duration(milliseconds: 300),
+                child: GestureDetector(
+                  // Тап по заставке — сразу к бою.
+                  onTap: _endIntro,
+                  child: _IntroOverlay(
+                    player: widget.player,
+                    opponent: widget.opponent,
+                    intro: widget.intro!,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Очки бойцов для заставки перед боем.
+class BattleIntro {
+  const BattleIntro({required this.playerRating, required this.opponentRating});
+  final int playerRating;
+  final int opponentRating;
+}
+
+/// Заставка перед боем: бойцы выезжают с краёв, между ними — «VS».
+class _IntroOverlay extends StatelessWidget {
+  const _IntroOverlay({
+    required this.player,
+    required this.opponent,
+    required this.intro,
+  });
+
+  final Combatant player;
+  final Combatant opponent;
+  final BattleIntro intro;
+
+  @override
+  Widget build(BuildContext context) {
+    return ColoredBox(
+      color: const Color(0xF214091F),
+      child: SafeArea(
+        child: LayoutBuilder(
+          builder: (context, c) {
+            final cardW = (c.maxWidth - 40) / 2;
+            Widget card(Combatant f, int rating, {required bool right}) =>
+                TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0, end: 1),
+                  duration: const Duration(milliseconds: 550),
+                  curve: Curves.easeOutBack,
+                  builder: (_, t, child) => Transform.translate(
+                    offset: Offset((right ? 1 : -1) * c.maxWidth * 0.6 * (1 - t), 0),
+                    child: child,
+                  ),
+                  child: SizedBox(
+                    width: cardW,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(
+                          height: cardW * 0.62,
+                          child: Align(
+                            alignment: Alignment.bottomCenter,
+                            child: SlipperSprite(
+                              fighter: f,
+                              width: cardW,
+                              flip: right,
+                              showSize: false,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        StrokeText(
+                          f.name,
+                          size: 18,
+                          color: right ? GameColors.red : GameColors.green,
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.emoji_events, color: GameColors.blue, size: 18),
+                            const SizedBox(width: 3),
+                            StrokeText('$rating', size: 18),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+            return Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    card(player, intro.playerRating, right: false),
+                    const SizedBox(width: 40),
+                    card(opponent, intro.opponentRating, right: true),
+                  ],
+                ),
+                const SizedBox(height: 28),
+                TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0, end: 1),
+                  duration: const Duration(milliseconds: 700),
+                  curve: const Interval(0.45, 1, curve: Curves.elasticOut),
+                  builder: (_, t, child) => Opacity(
+                    opacity: t.clamp(0.0, 1.0),
+                    child: Transform.scale(scale: 0.4 + 0.6 * t, child: child),
+                  ),
+                  child: const StrokeText('VS', size: 72, color: GameColors.gold),
+                ),
+                const SizedBox(height: 18),
+                Text(
+                  'Нажми, чтобы начать',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
+            );
+          },
         ),
       ),
     );
@@ -746,6 +910,7 @@ class _Banner {
 
 class _Fighter extends StatelessWidget {
   const _Fighter({
+    required this.spriteKey,
     required this.fighter,
     required this.mood,
     required this.width,
@@ -758,6 +923,7 @@ class _Fighter extends StatelessWidget {
     this.flip = false,
   });
 
+  final GlobalKey spriteKey;
   final Combatant fighter;
   final SlipperMood mood;
   final double width;
@@ -812,6 +978,7 @@ class _Fighter extends StatelessWidget {
             flip: flip,
             reach: reach,
             child: SlipperSprite(
+              key: spriteKey,
               fighter: fighter,
               mood: mood,
               flip: flip,

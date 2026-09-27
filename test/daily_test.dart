@@ -85,12 +85,12 @@ void main() {
 
     test('бой на арене тратит попытку, без попыток боя нет', () {
       for (var i = 0; i < ArenaTickets.max; i++) {
-        expect(game.fight(game.opponents.first), isNotNull);
+        expect(game.fightArena(), isNotNull);
       }
       expect(game.canFightArena, isFalse);
-      expect(game.fight(game.opponents.first), isNull);
+      expect(game.fightArena(), isNull);
       now = now.add(ArenaTickets.period);
-      expect(game.fight(game.opponents.first), isNotNull);
+      expect(game.fightArena(), isNotNull);
     });
 
     test('ежедневный кейс — раз в день', () {
