@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
+import '../../game/battle/skill_catalog.dart';
 import '../../game/game_state.dart';
 import '../../game/slipper.dart';
 import '../../game/slipper_kind.dart';
 import '../../game/stars.dart';
+import '../format.dart';
 import '../slipper_sprite.dart';
 import '../theme.dart';
 import '../widgets/game_widgets.dart';
@@ -74,9 +76,17 @@ class _RarityHeader extends StatelessWidget {
       children: [
         StrokeText(rarity.label, size: 22, color: rarity.color),
         const SizedBox(width: 8),
-        Expanded(child: Container(height: 3, color: rarity.color.withValues(alpha: 0.5))),
+        Expanded(
+          child: Container(
+            height: 3,
+            color: rarity.color.withValues(alpha: 0.5),
+          ),
+        ),
         const SizedBox(width: 8),
-        Text('$owned/${kinds.length}', style: Theme.of(context).textTheme.bodySmall),
+        Text(
+          '$owned/${kinds.length}',
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
       ],
     );
   }
@@ -109,30 +119,35 @@ class _KindCard extends StatelessWidget {
       onTap: have ? () => showKindSheet(context, game, kind) : null,
       child: Stack(
         children: [
-          Column(
-            children: [
-              // Нераскрытый тапок — чёрный силуэт: форму видно, детали нет.
-              have
-                  ? sprite
-                  : ColorFiltered(
-                      colorFilter: const ColorFilter.mode(Color(0xFF120A1C), BlendMode.srcIn),
-                      child: Opacity(opacity: 0.85, child: sprite),
-                    ),
-              const SizedBox(height: 6),
-              Text(
-                have ? kind.name : '???',
-                style: theme.textTheme.titleSmall?.copyWith(
-                  color: have ? GameColors.text : GameColors.textDim,
+          Positioned.fill(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Нераскрытый тапок — чёрный силуэт: форму видно, детали нет.
+                have
+                    ? sprite
+                    : ColorFiltered(
+                        colorFilter: const ColorFilter.mode(
+                          Color(0xFF120A1C),
+                          BlendMode.srcIn,
+                        ),
+                        child: Opacity(opacity: 0.85, child: sprite),
+                      ),
+                const SizedBox(height: 6),
+                Text(
+                  have ? kind.name : '???',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    color: have ? GameColors.text : GameColors.textDim,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 4),
-              if (have)
-                _StarsLine(stars: stars, size: 16)
-              else
-                Text('Из кейсов', style: theme.textTheme.labelSmall),
-            ],
+                if (have) ...[
+                  const SizedBox(height: 4),
+                  _StarsLine(stars: stars, size: 16),
+                ],
+              ],
+            ),
           ),
           if (equipped)
             const Positioned(
@@ -144,7 +159,11 @@ class _KindCard extends StatelessWidget {
             const Positioned(
               right: 0,
               top: 0,
-              child: Icon(Icons.lock_rounded, color: GameColors.textDim, size: 20),
+              child: Icon(
+                Icons.lock_rounded,
+                color: GameColors.textDim,
+                size: 20,
+              ),
             ),
           if (count > 1)
             Positioned(
@@ -157,7 +176,11 @@ class _KindCard extends StatelessWidget {
             const Positioned(
               right: 0,
               bottom: 0,
-              child: Icon(Icons.arrow_circle_up_rounded, color: GameColors.gold, size: 24),
+              child: Icon(
+                Icons.arrow_circle_up_rounded,
+                color: GameColors.gold,
+                size: 24,
+              ),
             ),
         ],
       ),
@@ -187,7 +210,11 @@ class _StarsLine extends StatelessWidget {
 }
 
 /// Окно тапка: что даёт, что нужно для следующей звезды, надеть и улучшить.
-Future<void> showKindSheet(BuildContext context, GameState game, SlipperKind kind) {
+Future<void> showKindSheet(
+  BuildContext context,
+  GameState game,
+  SlipperKind kind,
+) {
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
@@ -218,15 +245,16 @@ class _KindSheet extends StatelessWidget {
     final copies = game.copiesOf(kind.id);
     final bonusNow = (Stars.perStar * stars * 100).round();
 
+    final skills = SkillCatalog.forKind(kind.id);
     return SafeArea(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             SlipperSprite(
               fighter: Slipper(name: kind.name, kindId: kind.id, stars: stars),
-              width: 220,
+              width: 200,
               showSize: false,
             ),
             const SizedBox(height: 6),
@@ -237,9 +265,15 @@ class _KindSheet extends StatelessWidget {
               runSpacing: 4,
               alignment: WrapAlignment.center,
               children: [
-                GameBadge(text: '${kind.rarity.label} · ${kind.rarity.tier}', color: kind.rarity.color),
+                GameBadge(
+                  text: '${kind.rarity.label} · ${kind.rarity.tier}',
+                  color: kind.rarity.color,
+                ),
                 for (final e in kind.bonuses.entries)
-                  GameBadge(text: e.key.format(e.value), color: GameColors.green),
+                  GameBadge(
+                    text: e.key.format(e.value),
+                    color: GameColors.green,
+                  ),
               ],
             ),
             const SizedBox(height: 10),
@@ -249,6 +283,40 @@ class _KindSheet extends StatelessWidget {
                 'Сейчас: удар, прочность и здоровье +$bonusNow%',
                 style: theme.textTheme.bodySmall,
               ),
+            const SizedBox(height: 12),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: _SkillTile(
+                    index: 1,
+                    name: skills.active.name,
+                    description: skills.active.description,
+                    note: 'Перезарядка: ${fmtTurns(skills.activeCooldown)}',
+                    color: GameColors.blue,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _SkillTile(
+                    index: 2,
+                    name: skills.passive.name,
+                    description: skills.passive.description,
+                    color: GameColors.green,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _SkillTile(
+                    index: 3,
+                    name: skills.ultimate.name,
+                    description: skills.ultimate.description,
+                    note: 'Заряжается от урона: нанесённого и полученного',
+                    color: GameColors.gold,
+                  ),
+                ),
+              ],
+            ),
             const SizedBox(height: 12),
             GamePanel(
               color: GameColors.panelDark,
@@ -264,7 +332,11 @@ class _KindSheet extends StatelessWidget {
                         ),
                         const SizedBox(height: 8),
                         _Need(
-                          icon: const Icon(Icons.layers_rounded, color: GameColors.blue, size: 22),
+                          icon: const Icon(
+                            Icons.layers_rounded,
+                            color: GameColors.blue,
+                            size: 22,
+                          ),
                           label: 'Копии тапка',
                           have: copies,
                           need: cost.copies,
@@ -302,9 +374,13 @@ class _KindSheet extends StatelessWidget {
                 const SizedBox(width: 10),
                 Expanded(
                   child: GameButton(
-                    color: game.canStarUp(kind.id) ? GameColors.gold : GameColors.panelDark,
+                    color: game.canStarUp(kind.id)
+                        ? GameColors.gold
+                        : GameColors.panelDark,
                     height: 50,
-                    onPressed: game.canStarUp(kind.id) ? () => game.starUp(kind.id) : null,
+                    onPressed: game.canStarUp(kind.id)
+                        ? () => game.starUp(kind.id)
+                        : null,
                     child: const Text('Улучшить'),
                   ),
                 ),
@@ -312,6 +388,106 @@ class _KindSheet extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Скилл в окне тапка: номер в цвете вида скилла и название;
+/// по нажатию — описание, как в бою.
+class _SkillTile extends StatelessWidget {
+  const _SkillTile({
+    required this.index,
+    required this.name,
+    required this.description,
+    required this.color,
+    this.note,
+  });
+
+  /// 1 — активный, 2 — пассивный, 3 — ульта.
+  final int index;
+  final String name;
+  final String description;
+  final Color color;
+  final String? note;
+
+  String get _kind => switch (index) {
+    1 => 'Скилл',
+    2 => 'Пассивный',
+    _ => 'Ульта',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return GamePanel(
+      color: GameColors.panelLight,
+      padding: const EdgeInsets.fromLTRB(6, 8, 6, 8),
+      onTap: () => _show(context),
+      child: Column(
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(7),
+              border: Border.all(color: GameColors.outline, width: 2.5),
+            ),
+            child: Text(
+              '$index',
+              style: const TextStyle(
+                color: GameColors.outline,
+                fontWeight: FontWeight.w900,
+                fontSize: 15,
+              ),
+            ),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            name,
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.labelSmall?.copyWith(color: GameColors.text),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _show(BuildContext context) {
+    final theme = Theme.of(context);
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            GameBadge(text: _kind, color: color),
+            const SizedBox(height: 8),
+            StrokeText(name, size: 20),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(description),
+            if (note != null) ...[
+              const SizedBox(height: 8),
+              Text(note!, style: theme.textTheme.bodySmall),
+            ],
+          ],
+        ),
+        actions: [
+          GameButton(
+            color: GameColors.gold,
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Понятно'),
+          ),
+        ],
       ),
     );
   }
