@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 
 import '../../game/game_state.dart';
@@ -192,7 +194,7 @@ class _StoryArt extends StatelessWidget {
   }
 }
 
-/// Картинка «Арены»: два тапка скрещены, как мечи, под ними кубок.
+/// Картинка «Арены»: два тапка скрещены почти под прямым углом, как мечи.
 class _ArenaArt extends StatelessWidget {
   const _ArenaArt();
 
@@ -203,7 +205,8 @@ class _ArenaArt extends StatelessWidget {
         final s = box.maxWidth;
         Widget slipper(String id, double angle, {bool flip = false}) => Positioned(
               left: s * 0.06,
-              top: s * 0.14,
+              // По центру плитки: картинка 2:1 высотой 0.44 от ширины.
+              top: s * 0.3,
               width: s * 0.88,
               child: Transform.rotate(
                 angle: angle,
@@ -215,22 +218,8 @@ class _ArenaArt extends StatelessWidget {
             );
         return Stack(
           children: [
-            slipper('red_spike', -0.95),
-            slipper('blue_slide', 0.95, flip: true),
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: s * 0.03,
-              child: Icon(
-                Icons.emoji_events_rounded,
-                size: s * 0.28,
-                color: GameColors.gold,
-                shadows: const [
-                  Shadow(color: GameColors.outline, blurRadius: 0, offset: Offset(0, 2)),
-                  Shadow(color: GameColors.outline, blurRadius: 4),
-                ],
-              ),
-            ),
+            slipper('red_spike', -pi / 4),
+            slipper('blue_slide', pi / 4, flip: true),
           ],
         );
       },

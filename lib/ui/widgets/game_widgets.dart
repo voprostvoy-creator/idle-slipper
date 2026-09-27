@@ -506,76 +506,12 @@ class GameBadge extends StatelessWidget {
   }
 }
 
-/// Значок силы тапка: согнутая рука с бицепсом.
+/// Значок силы тапка: эмодзи руки с бицепсом.
 class PowerIcon extends StatelessWidget {
   const PowerIcon({super.key, this.size = 18});
   final double size;
 
   @override
   Widget build(BuildContext context) =>
-      CustomPaint(size: Size.square(size), painter: const _BicepsPainter());
-}
-
-class _BicepsPainter extends CustomPainter {
-  const _BicepsPainter();
-
-  @override
-  void paint(Canvas c, Size size) {
-    // Рисуем в сетке 100×100 и масштабируем.
-    final k = size.width / 100;
-    c.save();
-    c.scale(k);
-    final arm = Path()
-      ..moveTo(20, 10)
-      // Кулак.
-      ..cubicTo(32, 2, 46, 6, 47, 18)
-      ..cubicTo(48, 26, 44, 31, 40, 33)
-      // Внутренняя сторона предплечья вниз к локтевому сгибу.
-      ..lineTo(40, 50)
-      // Бицепс.
-      ..cubicTo(48, 34, 72, 32, 83, 45)
-      ..cubicTo(92, 55, 94, 66, 93, 76)
-      // Плечо и низ руки.
-      ..lineTo(93, 92)
-      ..lineTo(32, 92)
-      // Локоть.
-      ..cubicTo(16, 92, 8, 82, 10, 68)
-      // Внешняя сторона предплечья вверх.
-      ..lineTo(12, 28)
-      ..cubicTo(11, 18, 14, 13, 20, 10)
-      ..close();
-    c.drawPath(arm, Paint()..color = GameColors.orange);
-    // Блик на бицепсе.
-    c.drawPath(
-      Path()
-        ..moveTo(52, 46)
-        ..quadraticBezierTo(64, 38, 76, 46),
-      Paint()
-        ..color = GameColors.goldLight
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 7
-        ..strokeCap = StrokeCap.round,
-    );
-    c.drawPath(
-      arm,
-      Paint()
-        ..color = GameColors.outline
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 8
-        ..strokeJoin = StrokeJoin.round,
-    );
-    // Складка кулака.
-    c.drawLine(
-      const Offset(22, 22),
-      const Offset(36, 20),
-      Paint()
-        ..color = GameColors.outline
-        ..strokeWidth = 6
-        ..strokeCap = StrokeCap.round,
-    );
-    c.restore();
-  }
-
-  @override
-  bool shouldRepaint(_BicepsPainter old) => false;
+      Text('💪', style: TextStyle(fontSize: size * 0.9, height: 1));
 }

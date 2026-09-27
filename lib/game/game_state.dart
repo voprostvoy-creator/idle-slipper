@@ -30,9 +30,8 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
   /// нитки берутся кнопкой в отладочной панели.
   static const double startingThreads = 0;
 
-  /// TODO: убрать перед релизом — для тестов вся коллекция открыта сразу.
-  static Map<String, int> get startingInventory =>
-      {for (final k in SlipperCatalog.all) k.id: 1};
+  /// На старте — только базовый тапок, остальные выбиваются из кейсов.
+  static Map<String, int> get startingInventory => {SlipperCatalog.defaultId: 1};
 
   /// Основная валюта: нитки. Тратятся на прокачку и кейсы.
   double threads = startingThreads;
