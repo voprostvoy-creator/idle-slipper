@@ -10,6 +10,7 @@ class CaseType {
     required this.description,
     required this.price,
     required this.weights,
+    this.daily = false,
   });
 
   final String id;
@@ -21,6 +22,9 @@ class CaseType {
 
   /// Веса по редкости. Редкости, которых тут нет, не выпадают.
   final Map<Rarity, int> weights;
+
+  /// Бесплатный раз в день; обновляется в полночь.
+  final bool daily;
 
   bool get isFree => price == 0;
 
@@ -66,6 +70,16 @@ class CaseType {
 class CaseCatalog {
   CaseCatalog._();
 
+  /// Ежедневный: бесплатно раз в день, шансы как у обычного.
+  static const dailyCase = CaseType(
+    id: 'daily',
+    name: 'Ежедневный кейс',
+    description: 'Бесплатно раз в день. Шансы как у обычного кейса.',
+    price: 0,
+    weights: {Rarity.common: 62, Rarity.rare: 30, Rarity.epic: 8},
+    daily: true,
+  );
+
   /// Обычный кейс: в основном мусор, эпик — редкая удача.
   static const standard = CaseType(
     id: 'standard',
@@ -89,7 +103,7 @@ class CaseCatalog {
     },
   );
 
-  static const all = [standard, ad];
+  static const all = [dailyCase, standard, ad];
 
   static CaseType byId(String id) =>
       all.firstWhere((c) => c.id == id, orElse: () => standard);

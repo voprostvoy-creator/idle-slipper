@@ -20,3 +20,11 @@ String fmtTurns(int n) {
   final word = switch (tail) { 1 => 'ход', 2 || 3 || 4 => 'хода', _ => 'ходов' };
   return '$n $word';
 }
+
+/// Таймер «1:05:09» или «4:09» — для обратных отсчётов.
+String fmtClock(Duration d) {
+  final h = d.inHours;
+  final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+  final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+  return h > 0 ? '$h:$m:$s' : '${d.inMinutes}:$s';
+}

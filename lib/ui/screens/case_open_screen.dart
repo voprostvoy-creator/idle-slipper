@@ -151,6 +151,7 @@ class _CaseOpenScreenState extends State<CaseOpenScreen>
   Widget _result(ThemeData theme) {
     final kind = _prize;
     final count = widget.game.count(kind.id);
+    final starCost = widget.game.nextStarCost(kind.id);
     final sellPrice = kind.rarity.sellPrice;
     // Последний экземпляр надетого тапка продавать нельзя.
     final canSell = !_sold && count > 0 && !(count == 1 && kind.id == widget.game.slipper.kindId);
@@ -171,6 +172,11 @@ class _CaseOpenScreenState extends State<CaseOpenScreen>
                 GameBadge(text: e.key.format(e.value), color: GameColors.green),
               if (count > 1 && !_sold)
                 GameBadge(text: 'в коллекции ×$count', color: GameColors.panelLight),
+              if (!_sold && starCost != null)
+                GameBadge(
+                  text: 'копии на ★: ${widget.game.copiesOf(kind.id)}/${starCost.copies}',
+                  color: GameColors.gold,
+                ),
             ],
           ),
           const SizedBox(height: 14),
@@ -245,7 +251,9 @@ class _CaseOpenScreenState extends State<CaseOpenScreen>
                       ? (widget.type.isFree ? GameColors.green : GameColors.gold)
                       : GameColors.panelDark,
                   onPressed: canOpenAgain ? _again : null,
-                  child: widget.type.isFree
+                  child: widget.type.daily
+                      ? const Text('Завтра ещё')
+                      : widget.type.isFree
                       ? const Text('Ещё раз')
                       : Row(
                           mainAxisSize: MainAxisSize.min,

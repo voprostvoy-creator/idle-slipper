@@ -5,6 +5,7 @@ import 'battle/combatant.dart';
 import 'battle/skill_catalog.dart';
 import 'battle/skills.dart';
 import 'slipper_kind.dart';
+import 'stars.dart';
 
 /// Четыре характеристики тапка. Каждая качается отдельно.
 enum Stat {
@@ -26,12 +27,18 @@ class Slipper implements Combatant {
     required this.name,
     this.kindId = SlipperCatalog.defaultId,
     Map<Stat, int>? levels,
+    this.stars = 0,
   }) : levels = {for (final s in Stat.values) s: levels?[s] ?? 1};
 
   @override
   final String name;
   final String kindId;
   final Map<Stat, int> levels;
+
+  /// Звёзды вида (0..5) — усиливают удар, прочность и здоровье.
+  final int stars;
+
+  double get _starMul => Stars.multiplier(stars);
 
   SlipperKind get kind => SlipperCatalog.byId(kindId);
 
@@ -43,14 +50,17 @@ class Slipper implements Combatant {
   @override
   double get attack =>
       (10 + level(Stat.attack) * 4.0 + pow(level(Stat.attack), 1.3)) *
-      (1 + kind.bonus(Bonus.damage));
+      (1 + kind.bonus(Bonus.damage)) *
+      _starMul;
 
   /// Защита работает по формуле 100/(100+def) — никогда не даёт иммунитет.
   @override
-  double get defense => level(Stat.defense) * 5.0 * (1 + kind.bonus(Bonus.defense));
+  double get defense =>
+      level(Stat.defense) * 5.0 * (1 + kind.bonus(Bonus.defense)) * _starMul;
 
   @override
-  double get maxHp => (100 + level(Stat.health) * 25.0) * (1 + kind.bonus(Bonus.hp));
+  double get maxHp =>
+      (100 + level(Stat.health) * 25.0) * (1 + kind.bonus(Bonus.hp)) * _starMul;
 
   /// Скорость определяет порядок и частоту ходов (см. BattleSim).
   @override
@@ -107,11 +117,17 @@ class Slipper implements Combatant {
     return AuraSpec(color: _auraColors[best]!, strength: strength);
   }
 
-  Slipper copyWith({String? name, String? kindId, Map<Stat, int>? levels}) =>
+  Slipper copyWith({
+    String? name,
+    String? kindId,
+    Map<Stat, int>? levels,
+    int? stars,
+  }) =>
       Slipper(
         name: name ?? this.name,
         kindId: kindId ?? this.kindId,
         levels: levels ?? Map.of(this.levels),
+        stars: stars ?? this.stars,
       );
 
   Map<String, dynamic> toJson() => {

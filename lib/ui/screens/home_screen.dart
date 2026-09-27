@@ -4,6 +4,7 @@ import '../../game/economy.dart';
 import '../../game/game_state.dart';
 import '../../game/slipper.dart';
 import '../format.dart';
+import '../quests_sheet.dart';
 import '../slipper_sprite.dart';
 import '../theme.dart';
 import '../widgets/game_widgets.dart';
@@ -108,6 +109,12 @@ class _HomeScreenState extends State<HomeScreen>
             ),
             SliverToBoxAdapter(
               child: _NameRow(game: game, onOpenCollection: widget.onOpenCollection),
+            ),
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+                child: QuestsTile(game: game),
+              ),
             ),
             SliverToBoxAdapter(
               child: Padding(
@@ -220,6 +227,8 @@ class _NameRow extends StatelessWidget {
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
             GameBadge(text: '${kind.rarity.label} · ${kind.name}', color: kind.rarity.color),
+            if (game.slipper.stars > 0)
+              GameBadge(text: '★' * game.slipper.stars, color: GameColors.gold),
             for (final e in kind.bonuses.entries)
               GameBadge(text: e.key.format(e.value), color: GameColors.green),
           ],

@@ -140,6 +140,35 @@ class RatingScreen extends StatelessWidget {
                 ],
               ),
             ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: GameButton(
+                    color: GameColors.gold,
+                    height: 38,
+                    onPressed: () => game.cheatCoins(1000),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        CoinIcon(size: 16),
+                        SizedBox(width: 5),
+                        Text('+1K'),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: GameButton(
+                    color: GameColors.blue,
+                    height: 38,
+                    onPressed: game.cheatNewDay,
+                    child: const Text('Новый день'),
+                  ),
+                ),
+              ],
+            ),
             const SizedBox(height: 16),
             Center(
               child: TextButton.icon(

@@ -52,10 +52,10 @@ class _RootShellState extends State<RootShell> {
   BattleMode? _battleMode;
 
   void _select(_Tab tab) => setState(() {
-        // Повторное нажатие на «В бой» возвращает к выбору режима.
-        if (tab == _Tab.battle && _tab == _Tab.battle) _battleMode = null;
-        _tab = tab;
-      });
+    // Повторное нажатие на «В бой» возвращает к выбору режима.
+    if (tab == _Tab.battle && _tab == _Tab.battle) _battleMode = null;
+    _tab = tab;
+  });
 
   @override
   void initState() {
@@ -120,10 +120,7 @@ class _RootShellState extends State<RootShell> {
   Widget build(BuildContext context) {
     final game = widget.game;
     final pages = [
-      HomeScreen(
-        game: game,
-        onOpenCollection: () => _select(_Tab.collection),
-      ),
+      HomeScreen(game: game, onOpenCollection: () => _select(_Tab.collection)),
       CollectionScreen(game: game),
       BattleHubScreen(
         game: game,
@@ -155,7 +152,18 @@ class _RootShellState extends State<RootShell> {
     );
     return Scaffold(
       body: GameBackground(child: content),
-      bottomNavigationBar: _GameNavBar(tab: _tab, onChanged: _select),
+      bottomNavigationBar: ListenableBuilder(
+        listenable: game,
+        builder: (context, _) => _GameNavBar(
+          tab: _tab,
+          onChanged: _select,
+          // Точка — есть что забрать: награда за задание или ежедневный кейс.
+          dots: {
+            if (game.questsReady) _Tab.home,
+            if (game.dailyCaseAvailable) _Tab.shop,
+          },
+        ),
+      ),
     );
   }
 }
@@ -163,9 +171,14 @@ class _RootShellState extends State<RootShell> {
 /// Нижняя навигация: четыре вкладки по бокам и крупная кнопка «В бой»
 /// посередине, приподнятая над панелью.
 class _GameNavBar extends StatelessWidget {
-  const _GameNavBar({required this.tab, required this.onChanged});
+  const _GameNavBar({
+    required this.tab,
+    required this.onChanged,
+    this.dots = const {},
+  });
   final _Tab tab;
   final ValueChanged<_Tab> onChanged;
+  final Set<_Tab> dots;
 
   static const _side = [
     (_Tab.home, Icons.home_rounded, 'Тапок'),
@@ -185,31 +198,55 @@ class _GameNavBar extends StatelessWidget {
     Widget sideButton((_Tab, IconData, String) item) {
       final (t, icon, label) = item;
       final active = t == tab;
+      final button = GameButton(
+        height: 50,
+        color: active ? GameColors.gold : GameColors.panelLight,
+        padding: const EdgeInsets.symmetric(horizontal: 2),
+        onPressed: () => onChanged(t),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 21,
+              color: active ? GameColors.outline : GameColors.text,
+            ),
+            // На узких экранах подпись ужимается, а не переносится.
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                label,
+                maxLines: 1,
+                softWrap: false,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: active ? GameColors.outline : GameColors.text,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
       return Expanded(
-        child: GameButton(
-          height: 50,
-          color: active ? GameColors.gold : GameColors.panelLight,
-          padding: const EdgeInsets.symmetric(horizontal: 2),
-          onPressed: () => onChanged(t),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, size: 21, color: active ? GameColors.outline : GameColors.text),
-              // На узких экранах подпись ужимается, а не переносится.
-              FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  softWrap: false,
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: active ? GameColors.outline : GameColors.text,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            button,
+            if (dots.contains(t))
+              Positioned(
+                top: -3,
+                right: -2,
+                child: Container(
+                  width: 14,
+                  height: 14,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: GameColors.red,
+                    border: Border.all(color: GameColors.outline, width: 2),
                   ),
                 ),
               ),
-            ],
-          ),
+          ],
         ),
       );
     }
@@ -223,7 +260,9 @@ class _GameNavBar extends StatelessWidget {
           padding: EdgeInsets.fromLTRB(4, 8, 4, 8 + bottomInset),
           decoration: const BoxDecoration(
             color: GameColors.panelDark,
-            border: Border(top: BorderSide(color: GameColors.outline, width: 3)),
+            border: Border(
+              top: BorderSide(color: GameColors.outline, width: 3),
+            ),
           ),
           child: Row(
             children: [
@@ -308,13 +347,20 @@ class _FightButtonState extends State<_FightButton> {
                   ),
                   border: Border.all(color: GameColors.outline, width: 3.5),
                   boxShadow: const [
-                    BoxShadow(color: Color(0x66000000), blurRadius: 8, offset: Offset(0, 3)),
+                    BoxShadow(
+                      color: Color(0x66000000),
+                      blurRadius: 8,
+                      offset: Offset(0, 3),
+                    ),
                   ],
                 ),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const CustomPaint(size: Size(32, 32), painter: _SwordsPainter()),
+                    const CustomPaint(
+                      size: Size(32, 32),
+                      painter: _SwordsPainter(),
+                    ),
                     const SizedBox(height: 1),
                     Text(
                       'В БОЙ',
@@ -367,7 +413,11 @@ class _SwordsPainter extends CustomPainter {
       );
       // Гарда и рукоять.
       final guard = RRect.fromRectAndRadius(
-        Rect.fromCenter(center: Offset(0, s * 0.17), width: s * 0.34, height: s * 0.09),
+        Rect.fromCenter(
+          center: Offset(0, s * 0.17),
+          width: s * 0.34,
+          height: s * 0.09,
+        ),
         Radius.circular(s * 0.03),
       );
       c.drawRRect(guard, Paint()..color = GameColors.gold);
@@ -379,7 +429,11 @@ class _SwordsPainter extends CustomPainter {
           ..strokeWidth = s * 0.045,
       );
       final grip = RRect.fromRectAndRadius(
-        Rect.fromCenter(center: Offset(0, s * 0.33), width: s * 0.1, height: s * 0.2),
+        Rect.fromCenter(
+          center: Offset(0, s * 0.33),
+          width: s * 0.1,
+          height: s * 0.2,
+        ),
         Radius.circular(s * 0.03),
       );
       c.drawRRect(grip, Paint()..color = const Color(0xFF6B4A2F));

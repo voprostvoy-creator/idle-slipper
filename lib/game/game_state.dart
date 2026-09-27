@@ -9,9 +9,11 @@ import 'battle/battle_sim.dart';
 import 'economy.dart';
 import 'opponents.dart';
 import 'case_box.dart';
+import 'daily.dart';
 import 'rating.dart';
 import 'slipper.dart';
 import 'slipper_kind.dart';
+import 'stars.dart';
 import 'story/chapters.dart';
 
 /// Единственный источник правды для UI. Сохраняется в SharedPreferences.
@@ -43,6 +45,24 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
   int rating = Rating.initial;
   int wins = 0;
   int losses = 0;
+
+  /// Часы игры. Подменяется в тестах, чтобы проверять смену дня.
+  DateTime Function() clock = DateTime.now;
+
+  /// Звёзды видов в коллекции: id вида → 0..5.
+  Map<String, int> stars = {};
+
+  /// Попытки арены, восстанавливаются со временем.
+  ArenaTickets tickets = ArenaTickets.full(DateTime.now());
+
+  /// День, когда забран ежедневный кейс.
+  String dailyCaseDay = '';
+
+  /// Задания: день, прогресс по видам, полученные награды.
+  String questDay = '';
+  Map<String, int> questProgress = {};
+  Set<String> questClaimed = {};
+  bool questBonusClaimed = false;
 
   /// Сюжет: id главы → сколько боёв подряд пройдено с начала.
   Map<String, int> storyCleared = {};
@@ -98,6 +118,8 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
 
   void _tick() {
     threads += incomePerSecond;
+    tickets = tickets.refill(clock());
+    _rollDay();
     _lastSeen = DateTime.now();
     notifyListeners();
     // Сохраняемся раз в 10 секунд, чтобы не дёргать диск каждый тик.
@@ -124,6 +146,7 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
 
   void tap() {
     threads += Economy.tapReward(slipper);
+    _progress(QuestKind.taps);
     notifyListeners();
   }
 
@@ -138,6 +161,7 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
     final levels = Map.of(slipper.levels);
     levels[stat] = levels[stat]! + 1;
     slipper = slipper.copyWith(levels: levels);
+    _progress(QuestKind.upgrades);
     _refreshOpponents();
     _save();
     notifyListeners();
@@ -154,24 +178,32 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
   /// Сменить вид тапка — только на то, что есть в инвентаре.
   void equip(String kindId) {
     if ((inventory[kindId] ?? 0) == 0) return;
-    slipper = slipper.copyWith(kindId: kindId);
+    slipper = slipper.copyWith(kindId: kindId, stars: starsOf(kindId));
     _refreshOpponents();
     _save();
     notifyListeners();
   }
 
+  bool get canFightArena => tickets.count > 0;
+
   /// Проводит бой и сразу применяет результат. Возвращает результат
   /// для анимации — UI показывает его уже как «запись».
-  BattleResult fight(Opponent opponent) {
+  /// Бой стоит одну попытку; без попыток — null.
+  BattleResult? fight(Opponent opponent) {
+    tickets = tickets.refill(clock());
+    if (!canFightArena) return null;
+    tickets = tickets.spend(clock());
     final result = BattleSim.run(slipper, opponent.slipper, seed: opponent.battleSeed);
     final won = result.playerWon;
     threads += Economy.battleReward(won: won, opponentPower: opponent.slipper.power);
     rating = max(100, rating + Rating.delta(mine: rating, theirs: opponent.rating, won: won));
     if (won) {
       wins++;
+      _progress(QuestKind.arenaWins);
     } else {
       losses++;
     }
+    _progress(QuestKind.arenaFights);
     _opponentSeed = Random().nextInt(1 << 31);
     _refreshOpponents();
     _save();
@@ -194,6 +226,7 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
     var coinsWon = 0;
     SlipperKind? kindWon;
     if (result.playerWon) {
+      _progress(QuestKind.storyWins);
       final first = index == cleared(chapter);
       coinsWon = first ? stage.coins : stage.replayCoins;
       coins += coinsWon;
@@ -234,6 +267,14 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
         'losses': losses,
         'opponentSeed': _opponentSeed,
         'story': storyCleared,
+        'stars': stars,
+        'tickets': tickets.count,
+        'ticketsAt': tickets.since.toIso8601String(),
+        'dailyCaseDay': dailyCaseDay,
+        'questDay': questDay,
+        'questProgress': questProgress,
+        'questClaimed': questClaimed.toList(),
+        'questBonus': questBonusClaimed,
         'lastSeen': _lastSeen.toIso8601String(),
       }),
     );
@@ -262,6 +303,31 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
       wins = json['wins'] as int? ?? 0;
       losses = json['losses'] as int? ?? 0;
       _opponentSeed = json['opponentSeed'] as int? ?? 1;
+      final starsJson = json['stars'] as Map?;
+      if (starsJson != null) {
+        stars = {
+          for (final e in starsJson.entries) e.key as String: (e.value as num).toInt(),
+        };
+      }
+      slipper = slipper.copyWith(stars: starsOf(slipper.kindId));
+      final ticketsAt = DateTime.tryParse(json['ticketsAt'] as String? ?? '');
+      if (ticketsAt != null) {
+        tickets = ArenaTickets(
+          count: (json['tickets'] as num?)?.toInt() ?? ArenaTickets.max,
+          since: ticketsAt,
+        ).refill(clock());
+      }
+      dailyCaseDay = json['dailyCaseDay'] as String? ?? '';
+      questDay = json['questDay'] as String? ?? '';
+      final qp = json['questProgress'] as Map?;
+      if (qp != null) {
+        questProgress = {
+          for (final e in qp.entries) e.key as String: (e.value as num).toInt(),
+        };
+      }
+      questClaimed = {...?(json['questClaimed'] as List?)?.cast<String>()};
+      questBonusClaimed = json['questBonus'] as bool? ?? false;
+      _rollDay();
       final story = json['story'] as Map?;
       if (story != null) {
         storyCleared = {
@@ -279,7 +345,8 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
 
   // --- Кейсы ------------------------------------------------------------
 
-  bool canOpen(CaseType type) => threads >= type.price;
+  bool canOpen(CaseType type) =>
+      type.daily ? dailyCaseAvailable : threads >= type.price;
 
   /// Открывает кейс: списывает нитки, роллит вид и сразу кладёт его в
   /// инвентарь. Продать выпавшее можно потом — так дроп не теряется,
@@ -287,6 +354,8 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
   SlipperKind? openCase(CaseType type) {
     if (!canOpen(type)) return null;
     threads -= type.price;
+    if (type.daily) dailyCaseDay = dayKey(clock());
+    _progress(QuestKind.openCases);
     final kind = type.roll(Random());
     inventory[kind.id] = (inventory[kind.id] ?? 0) + 1;
     _save();
@@ -312,6 +381,109 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
     return true;
   }
 
+  // --- Ежедневное --------------------------------------------------------
+
+  bool get dailyCaseAvailable => dailyCaseDay != dayKey(clock());
+
+  /// С полуночи задания начинаются заново.
+  void _rollDay() {
+    final today = dayKey(clock());
+    if (questDay == today) return;
+    questDay = today;
+    questProgress = {};
+    questClaimed = {};
+    questBonusClaimed = false;
+  }
+
+  void _progress(QuestKind kind) {
+    _rollDay();
+    questProgress[kind.name] = (questProgress[kind.name] ?? 0) + 1;
+  }
+
+  List<QuestSpec> get quests => DailyQuests.forDay(clock());
+
+  int questValue(QuestSpec q) => min(q.target, questProgress[q.kind.name] ?? 0);
+
+  bool questClaimedToday(QuestSpec q) => questClaimed.contains(q.kind.name);
+
+  bool canClaimQuest(QuestSpec q) =>
+      !questClaimedToday(q) && questValue(q) >= q.target;
+
+  void claimQuest(QuestSpec q) {
+    if (!canClaimQuest(q)) return;
+    questClaimed.add(q.kind.name);
+    coins += q.coins;
+    _save();
+    notifyListeners();
+  }
+
+  bool get canClaimQuestBonus =>
+      !questBonusClaimed && quests.every(questClaimedToday);
+
+  void claimQuestBonus() {
+    if (!canClaimQuestBonus) return;
+    questBonusClaimed = true;
+    coins += DailyQuests.bonusCoins;
+    _save();
+    notifyListeners();
+  }
+
+  /// Есть что забрать — для красной точки на вкладке.
+  bool get questsReady => quests.any(canClaimQuest) || canClaimQuestBonus;
+
+  // --- Звёзды -------------------------------------------------------------
+
+  int starsOf(String kindId) => stars[kindId] ?? 0;
+
+  /// Копии сверх одной — они идут на звёзды.
+  int copiesOf(String kindId) => max(0, count(kindId) - 1);
+
+  /// Цена следующей звезды; null — звёзд уже максимум.
+  ({int copies, int coins})? nextStarCost(String kindId) {
+    final next = starsOf(kindId) + 1;
+    if (next > Stars.max) return null;
+    return (
+      copies: Stars.copiesFor(next),
+      coins: Stars.coinsFor(next, SlipperCatalog.byId(kindId).rarity),
+    );
+  }
+
+  bool canStarUp(String kindId) {
+    final cost = nextStarCost(kindId);
+    return cost != null && copiesOf(kindId) >= cost.copies && coins >= cost.coins;
+  }
+
+  void starUp(String kindId) {
+    if (!canStarUp(kindId)) return;
+    final cost = nextStarCost(kindId)!;
+    inventory[kindId] = count(kindId) - cost.copies;
+    coins -= cost.coins;
+    stars[kindId] = starsOf(kindId) + 1;
+    if (kindId == slipper.kindId) {
+      slipper = slipper.copyWith(stars: starsOf(kindId));
+      _refreshOpponents();
+    }
+    _save();
+    notifyListeners();
+  }
+
+  /// Для отладки: монеты.
+  void cheatCoins(int amount) {
+    coins += amount;
+    _save();
+    notifyListeners();
+  }
+
+  /// Для отладки: как будто наступил новый день и попытки восстановились.
+  void cheatNewDay() {
+    tickets = ArenaTickets.full(clock());
+    dailyCaseDay = '';
+    questDay = '';
+    _rollDay();
+    _save();
+    notifyListeners();
+  }
+
   /// Для отладки: выдать ниток.
   void cheatThreads(double amount) {
     threads += amount;
@@ -331,6 +503,11 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
     losses = 0;
     _opponentSeed = 1;
     storyCleared = {};
+    stars = {};
+    tickets = ArenaTickets.full(clock());
+    dailyCaseDay = '';
+    questDay = '';
+    _rollDay();
     _refreshOpponents();
     notifyListeners();
   }

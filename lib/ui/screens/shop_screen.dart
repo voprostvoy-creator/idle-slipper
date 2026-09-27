@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../game/case_box.dart';
+import '../../game/daily.dart';
 import '../../game/game_state.dart';
 import '../format.dart';
 import '../theme.dart';
@@ -73,7 +74,7 @@ class _CaseCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              CaseIcon(size: 58, free: type.isFree),
+              CaseIcon(size: 58, free: type.isFree && !type.daily),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -133,7 +134,11 @@ class _CaseCard extends StatelessWidget {
                   : GameColors.panelLight,
               height: 50,
               onPressed: canOpen ? () => _open(context) : null,
-              child: type.isFree
+              child: type.daily
+                  ? Text(canOpen
+                      ? 'Забрать бесплатно'
+                      : 'Новый через ${fmtClock(untilMidnight(game.clock()))}')
+                  : type.isFree
                   ? const Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -153,7 +158,7 @@ class _CaseCard extends StatelessWidget {
                     ),
             ),
           ),
-          if (!canOpen) ...[
+          if (!canOpen && !type.daily) ...[
             const SizedBox(height: 6),
             Text('Не хватает ниток', style: theme.textTheme.bodySmall),
           ],

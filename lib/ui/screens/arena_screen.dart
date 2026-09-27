@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
+import '../../game/daily.dart';
 import '../../game/game_state.dart';
 import '../../game/opponents.dart';
 import '../../game/slipper.dart';
+import '../format.dart';
 import '../slipper_sprite.dart';
 import '../theme.dart';
 import '../widgets/game_widgets.dart';
@@ -33,12 +35,15 @@ class ArenaScreen extends StatelessWidget {
               textAlign: TextAlign.center,
               style: theme.textTheme.bodySmall,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
+            _TicketsBar(game: game),
+            const SizedBox(height: 14),
             for (final (i, o) in game.opponents.indexed) ...[
               _OpponentCard(
                 opponent: o,
                 difficulty: i,
                 onFight: () => _fight(context, o),
+                enabled: game.canFightArena,
               ),
               const SizedBox(height: 14),
             ],
@@ -54,6 +59,14 @@ class ArenaScreen extends StatelessWidget {
     final ratingBefore = game.rating;
     final threadsBefore = game.threads;
     final result = game.fight(opponent);
+    if (result == null) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(const SnackBar(
+          content: Text('Попытки кончились — новая скоро восстановится'),
+        ));
+      return;
+    }
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => BattleScreen(
@@ -68,16 +81,57 @@ class ArenaScreen extends StatelessWidget {
   }
 }
 
+/// Попытки арены: значки мечей и таймер до следующей.
+class _TicketsBar extends StatelessWidget {
+  const _TicketsBar({required this.game});
+  final GameState game;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final t = game.tickets;
+    final next = t.nextIn(game.clock());
+    return GamePanel(
+      color: GameColors.panelDark,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: Row(
+        children: [
+          for (var i = 0; i < ArenaTickets.max; i++)
+            Padding(
+              padding: const EdgeInsets.only(right: 4),
+              child: Icon(
+                Icons.sports_mma,
+                size: 22,
+                color: i < t.count ? GameColors.red : GameColors.panelLight,
+              ),
+            ),
+          const SizedBox(width: 6),
+          Text('${t.count}/${ArenaTickets.max}', style: theme.textTheme.titleMedium),
+          const Spacer(),
+          Text(
+            next == null ? 'Попытки полные' : '+1 через ${fmtClock(next)}',
+            style: theme.textTheme.bodySmall,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _OpponentCard extends StatelessWidget {
   const _OpponentCard({
     required this.opponent,
     required this.difficulty,
     required this.onFight,
+    required this.enabled,
   });
 
   final Opponent opponent;
   final int difficulty;
   final VoidCallback onFight;
+
+  /// Без попыток карточка приглушена, но нажимается — объясняем почему нельзя.
+  final bool enabled;
 
   @override
   Widget build(BuildContext context) {
@@ -88,7 +142,7 @@ class _OpponentCard extends StatelessWidget {
       1 => ('Ровня', GameColors.orange),
       _ => ('Опасно', GameColors.red),
     };
-    return GamePanel(
+    final card = GamePanel(
       padding: const EdgeInsets.all(12),
       onTap: onFight,
       child: Row(
@@ -165,5 +219,6 @@ class _OpponentCard extends StatelessWidget {
         ],
       ),
     );
+    return enabled ? card : Opacity(opacity: 0.5, child: card);
   }
 }
