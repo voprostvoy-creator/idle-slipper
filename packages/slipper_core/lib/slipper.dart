@@ -156,18 +156,29 @@ class Slipper implements Combatant {
     gems: gems ?? this.gems,
   );
 
+  /// Снимок тапка: уровни, звёзды и вставленные гемы — всё, что влияет
+  /// на бой. Его хранит сервер, и с ним сражаются другие игроки.
   Map<String, dynamic> toJson() => {
     'name': name,
     'kind': kindId,
     'levels': {for (final e in levels.entries) e.key.name: e.value},
+    'stars': stars,
+    'gems': [for (final g in gems) g.toJson()],
   };
 
   factory Slipper.fromJson(Map<String, dynamic> json) {
     final raw = (json['levels'] as Map?) ?? const {};
+    final kind = json['kind'] as String? ?? SlipperCatalog.defaultId;
     return Slipper(
       name: json['name'] as String? ?? 'Тапок',
-      kindId: json['kind'] as String? ?? SlipperCatalog.defaultId,
-      levels: {for (final s in Stat.values) s: (raw[s.name] as int?) ?? 1},
+      // Неизвестный вид (например, из новой версии игры) — базовый тапок.
+      kindId: SlipperCatalog.all.any((k) => k.id == kind) ? kind : SlipperCatalog.defaultId,
+      levels: {for (final s in Stat.values) s: ((raw[s.name] as num?)?.toInt() ?? 1).clamp(1, 1000)},
+      stars: ((json['stars'] as num?)?.toInt() ?? 0).clamp(0, Stars.max),
+      gems: [
+        for (final g in (json['gems'] as List? ?? const []).take(Gems.maxSlots))
+          ?Gem.fromJson((g as Map).cast<String, dynamic>()),
+      ],
     );
   }
 }
