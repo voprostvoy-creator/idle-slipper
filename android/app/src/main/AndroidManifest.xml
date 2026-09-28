@@ -1,4 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Арена, рейтинг и облачное сохранение ходят на сервер. -->
+    <uses-permission android:name="android.permission.INTERNET" />
     <application
         android:label="idle_slipper"
         android:name="${applicationName}"

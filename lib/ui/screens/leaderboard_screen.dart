@@ -17,13 +17,27 @@ class LeaderboardScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final place = game.arenaPlace;
-    final rows = <(Slipper, int, bool)>[
-      for (final b in game.leaderboard) (b.slipper, b.rating, false),
-    ]..insert(place - 1, (game.slipper, game.rating, true));
+    return ListenableBuilder(
+      listenable: game,
+      builder: (context, _) => _build(context),
+    );
+  }
+
+  Widget _build(BuildContext context) {
+    final board = game.arenaBoard;
+    // Строки с сервера: место, тапок, очки, «это я». Себя, если не попал
+    // в топ, добавляем в конец со своим местом.
+    final rows = <(int, Slipper, int, bool)>[
+      if (board != null)
+        for (final e in board.top)
+          (e.place, e.slipper, e.rating, e.id == board.me.id),
+      if (board != null && !board.top.any((e) => e.id == board.me.id))
+        (board.me.place, game.slipper, board.me.rating, true),
+    ];
+    final myIndex = rows.indexWhere((r) => r.$4);
     // Сразу показываем игрока, а не верх списка.
     final controller = ScrollController(
-      initialScrollOffset: max(0, (place - 3) * _rowExtent),
+      initialScrollOffset: max(0, (myIndex - 2) * _rowExtent),
     );
     return Scaffold(
       body: GameBackground(
@@ -39,32 +53,44 @@ class LeaderboardScreen extends StatelessWidget {
                       color: GameColors.panelLight,
                       height: 36,
                       padding: const EdgeInsets.symmetric(horizontal: 10),
-                      child: const Icon(Icons.arrow_back_rounded, color: GameColors.text),
+                      child: const Icon(
+                        Icons.arrow_back_rounded,
+                        color: GameColors.text,
+                      ),
                     ),
-                    const Expanded(child: Center(child: StrokeText('Рейтинг', size: 30))),
+                    const Expanded(
+                      child: Center(child: StrokeText('Рейтинг', size: 30)),
+                    ),
                     const SizedBox(width: 44),
                   ],
                 ),
               ),
               Expanded(
-                child: ListView.builder(
-                  controller: controller,
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                  itemExtent: _rowExtent,
-                  itemCount: rows.length,
-                  itemBuilder: (context, i) {
-                    final (slipper, rating, isMe) = rows[i];
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: _Row(
-                        place: i + 1,
-                        slipper: slipper,
-                        rating: rating,
-                        isMe: isMe,
+                child: board == null
+                    ? Center(
+                        child: Text(
+                          game.arenaError ?? 'Загрузка…',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                      )
+                    : ListView.builder(
+                        controller: controller,
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                        itemExtent: _rowExtent,
+                        itemCount: rows.length,
+                        itemBuilder: (context, i) {
+                          final (place, slipper, rating, isMe) = rows[i];
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: _Row(
+                              place: place,
+                              slipper: slipper,
+                              rating: rating,
+                              isMe: isMe,
+                            ),
+                          );
+                        },
                       ),
-                    );
-                  },
-                ),
               ),
             ],
           ),
@@ -126,7 +152,12 @@ class _Row extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
-          SlipperSprite(fighter: slipper, width: 72, animate: false, showSize: false),
+          SlipperSprite(
+            fighter: slipper,
+            width: 72,
+            animate: false,
+            showSize: false,
+          ),
           const SizedBox(width: 8),
           Expanded(
             child: Column(
@@ -147,7 +178,9 @@ class _Row extends StatelessWidget {
                       const SizedBox(width: 6),
                       Text(
                         '★' * slipper.stars,
-                        style: theme.textTheme.bodySmall?.copyWith(color: GameColors.gold),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: GameColors.gold,
+                        ),
                       ),
                     ],
                   ],

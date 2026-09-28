@@ -48,58 +48,13 @@ void main() {
     setUp(() async {
       TestWidgetsFlutterBinding.ensureInitialized();
       SharedPreferences.setMockInitialValues({});
-      game = await GameState.load();
+      game = await GameState.load(online: false);
       now = t0;
       game.clock = () => now;
       game.cheatNewDay();
     });
 
     tearDown(() => game.dispose());
-
-    test('арена: попытки бесконечны, поражение ничего не меняет', () {
-      var losses = 0;
-      for (var i = 0; i < 30; i++) {
-        final rating = game.rating;
-        final threads = game.threads;
-        final outcome = game.fightArena();
-        if (outcome.result.playerWon) continue;
-        losses++;
-        expect(outcome.ratingDelta, 0);
-        expect(game.rating, rating);
-        expect(game.threads, threads);
-      }
-      // Слабый тапок против тех, кто выше, почти всегда проигрывает.
-      expect(losses, greaterThan(0));
-    });
-
-    test('арена: победа забирает очки соперника, у него −10', () {
-      game.slipper = Slipper(name: 'я', levels: {for (final s in Stat.values) s: 30});
-      final place = game.arenaPlace;
-      final threads = game.threads;
-      final outcome = game.fightArena();
-      expect(outcome.result.playerWon, isTrue);
-      expect(game.rating, outcome.opponent.rating);
-      expect(
-        game.leaderboard.firstWhere((e) => e.name == outcome.opponent.name).rating,
-        outcome.opponent.rating - 10,
-      );
-      expect(game.arenaPlace, place - 1);
-      expect(game.threads, greaterThan(threads));
-    });
-
-    test('арена: лидер бьётся со вторым без награды', () {
-      game.slipper = Slipper(name: 'я', levels: {for (final s in Stat.values) s: 200});
-      for (var i = 0; i < 25; i++) {
-        game.fightArena();
-      }
-      expect(game.arenaPlace, 1);
-      final rating = game.rating;
-      final threads = game.threads;
-      final outcome = game.fightArena();
-      expect(outcome.result.playerWon, isTrue);
-      expect(game.rating, rating);
-      expect(game.threads, threads);
-    });
 
     test('ежедневный кейс — раз в день', () {
       const daily = CaseCatalog.dailyCase;

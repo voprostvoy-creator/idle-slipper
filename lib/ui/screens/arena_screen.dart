@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../game/game_state.dart';
-import '../../game/leaderboard.dart';
+import '../../net/server_api.dart';
 import '../slipper_sprite.dart';
 import '../theme.dart';
 import '../widgets/game_widgets.dart';
@@ -11,12 +11,29 @@ import 'leaderboard_screen.dart';
 
 /// Арена: очки и место в рейтинге, кнопка поиска соперника.
 /// Соперник — тапок, стоящий в рейтинге сразу выше игрока.
-class ArenaScreen extends StatelessWidget {
+class ArenaScreen extends StatefulWidget {
   const ArenaScreen({super.key, required this.game, required this.onBack});
   final GameState game;
 
   /// Возврат к выбору режима во вкладке «В бой».
   final VoidCallback onBack;
+
+  @override
+  State<ArenaScreen> createState() => _ArenaScreenState();
+}
+
+class _ArenaScreenState extends State<ArenaScreen> {
+  GameState get game => widget.game;
+
+  /// Идёт запрос боя — кнопка ждёт ответа сервера.
+  bool _searching = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Место в рейтинге — с сервера, при каждом заходе на арену.
+    game.refreshArena();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -27,7 +44,7 @@ class ArenaScreen extends StatelessWidget {
         return ListView(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
           children: [
-            BackToModes(title: 'Арена', onBack: onBack),
+            BackToModes(title: 'Арена', onBack: widget.onBack),
             const SizedBox(height: 12),
             GamePanel(
               padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
@@ -48,25 +65,48 @@ class ArenaScreen extends StatelessWidget {
                           label: 'Очки',
                         ),
                       ),
-                      Container(width: 2, height: 56, color: GameColors.outline),
+                      Container(
+                        width: 2,
+                        height: 56,
+                        color: GameColors.outline,
+                      ),
                       Expanded(
                         child: _BigStat(
                           icon: Icons.military_tech_rounded,
                           color: GameColors.gold,
-                          value: '#${game.arenaPlace}',
-                          label: 'Место из ${Leaderboard.size}',
+                          value: game.arenaPlace == null
+                              ? '—'
+                              : '#${game.arenaPlace}',
+                          label: game.arenaBoard == null
+                              ? (game.arenaLoading ? 'Загрузка…' : 'Место')
+                              : 'Место из ${game.arenaBoard!.total}',
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text('Открыть рейтинг', style: theme.textTheme.bodySmall),
-                      const Icon(Icons.chevron_right, size: 18, color: GameColors.textDim),
-                    ],
-                  ),
+                  if (game.arenaError != null)
+                    Text(
+                      '${game.arenaError} — нажми, чтобы повторить',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: GameColors.red,
+                      ),
+                    )
+                  else
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          'Открыть рейтинг',
+                          style: theme.textTheme.bodySmall,
+                        ),
+                        const Icon(
+                          Icons.chevron_right,
+                          size: 18,
+                          color: GameColors.textDim,
+                        ),
+                      ],
+                    ),
                 ],
               ),
             ),
@@ -76,15 +116,37 @@ class ArenaScreen extends StatelessWidget {
               child: GameButton(
                 color: GameColors.red,
                 height: 60,
-                onPressed: () => _fight(context),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: const [
-                    Icon(Icons.search_rounded, size: 26),
-                    SizedBox(width: 8),
-                    Text('Найти соперника', style: TextStyle(fontSize: 20)),
-                  ],
-                ),
+                onPressed: _searching ? null : () => _fight(context),
+                child: _searching
+                    ? const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 3,
+                              color: GameColors.outline,
+                            ),
+                          ),
+                          SizedBox(width: 10),
+                          Text(
+                            'Ищем соперника…',
+                            style: TextStyle(fontSize: 20),
+                          ),
+                        ],
+                      )
+                    : const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.search_rounded, size: 26),
+                          SizedBox(width: 8),
+                          Text(
+                            'Найти соперника',
+                            style: TextStyle(fontSize: 20),
+                          ),
+                        ],
+                      ),
               ),
             ),
             const SizedBox(height: 8),
@@ -102,15 +164,36 @@ class ArenaScreen extends StatelessWidget {
   }
 
   void _openLeaderboard(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => LeaderboardScreen(game: game)),
-    );
+    if (game.arenaError != null) {
+      game.refreshArena();
+      return;
+    }
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => LeaderboardScreen(game: game)));
   }
 
-  void _fight(BuildContext context) {
-    // Бой считается мгновенно; экран боя лишь проигрывает запись.
+  Future<void> _fight(BuildContext context) async {
+    // Бой считает сервер; экран боя проигрывает запись по его сиду.
     final me = game.slipper;
-    final outcome = game.fightArena();
+    setState(() => _searching = true);
+    final ArenaOutcome outcome;
+    try {
+      outcome = await game.fightArena();
+    } on ServerException catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text('${e.message}. Арена работает только онлайн.'),
+          ),
+        );
+      return;
+    } finally {
+      if (mounted) setState(() => _searching = false);
+    }
+    if (!context.mounted) return;
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => BattleScreen(

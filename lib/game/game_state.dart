@@ -7,7 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'battle/battle_sim.dart';
 import 'economy.dart';
-import 'leaderboard.dart';
+import '../net/server_api.dart';
 import 'case_box.dart';
 import 'daily.dart';
 import 'dig.dart';
@@ -21,7 +21,10 @@ import 'story/enemies.dart';
 
 /// Единственный источник правды для UI. Сохраняется в SharedPreferences.
 class GameState extends ChangeNotifier with WidgetsBindingObserver {
-  GameState._(this._prefs);
+  GameState._(this._prefs, this.server);
+
+  /// Сервер: арена, рейтинг и облачная копия сохранения.
+  final ServerApi server;
 
   static const _key = 'save_v1';
 
@@ -58,8 +61,10 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
   /// Звёзды видов в коллекции: id вида → 0..5.
   Map<String, int> stars = {};
 
-  /// Текущие очки ботов рейтинга, если отличаются от стартовых.
-  Map<String, int> botRatings = {};
+  /// Рейтинг арены с сервера — последний полученный.
+  ArenaBoard? arenaBoard;
+  bool arenaLoading = false;
+  String? arenaError;
 
   /// Все гемы игрока и следующий свободный id.
   List<Gem> gems = [];
@@ -94,11 +99,17 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
   static const storyReplaysPerDay = 10;
   int storyReplaysUsed = 0;
 
-  static Future<GameState> load() async {
+  /// [online] = false — без сервера (тесты).
+  static Future<GameState> load({bool online = true}) async {
     final prefs = await SharedPreferences.getInstance();
-    final state = GameState._(prefs);
+    final state = GameState._(
+      prefs,
+      online ? ServerApi(prefs) : ServerApi.disabled(prefs),
+    );
     state._restore();
     state._start();
+    // Первый запуск регистрирует игрока, дальше — отправляет свежий снимок.
+    if (online) state._pushNow();
     return state;
   }
 
@@ -112,6 +123,7 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
   @override
   void dispose() {
     _ticker?.cancel();
+    _pushTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -170,43 +182,53 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
     notifyListeners();
   }
 
-  /// Рейтинг арены с текущими очками ботов.
-  List<LeaderboardEntry> get leaderboard => Leaderboard.standings(botRatings);
+  /// Место в рейтинге арены — по последнему ответу сервера.
+  int? get arenaPlace => arenaBoard?.me.place;
 
-  /// Место в рейтинге арены.
-  int get arenaPlace => Leaderboard.placeOf(rating, leaderboard);
+  /// Обновить рейтинг с сервера.
+  Future<void> refreshArena() async {
+    if (arenaLoading) return;
+    arenaLoading = true;
+    arenaError = null;
+    notifyListeners();
+    try {
+      arenaBoard = await server.leaderboard();
+      rating = arenaBoard!.me.rating;
+    } on ServerException catch (e) {
+      arenaError = e.message;
+    } finally {
+      arenaLoading = false;
+      notifyListeners();
+    }
+  }
 
-  /// Бой с тем, кто стоит в рейтинге сразу выше. Попытки не ограничены.
-  /// Победа над тем, кто выше: игрок забирает его очки и нитки, у него −10.
-  /// Поражение ничего не даёт и ничего не отнимает. Лидер бьётся со вторым
-  /// номером без награды — иначе его можно было бы фармить бесконечно.
-  ArenaOutcome fightArena() {
-    final opponent = Leaderboard.nextOpponent(rating, leaderboard);
-    final result =
-        BattleSim.run(slipper, opponent.slipper, seed: Random().nextInt(1 << 31));
-    final before = rating;
-    var threadsWon = 0;
+  /// Бой на арене через сервер: сначала отправляем свежий снимок тапка,
+  /// сервер подбирает соперника, считает бой и меняет очки, а игра
+  /// по его сиду проигрывает тот же бой. Нитки начисляет сервер.
+  /// Нет связи — [ServerException].
+  Future<ArenaOutcome> fightArena() async {
+    await server.pushSave(_saveJson(), slipper.toJson());
+    final f = await server.fight();
+    final result = BattleSim.run(slipper, f.opponent.slipper, seed: f.seed);
     if (result.playerWon) {
       wins++;
       _progress(QuestKind.arenaWins);
-      if (opponent.rating > rating) {
-        rating = opponent.rating;
-        botRatings[opponent.name] = opponent.rating - 10;
-        threadsWon = Economy.arenaReward(slipper, opponentPower: opponent.slipper.power);
-        threads += threadsWon;
-      }
     } else {
       losses++;
     }
     _progress(QuestKind.arenaFights);
+    threads += f.threads;
+    rating = f.rating;
     _save();
     notifyListeners();
+    // Рейтинг изменился — обновим таблицу в фоне.
+    unawaited(refreshArena());
     return (
       result: result,
-      opponent: opponent,
-      ratingBefore: before,
-      ratingDelta: rating - before,
-      threads: threadsWon,
+      opponent: f.opponent,
+      ratingBefore: f.ratingBefore,
+      ratingDelta: f.rating - f.ratingBefore,
+      threads: f.threads,
     );
   }
 
@@ -258,9 +280,33 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
   // --- Сохранение ------------------------------------------------------
 
   void _save() {
-    _prefs.setString(
-      _key,
-      jsonEncode({
+    _prefs.setString(_key, jsonEncode(_saveJson()));
+    _schedulePush();
+  }
+
+  Timer? _pushTimer;
+
+  /// Сохранение уходит на сервер не чаще раза в несколько секунд:
+  /// прокачка подряд — один запрос.
+  void _schedulePush() {
+    if (!server.enabled) return;
+    _pushTimer?.cancel();
+    _pushTimer = Timer(const Duration(seconds: 4), _pushNow);
+  }
+
+  Future<void> _pushNow() async {
+    try {
+      final serverRating = await server.pushSave(_saveJson(), slipper.toJson());
+      if (serverRating != rating) {
+        rating = serverRating;
+        notifyListeners();
+      }
+    } on ServerException {
+      // Нет сети — отправится со следующим сохранением.
+    }
+  }
+
+  Map<String, dynamic> _saveJson() => {
         'slipper': slipper.toJson(),
         'threads': threads,
         'coins': coins,
@@ -270,7 +316,6 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
         'losses': losses,
         'story': storyCleared,
         'stars': stars,
-        'botRatings': botRatings,
         'dailyCaseDay': dailyCaseDay,
         'questDay': questDay,
         'questProgress': questProgress,
@@ -285,9 +330,7 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
         'digTaken': digTaken.toList(),
         'chestSince': chestSince.toIso8601String(),
         'storyReplays': storyReplaysUsed,
-      }),
-    );
-  }
+      };
 
   void _restore() {
     final raw = _prefs.getString(_key);
@@ -336,12 +379,6 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
         };
       }
       _syncSlipper();
-      final bots = json['botRatings'] as Map?;
-      if (bots != null) {
-        botRatings = {
-          for (final e in bots.entries) e.key as String: (e.value as num).toInt(),
-        };
-      }
       dailyCaseDay = json['dailyCaseDay'] as String? ?? '';
       questDay = json['questDay'] as String? ?? '';
       final qp = json['questProgress'] as Map?;
@@ -773,7 +810,7 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
     losses = 0;
     storyCleared = {};
     stars = {};
-    botRatings = {};
+    arenaBoard = null;
     gems = [];
     _nextGemId = 1;
     sockets = {};
@@ -792,7 +829,7 @@ typedef StoryOutcome = ({BattleResult result, int threads, int coins, SlipperKin
 /// Итог боя на арене: запись, соперник и что изменилось.
 typedef ArenaOutcome = ({
   BattleResult result,
-  LeaderboardEntry opponent,
+  BoardEntry opponent,
   int ratingBefore,
   int ratingDelta,
   int threads,

@@ -54,7 +54,7 @@ void main() {
     setUp(() async {
       TestWidgetsFlutterBinding.ensureInitialized();
       SharedPreferences.setMockInitialValues({});
-      game = await GameState.load();
+      game = await GameState.load(online: false);
       now = DateTime(2026, 9, 28, 10);
       game.clock = () => now;
       game.cheatNewDay();
