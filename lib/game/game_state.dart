@@ -111,8 +111,8 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
     );
     state._restore();
     state._start();
-    // Первый запуск регистрирует игрока, дальше — отправляет свежий снимок.
-    if (online) state._pushNow();
+    // Аккаунт уже есть — отправим свежий снимок тапка.
+    if (online && state.server.hasAccount) state._pushNow();
     return state;
   }
 
@@ -304,7 +304,7 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
   /// Сохранение уходит на сервер не чаще раза в несколько секунд:
   /// прокачка подряд — один запрос.
   void _schedulePush() {
-    if (!server.enabled) return;
+    if (!server.enabled || !server.hasAccount) return;
     _pushTimer?.cancel();
     _pushTimer = Timer(const Duration(seconds: 4), _pushNow);
   }
@@ -312,7 +312,7 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
   Future<void> _pushNow() async {
     try {
       final serverRating = await server.pushSave(_saveJson(), slipper.toJson());
-      if (serverRating != rating || accountPending) {
+      if (serverRating != rating) {
         rating = serverRating;
         notifyListeners();
       }
@@ -894,16 +894,12 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
 
   // --- Аккаунт -------------------------------------------------------------
 
-  static const _accountShownKey = 'account_shown';
-
-  /// Аккаунт только что создан, а данные входа игрок ещё не видел.
-  bool get accountPending =>
-      server.justRegistered && !(_prefs.getBool(_accountShownKey) ?? false);
-
-  /// Игрок посмотрел данные входа — больше сам окно не показываем.
-  void acknowledgeAccount() {
-    _prefs.setBool(_accountShownKey, true);
+  /// Создать аккаунт и отправить на сервер текущий прогресс.
+  Future<({String login, String password})> createAccount() async {
+    final creds = await server.register();
+    await _pushNow();
     notifyListeners();
+    return creds;
   }
 
   /// Войти в другой аккаунт: прогресс на этом телефоне заменяется
@@ -912,7 +908,6 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
     final save = await server.login(login, password);
     _resetFields();
     if (save != null) _applySave(save);
-    _prefs.setBool(_accountShownKey, true);
     _prefs.setString(_key, jsonEncode(_saveJson()));
     notifyListeners();
     unawaited(refreshArena());

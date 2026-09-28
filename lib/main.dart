@@ -3,7 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 
 import 'game/game_state.dart';
-import 'ui/account_dialog.dart';
+import 'ui/screens/welcome_screen.dart';
 import 'ui/screens/battle_hub_screen.dart';
 import 'ui/screens/collection_screen.dart';
 import 'ui/screens/home_screen.dart';
@@ -19,9 +19,18 @@ Future<void> main() async {
   runApp(SlipperApp(game: game));
 }
 
-class SlipperApp extends StatelessWidget {
+class SlipperApp extends StatefulWidget {
   const SlipperApp({super.key, required this.game});
   final GameState game;
+
+  @override
+  State<SlipperApp> createState() => _SlipperAppState();
+}
+
+class _SlipperAppState extends State<SlipperApp> {
+  /// Аккаунта нет — сначала страница входа. Можно и пропустить: играть
+  /// без сети, а аккаунт завести позже в профиле.
+  late bool _welcome = !widget.game.server.hasAccount;
 
   @override
   Widget build(BuildContext context) {
@@ -29,7 +38,9 @@ class SlipperApp extends StatelessWidget {
       title: 'Бои Тапков',
       debugShowCheckedModeBanner: false,
       theme: buildGameTheme(),
-      home: RootShell(game: game),
+      home: _welcome
+          ? WelcomeScreen(game: widget.game, onDone: () => setState(() => _welcome = false))
+          : RootShell(game: widget.game),
     );
   }
 }
@@ -53,27 +64,6 @@ class _RootShellState extends State<RootShell> {
 
   /// Меняется — коллекция открывается на вкладке тапков.
   int _collectionReset = 0;
-
-  bool _accountShown = false;
-
-  @override
-  void initState() {
-    super.initState();
-    widget.game.addListener(_maybeShowAccount);
-  }
-
-  @override
-  void dispose() {
-    widget.game.removeListener(_maybeShowAccount);
-    super.dispose();
-  }
-
-  /// Аккаунт только что создан — сразу показать логин и пароль.
-  void _maybeShowAccount() {
-    if (_accountShown || !widget.game.accountPending || !mounted) return;
-    _accountShown = true;
-    showAccountDialog(context, widget.game, firstTime: true);
-  }
 
   void _select(_Tab tab) => setState(() {
     // Повторное нажатие на «В бой» возвращает к выбору режима.

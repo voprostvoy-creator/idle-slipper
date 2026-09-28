@@ -25,9 +25,7 @@ Future<void> showAccountDialog(BuildContext context, GameState game, {bool first
     context: context,
     barrierDismissible: !firstTime,
     builder: (_) => _AccountDialog(login: creds.login, password: creds.password, firstTime: firstTime),
-  ).whenComplete(() {
-    if (firstTime) game.acknowledgeAccount();
-  });
+  );
 }
 
 class _AccountDialog extends StatefulWidget {
@@ -189,9 +187,11 @@ class _Field extends StatelessWidget {
   }
 }
 
-/// Вход в другой аккаунт: логин, пароль и предупреждение, что прогресс
-/// на этом телефоне заменится облачным.
-Future<void> showLoginDialog(BuildContext context, GameState game) async {
+/// Вход в аккаунт: логин и пароль. [replacing] — на телефоне уже есть
+/// прогресс, и его заменит облачный: тогда показываем предупреждение.
+/// Возвращает true, если вход удался.
+Future<bool> showLoginDialog(BuildContext context, GameState game, {bool replacing = true}) async {
+  var ok = false;
   final login = TextEditingController();
   final password = TextEditingController();
   String? error;
@@ -214,12 +214,14 @@ Future<void> showLoginDialog(BuildContext context, GameState game) async {
               decoration: const InputDecoration(labelText: 'Пароль'),
               autocorrect: false,
             ),
-            const SizedBox(height: 10),
-            const Text(
-              'Прогресс на этом телефоне заменится прогрессом этого аккаунта. '
-              'Сначала сохрани данные входа текущего аккаунта, если он нужен.',
-              style: TextStyle(fontSize: 12, color: GameColors.textDim),
-            ),
+            if (replacing) ...[
+              const SizedBox(height: 10),
+              const Text(
+                'Прогресс на этом телефоне заменится прогрессом этого аккаунта. '
+                'Сначала сохрани данные входа текущего аккаунта, если он нужен.',
+                style: TextStyle(fontSize: 12, color: GameColors.textDim),
+              ),
+            ],
             if (error != null) ...[
               const SizedBox(height: 8),
               Text(error!, style: const TextStyle(color: GameColors.red)),
@@ -239,6 +241,7 @@ Future<void> showLoginDialog(BuildContext context, GameState game) async {
                     });
                     try {
                       await game.switchAccount(login.text, password.text);
+                      ok = true;
                       if (context.mounted) Navigator.pop(context);
                     } on ServerException catch (e) {
                       setState(() {
@@ -253,4 +256,5 @@ Future<void> showLoginDialog(BuildContext context, GameState game) async {
       ),
     ),
   );
+  return ok;
 }

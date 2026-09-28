@@ -69,8 +69,8 @@ class ServerException implements Exception {
   String toString() => message;
 }
 
-/// Клиент сервера игры. При первом обращении сам регистрируется и
-/// запоминает id и токен на телефоне.
+/// Клиент сервера игры. Аккаунт создаётся только явно — [register] или
+/// [login] со страницы входа; id и токен хранятся на телефоне.
 class ServerApi {
   ServerApi(this._prefs, {http.Client? client, this.enabled = true})
       : _http = client ?? http.Client();
@@ -87,10 +87,6 @@ class ServerApi {
   final bool enabled;
 
   String? _auth;
-  Future<String>? _registering;
-
-  /// Аккаунт только что создан — игроку надо показать данные входа.
-  bool justRegistered = false;
 
   /// Логин и пароль этого телефона; null — ещё не зарегистрирован.
   ({String login, String password})? get credentials {
@@ -100,18 +96,21 @@ class ServerApi {
     return (login: parts[0], password: parts[1]);
   }
 
-  Future<String> _ensureAuth() async {
+  bool get hasAccount => credentials != null;
+
+  String _requireAuth() {
     _auth ??= _prefs.getString(_authKey);
-    if (_auth != null) return _auth!;
-    return _registering ??= () async {
-      final j = await _send('POST', '/auth', auth: false);
-      final auth = '${j['id']}:${j['token']}';
-      await _prefs.setString(_authKey, auth);
-      _auth = auth;
-      justRegistered = true;
-      return auth;
-    }()
-        .whenComplete(() => _registering = null);
+    if (_auth == null) throw ServerException('Нет аккаунта');
+    return _auth!;
+  }
+
+  /// Создать новый аккаунт: сервер придумывает логин и пароль.
+  Future<({String login, String password})> register() async {
+    final j = await _send('POST', '/auth', auth: false);
+    final auth = '${j['id']}:${j['token']}';
+    await _prefs.setString(_authKey, auth);
+    _auth = auth;
+    return credentials!;
   }
 
   Future<Map<String, dynamic>> _send(
@@ -119,12 +118,11 @@ class ServerApi {
     String path, {
     Map<String, dynamic>? body,
     bool auth = true,
-    bool retried = false,
   }) async {
     if (!enabled) throw ServerException('Сервер отключён');
     final headers = {
       'content-type': 'application/json',
-      if (auth) 'x-slipper-auth': await _ensureAuth(),
+      if (auth) 'x-slipper-auth': _requireAuth(),
     };
     final req = http.Request(method, Uri.parse('$baseUrl$path'))
       ..headers.addAll(headers)
@@ -136,12 +134,6 @@ class ServerApi {
       throw ServerException('Сервер не отвечает');
     } catch (_) {
       throw ServerException('Нет связи с сервером');
-    }
-    // Токен потерялся на сервере — регистрируемся заново один раз.
-    if (res.statusCode == 401 && auth && !retried) {
-      _auth = null;
-      await _prefs.remove(_authKey);
-      return _send(method, path, body: body, retried: true);
     }
     if (res.statusCode != 200) {
       throw ServerException('Ошибка сервера (${res.statusCode})', res.statusCode);

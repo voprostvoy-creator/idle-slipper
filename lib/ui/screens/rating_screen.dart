@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../game/game_state.dart';
 import '../../game/slipper.dart';
+import '../../net/server_api.dart';
 import '../account_dialog.dart';
 import '../slipper_sprite.dart';
 import '../theme.dart';
@@ -44,21 +45,41 @@ class RatingScreen extends StatelessWidget {
                     alignment: WrapAlignment.center,
                     children: [
                       GameBadge(
-                        text: '${game.slipper.kind.rarity.label} · ${game.slipper.kind.name}',
+                        text:
+                            '${game.slipper.kind.rarity.label} · ${game.slipper.kind.name}',
                         color: game.slipper.kind.rarity.color,
                       ),
                       for (final e in game.slipper.kind.bonuses.entries)
-                        GameBadge(text: e.key.format(e.value), color: GameColors.green),
+                        GameBadge(
+                          text: e.key.format(e.value),
+                          color: GameColors.green,
+                        ),
                     ],
                   ),
                   const SizedBox(height: 14),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
-                      _Metric(label: 'Рейтинг', value: '${game.rating}', color: GameColors.blue),
-                      _Metric(label: 'Побед', value: '${game.wins}', color: GameColors.green),
-                      _Metric(label: 'Поражений', value: '${game.losses}', color: GameColors.red),
-                      _Metric(label: 'Винрейт', value: '$winRate%', color: GameColors.gold),
+                      _Metric(
+                        label: 'Рейтинг',
+                        value: '${game.rating}',
+                        color: GameColors.blue,
+                      ),
+                      _Metric(
+                        label: 'Побед',
+                        value: '${game.wins}',
+                        color: GameColors.green,
+                      ),
+                      _Metric(
+                        label: 'Поражений',
+                        value: '${game.losses}',
+                        color: GameColors.red,
+                      ),
+                      _Metric(
+                        label: 'Винрейт',
+                        value: '$winRate%',
+                        color: GameColors.gold,
+                      ),
                     ],
                   ),
                 ],
@@ -76,7 +97,13 @@ class RatingScreen extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(vertical: 5),
                       child: Row(
                         children: [
-                          SizedBox(width: 96, child: Text(s.label, style: theme.textTheme.bodyMedium)),
+                          SizedBox(
+                            width: 96,
+                            child: Text(
+                              s.label,
+                              style: theme.textTheme.bodyMedium,
+                            ),
+                          ),
                           Expanded(
                             child: GameBar(
                               value: game.slipper.level(s) / 60,
@@ -87,7 +114,11 @@ class RatingScreen extends StatelessWidget {
                           const SizedBox(width: 10),
                           SizedBox(
                             width: 30,
-                            child: StrokeText('${game.slipper.level(s)}', size: 16, strokeWidth: 3),
+                            child: StrokeText(
+                              '${game.slipper.level(s)}',
+                              size: 16,
+                              strokeWidth: 3,
+                            ),
                           ),
                         ],
                       ),
@@ -102,47 +133,91 @@ class RatingScreen extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.account_circle_rounded, color: GameColors.gold),
+                      const Icon(
+                        Icons.account_circle_rounded,
+                        color: GameColors.gold,
+                      ),
                       const SizedBox(width: 8),
                       Text('Аккаунт', style: theme.textTheme.titleMedium),
                       const Spacer(),
                       Text(
-                        game.server.credentials?.login ?? 'нет связи',
+                        game.server.credentials?.login ?? 'нет аккаунта',
                         style: theme.textTheme.bodyMedium,
                       ),
                     ],
                   ),
                   const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: GameButton(
-                          color: GameColors.gold,
-                          height: 40,
-                          onPressed: () => showAccountDialog(context, game),
-                          child: const FittedBox(
-                            fit: BoxFit.scaleDown,
-                            child: Text('Логин и пароль', style: TextStyle(fontSize: 14)),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: GameButton(
-                          color: GameColors.panelLight,
-                          height: 40,
-                          onPressed: () => showLoginDialog(context, game),
-                          child: const FittedBox(
-                            fit: BoxFit.scaleDown,
-                            child: Text(
-                              'Другой аккаунт',
-                              style: TextStyle(fontSize: 14, color: GameColors.text),
+                  if (!game.server.hasAccount)
+                    Row(
+                      children: [
+                        Expanded(
+                          child: GameButton(
+                            color: GameColors.gold,
+                            height: 40,
+                            onPressed: () => _createAccount(context),
+                            child: const FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                'Создать аккаунт',
+                                style: TextStyle(fontSize: 14),
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: GameButton(
+                            color: GameColors.panelLight,
+                            height: 40,
+                            onPressed: () => showLoginDialog(context, game),
+                            child: const Text(
+                              'Войти',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: GameColors.text,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    )
+                  else
+                    Row(
+                      children: [
+                        Expanded(
+                          child: GameButton(
+                            color: GameColors.gold,
+                            height: 40,
+                            onPressed: () => showAccountDialog(context, game),
+                            child: const FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                'Логин и пароль',
+                                style: TextStyle(fontSize: 14),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: GameButton(
+                            color: GameColors.panelLight,
+                            height: 40,
+                            onPressed: () => showLoginDialog(context, game),
+                            child: const FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                'Другой аккаунт',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: GameColors.text,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                 ],
               ),
             ),
@@ -229,13 +304,30 @@ class RatingScreen extends StatelessWidget {
               child: TextButton.icon(
                 onPressed: () => _confirmReset(context),
                 icon: const Icon(Icons.restart_alt, color: GameColors.textDim),
-                label: Text('Сбросить прогресс', style: theme.textTheme.bodySmall),
+                label: Text(
+                  'Сбросить прогресс',
+                  style: theme.textTheme.bodySmall,
+                ),
               ),
             ),
           ],
         );
       },
     );
+  }
+
+  Future<void> _createAccount(BuildContext context) async {
+    try {
+      await game.createAccount();
+      if (context.mounted) {
+        await showAccountDialog(context, game, firstTime: true);
+      }
+    } on ServerException catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.message)));
+    }
   }
 
   Future<void> _confirmReset(BuildContext context) async {
@@ -262,7 +354,11 @@ class RatingScreen extends StatelessWidget {
 }
 
 class _Metric extends StatelessWidget {
-  const _Metric({required this.label, required this.value, required this.color});
+  const _Metric({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
   final String label;
   final String value;
   final Color color;
