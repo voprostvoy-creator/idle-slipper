@@ -1,7 +1,3 @@
-/// Очки арены. Победа над тем, кто выше, забирает его очки
-/// (см. `GameState.fightArena`).
-class Rating {
-  Rating._();
-
-  static const int initial = 1000;
-}
+// Логика живёт в общем с сервером пакете slipper_core.
+export 'package:slipper_core/rating.dart';
+export 'colors.dart';

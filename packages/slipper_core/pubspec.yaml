@@ -1,0 +1,10 @@
+name: slipper_core
+description: Логика «Боёв Тапков» без Flutter — общая для игры и сервера.
+publish_to: none
+version: 0.1.0
+
+environment:
+  sdk: ^3.11.0
+
+dev_dependencies:
+  test: any
