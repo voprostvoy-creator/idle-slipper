@@ -32,14 +32,17 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
   Timer? _ticker;
 
   Slipper slipper = Slipper(name: 'Мой тапок');
+
   /// TODO: вернуть 50 перед релизом — сейчас для тестов пусто,
   /// нитки берутся кнопкой в отладочной панели.
   static const double startingThreads = 0;
 
   /// На старте — только базовый тапок, остальные выбиваются из кейсов.
   /// TODO: убрать Инь-Ян перед релизом — выдан со старта для тестов.
-  static Map<String, int> get startingInventory =>
-      {SlipperCatalog.defaultId: 1, _testKindId: 1};
+  static Map<String, int> get startingInventory => {
+    SlipperCatalog.defaultId: 1,
+    _testKindId: 1,
+  };
 
   static const _testKindId = 'yin_yang';
 
@@ -253,13 +256,20 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
       if (storyReplaysLeft == 0) return null;
       storyReplaysUsed++;
     }
-    final result = BattleSim.run(slipper, stage.enemy, seed: Random().nextInt(1 << 31));
+    final result = BattleSim.run(
+      slipper,
+      stage.enemy,
+      seed: Random().nextInt(1 << 31),
+    );
     var threadsWon = 0;
     var coinsWon = 0;
     SlipperKind? kindWon;
     if (result.playerWon) {
       _progress(QuestKind.storyWins);
-      threadsWon = Economy.withBonus(first ? stage.threads : stage.replayThreads, slipper);
+      threadsWon = Economy.withBonus(
+        first ? stage.threads : stage.replayThreads,
+        slipper,
+      );
       threads += threadsWon;
       if (first) {
         coinsWon = stage.coins;
@@ -274,7 +284,12 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
     }
     _save();
     notifyListeners();
-    return (result: result, threads: threadsWon, coins: coinsWon, kind: kindWon);
+    return (
+      result: result,
+      threads: threadsWon,
+      coins: coinsWon,
+      kind: kindWon,
+    );
   }
 
   // --- Сохранение ------------------------------------------------------
@@ -297,7 +312,7 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
   Future<void> _pushNow() async {
     try {
       final serverRating = await server.pushSave(_saveJson(), slipper.toJson());
-      if (serverRating != rating) {
+      if (serverRating != rating || accountPending) {
         rating = serverRating;
         notifyListeners();
       }
@@ -307,46 +322,58 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   Map<String, dynamic> _saveJson() => {
-        'slipper': slipper.toJson(),
-        'threads': threads,
-        'coins': coins,
-        'inventory': inventory,
-        'rating': rating,
-        'wins': wins,
-        'losses': losses,
-        'story': storyCleared,
-        'stars': stars,
-        'dailyCaseDay': dailyCaseDay,
-        'questDay': questDay,
-        'questProgress': questProgress,
-        'questClaimed': questClaimed.toList(),
-        'questBonus': questBonusClaimed,
-        'gems': [for (final g in gems) g.toJson()],
-        'gemNext': _nextGemId,
-        'sockets': sockets,
-        'digDay': digDay,
-        'digLayers': digLayers,
-        'digSwings': digSwingsUsed,
-        'digTaken': digTaken.toList(),
-        'chestSince': chestSince.toIso8601String(),
-        'storyReplays': storyReplaysUsed,
-      };
+    'slipper': slipper.toJson(),
+    'threads': threads,
+    'coins': coins,
+    'inventory': inventory,
+    'rating': rating,
+    'wins': wins,
+    'losses': losses,
+    'story': storyCleared,
+    'stars': stars,
+    'dailyCaseDay': dailyCaseDay,
+    'questDay': questDay,
+    'questProgress': questProgress,
+    'questClaimed': questClaimed.toList(),
+    'questBonus': questBonusClaimed,
+    'gems': [for (final g in gems) g.toJson()],
+    'gemNext': _nextGemId,
+    'sockets': sockets,
+    'digDay': digDay,
+    'digLayers': digLayers,
+    'digSwings': digSwingsUsed,
+    'digTaken': digTaken.toList(),
+    'chestSince': chestSince.toIso8601String(),
+    'storyReplays': storyReplaysUsed,
+  };
 
   void _restore() {
     final raw = _prefs.getString(_key);
     if (raw == null) return;
     try {
-      final json = jsonDecode(raw) as Map<String, dynamic>;
+      _applySave(jsonDecode(raw) as Map<String, dynamic>);
+    } catch (e) {
+      debugPrint('Save corrupted, starting fresh: $e');
+    }
+  }
+
+  /// Разложить сохранение по полям — из памяти телефона или из облака.
+  void _applySave(Map<String, dynamic> json) {
+    {
       slipper = Slipper.fromJson(json['slipper'] as Map<String, dynamic>);
       // Миграция: до введения ниток основной валютой были монеты.
-      threads = (json['threads'] as num?)?.toDouble() ??
+      threads =
+          (json['threads'] as num?)?.toDouble() ??
           (json['coins'] as num?)?.toDouble() ??
           threads;
-      coins = json['threads'] == null ? 0 : (json['coins'] as num?)?.toInt() ?? 0;
+      coins = json['threads'] == null
+          ? 0
+          : (json['coins'] as num?)?.toInt() ?? 0;
       final inv = json['inventory'] as Map?;
       if (inv != null && inv.isNotEmpty) {
         inventory = {
-          for (final e in inv.entries) e.key as String: (e.value as num).toInt(),
+          for (final e in inv.entries)
+            e.key as String: (e.value as num).toInt(),
         };
       }
       // TODO: убрать перед релизом — тестовый тапок и в старых сохранениях.
@@ -359,7 +386,8 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
       final starsJson = json['stars'] as Map?;
       if (starsJson != null) {
         stars = {
-          for (final e in starsJson.entries) e.key as String: (e.value as num).toInt(),
+          for (final e in starsJson.entries)
+            e.key as String: (e.value as num).toInt(),
         };
       }
       final gemsJson = json['gems'] as List?;
@@ -369,13 +397,16 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
             ?Gem.fromJson((g as Map).cast<String, dynamic>()),
         ];
       }
-      _nextGemId = (json['gemNext'] as num?)?.toInt() ??
+      _nextGemId =
+          (json['gemNext'] as num?)?.toInt() ??
           (gems.isEmpty ? 1 : gems.map((g) => g.id).reduce(max) + 1);
       final socketsJson = json['sockets'] as Map?;
       if (socketsJson != null) {
         sockets = {
           for (final e in socketsJson.entries)
-            e.key as String: [for (final id in e.value as List) (id as num?)?.toInt()],
+            e.key as String: [
+              for (final id in e.value as List) (id as num?)?.toInt(),
+            ],
         };
       }
       _syncSlipper();
@@ -390,23 +421,29 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
       questClaimed = {...?(json['questClaimed'] as List?)?.cast<String>()};
       questBonusClaimed = json['questBonus'] as bool? ?? false;
       digDay = json['digDay'] as String? ?? '';
-      digLayers = [for (final v in (json['digLayers'] as List? ?? const [])) (v as num).toInt()];
+      digLayers = [
+        for (final v in (json['digLayers'] as List? ?? const []))
+          (v as num).toInt(),
+      ];
       digSwingsUsed = (json['digSwings'] as num?)?.toInt() ?? 0;
-      digTaken = {for (final v in (json['digTaken'] as List? ?? const [])) (v as num).toInt()};
+      digTaken = {
+        for (final v in (json['digTaken'] as List? ?? const []))
+          (v as num).toInt(),
+      };
       _rollDay();
       final story = json['story'] as Map?;
       if (story != null) {
         storyCleared = {
-          for (final e in story.entries) e.key as String: (e.value as num).toInt(),
+          for (final e in story.entries)
+            e.key as String: (e.value as num).toInt(),
         };
       }
       // Старые сохранения без сундука: считаем с последнего визита.
-      final chestAt = DateTime.tryParse(json['chestSince'] as String? ?? '') ??
+      final chestAt =
+          DateTime.tryParse(json['chestSince'] as String? ?? '') ??
           DateTime.tryParse(json['lastSeen'] as String? ?? '');
       if (chestAt != null) chestSince = chestAt;
       storyReplaysUsed = (json['storyReplays'] as num?)?.toInt() ?? 0;
-    } catch (e) {
-      debugPrint('Save corrupted, starting fresh: $e');
     }
   }
 
@@ -494,18 +531,26 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
     return null;
   }
 
-  List<Gem> get freeGems => [for (final g in gems) if (socketedIn(g.id) == null) g];
+  List<Gem> get freeGems => [
+    for (final g in gems)
+      if (socketedIn(g.id) == null) g,
+  ];
 
   /// Вставить гем в слот вида. Если гем стоял в другом слоте — переезжает,
   /// а гем, занимавший слот, освобождается.
   void insertGem(String kindId, int slot, int gemId) {
-    if (slot >= Gems.slotsFor(starsOf(kindId)) || gemById(gemId) == null) return;
+    if (slot >= Gems.slotsFor(starsOf(kindId)) || gemById(gemId) == null) {
+      return;
+    }
     for (final list in sockets.values) {
       for (var i = 0; i < list.length; i++) {
         if (list[i] == gemId) list[i] = null;
       }
     }
-    final list = sockets.putIfAbsent(kindId, () => List.filled(Gems.maxSlots, null, growable: true));
+    final list = sockets.putIfAbsent(
+      kindId,
+      () => List.filled(Gems.maxSlots, null, growable: true),
+    );
     while (list.length < Gems.maxSlots) {
       list.add(null);
     }
@@ -521,13 +566,16 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   /// Свободные гемы, с которыми можно слить [gem]: такие же, но не он сам.
-  List<Gem> _mergeMates(Gem gem) =>
-      [for (final g in freeGems) if (g.id != gem.id && g.sameAs(gem)) g];
+  List<Gem> _mergeMates(Gem gem) => [
+    for (final g in freeGems)
+      if (g.id != gem.id && g.sameAs(gem)) g,
+  ];
 
   /// Сколько подходящих свободных гемов есть для слияния (нужно 2).
   int mergeMates(Gem gem) => _mergeMates(gem).length;
 
-  bool canMerge(Gem gem) => gem.level < Gem.maxLevel && _mergeMates(gem).length >= 2;
+  bool canMerge(Gem gem) =>
+      gem.level < Gem.maxLevel && _mergeMates(gem).length >= 2;
 
   /// Слияние 3 → 1: [gem] получает уровень выше, два таких же исчезают.
   /// Если [gem] был вставлен, он остаётся в слоте.
@@ -536,7 +584,10 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
     final used = _mergeMates(gem).take(2).map((g) => g.id).toSet();
     gems = [
       for (final g in gems)
-        if (g.id == gem.id) g.copyWith(level: g.level + 1) else if (!used.contains(g.id)) g,
+        if (g.id == gem.id)
+          g.copyWith(level: g.level + 1)
+        else if (!used.contains(g.id))
+          g,
     ];
     _gemsChanged();
   }
@@ -584,7 +635,12 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
     if (digRevealed(i) || digSwingsLeft == 0) return null;
     digSwingsUsed++;
     digLayers[i] = max(0, digLayers[i] - digStrength);
-    DigOutcome outcome = const (threads: 0, coins: 0, gem: null, revealed: false);
+    DigOutcome outcome = const (
+      threads: 0,
+      coins: 0,
+      gem: null,
+      revealed: false,
+    );
     if (digLayers[i] == 0) {
       outcome = _takeDigLoot(i);
     }
@@ -618,7 +674,9 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   bool digGuardWaiting(int i) =>
-      digRevealed(i) && digBoard.cells[i].loot == DigLoot.guard && !digTaken.contains(i);
+      digRevealed(i) &&
+      digBoard.cells[i].loot == DigLoot.guard &&
+      !digTaken.contains(i);
 
   /// Страж под диваном: элитное насекомое примерно твоей силы.
   Enemy digGuard(int i) {
@@ -643,7 +701,11 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
     if (!digGuardWaiting(i) || digSwingsLeft == 0) return null;
     digSwingsUsed++;
     final enemy = digGuard(i);
-    final result = BattleSim.run(slipper, enemy, seed: Random().nextInt(1 << 31));
+    final result = BattleSim.run(
+      slipper,
+      enemy,
+      seed: Random().nextInt(1 << 31),
+    );
     Gem? gem;
     if (result.playerWon) {
       gem = _giveGem(digBoard.cells[i].gemRarity!);
@@ -696,7 +758,8 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
 
   /// Заполненность 0..1.
   double get chestFill =>
-      (clock().difference(chestSince).inSeconds / Economy.chestFillTime.inSeconds)
+      (clock().difference(chestSince).inSeconds /
+              Economy.chestFillTime.inSeconds)
           .clamp(0.0, 1.0);
 
   int get chestThreads => (chestCapacity * chestFill).floor();
@@ -704,8 +767,9 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
   bool get chestFull => chestFill >= 1;
 
   /// Через сколько сундук заполнится; null — уже полный.
-  Duration? get chestFullIn =>
-      chestFull ? null : chestSince.add(Economy.chestFillTime).difference(clock());
+  Duration? get chestFullIn => chestFull
+      ? null
+      : chestSince.add(Economy.chestFillTime).difference(clock());
 
   void collectChest() {
     final amount = chestThreads;
@@ -736,7 +800,9 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
 
   bool canStarUp(String kindId) {
     final cost = nextStarCost(kindId);
-    return cost != null && copiesOf(kindId) >= cost.copies && coins >= cost.coins;
+    return cost != null &&
+        copiesOf(kindId) >= cost.copies &&
+        coins >= cost.coins;
   }
 
   void starUp(String kindId) {
@@ -801,6 +867,11 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
   /// Для отладки: полный сброс.
   Future<void> reset() async {
     await _prefs.remove(_key);
+    _resetFields();
+    notifyListeners();
+  }
+
+  void _resetFields() {
     slipper = Slipper(name: 'Мой тапок');
     threads = startingThreads;
     coins = 0;
@@ -819,12 +890,42 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
     dailyCaseDay = '';
     questDay = '';
     _rollDay();
+  }
+
+  // --- Аккаунт -------------------------------------------------------------
+
+  static const _accountShownKey = 'account_shown';
+
+  /// Аккаунт только что создан, а данные входа игрок ещё не видел.
+  bool get accountPending =>
+      server.justRegistered && !(_prefs.getBool(_accountShownKey) ?? false);
+
+  /// Игрок посмотрел данные входа — больше сам окно не показываем.
+  void acknowledgeAccount() {
+    _prefs.setBool(_accountShownKey, true);
     notifyListeners();
+  }
+
+  /// Войти в другой аккаунт: прогресс на этом телефоне заменяется
+  /// облачным. Ошибка входа — [ServerException].
+  Future<void> switchAccount(String login, String password) async {
+    final save = await server.login(login, password);
+    _resetFields();
+    if (save != null) _applySave(save);
+    _prefs.setBool(_accountShownKey, true);
+    _prefs.setString(_key, jsonEncode(_saveJson()));
+    notifyListeners();
+    unawaited(refreshArena());
   }
 }
 
 /// Итог боя главы: запись для экрана боя и что выдано.
-typedef StoryOutcome = ({BattleResult result, int threads, int coins, SlipperKind? kind});
+typedef StoryOutcome = ({
+  BattleResult result,
+  int threads,
+  int coins,
+  SlipperKind? kind,
+});
 
 /// Итог боя на арене: запись, соперник и что изменилось.
 typedef ArenaOutcome = ({

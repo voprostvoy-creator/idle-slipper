@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 
 import '../../game/game_state.dart';
 import '../../game/slipper.dart';
+import '../account_dialog.dart';
 import '../slipper_sprite.dart';
 import '../theme.dart';
 import '../widgets/game_widgets.dart';
 
-/// Профиль и статистика. Таблица лидеров появится вместе с сервером.
+/// Профиль: тапок, статистика, аккаунт.
 class RatingScreen extends StatelessWidget {
   const RatingScreen({super.key, required this.game});
   final GameState game;
@@ -96,19 +97,51 @@ class RatingScreen extends StatelessWidget {
             ),
             const SizedBox(height: 14),
             GamePanel(
-              color: GameColors.panelDark,
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.leaderboard, color: GameColors.textDim),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Таблица лидеров', style: theme.textTheme.titleMedium?.copyWith(color: GameColors.textDim)),
-                        Text('Появится после подключения сервера', style: theme.textTheme.bodySmall),
-                      ],
-                    ),
+                  Row(
+                    children: [
+                      const Icon(Icons.account_circle_rounded, color: GameColors.gold),
+                      const SizedBox(width: 8),
+                      Text('Аккаунт', style: theme.textTheme.titleMedium),
+                      const Spacer(),
+                      Text(
+                        game.server.credentials?.login ?? 'нет связи',
+                        style: theme.textTheme.bodyMedium,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: GameButton(
+                          color: GameColors.gold,
+                          height: 40,
+                          onPressed: () => showAccountDialog(context, game),
+                          child: const FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text('Логин и пароль', style: TextStyle(fontSize: 14)),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: GameButton(
+                          color: GameColors.panelLight,
+                          height: 40,
+                          onPressed: () => showLoginDialog(context, game),
+                          child: const FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              'Другой аккаунт',
+                              style: TextStyle(fontSize: 14, color: GameColors.text),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),

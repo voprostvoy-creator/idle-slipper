@@ -59,8 +59,11 @@ class ServerFight {
 }
 
 class ServerException implements Exception {
-  ServerException(this.message);
+  ServerException(this.message, [this.status]);
   final String message;
+
+  /// HTTP-код ответа, если сервер ответил.
+  final int? status;
 
   @override
   String toString() => message;
@@ -86,6 +89,17 @@ class ServerApi {
   String? _auth;
   Future<String>? _registering;
 
+  /// Аккаунт только что создан — игроку надо показать данные входа.
+  bool justRegistered = false;
+
+  /// Логин и пароль этого телефона; null — ещё не зарегистрирован.
+  ({String login, String password})? get credentials {
+    final auth = _auth ?? _prefs.getString(_authKey);
+    final parts = auth?.split(':');
+    if (parts == null || parts.length != 2) return null;
+    return (login: parts[0], password: parts[1]);
+  }
+
   Future<String> _ensureAuth() async {
     _auth ??= _prefs.getString(_authKey);
     if (_auth != null) return _auth!;
@@ -94,6 +108,7 @@ class ServerApi {
       final auth = '${j['id']}:${j['token']}';
       await _prefs.setString(_authKey, auth);
       _auth = auth;
+      justRegistered = true;
       return auth;
     }()
         .whenComplete(() => _registering = null);
@@ -128,8 +143,28 @@ class ServerApi {
       await _prefs.remove(_authKey);
       return _send(method, path, body: body, retried: true);
     }
-    if (res.statusCode != 200) throw ServerException('Ошибка сервера (${res.statusCode})');
+    if (res.statusCode != 200) {
+      throw ServerException('Ошибка сервера (${res.statusCode})', res.statusCode);
+    }
     return jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
+  }
+
+  /// Вход в другой аккаунт по логину и паролю. Возвращает облачное
+  /// сохранение этого аккаунта (null — он ещё ни разу не сохранялся).
+  Future<Map<String, dynamic>?> login(String login, String password) async {
+    final Map<String, dynamic> j;
+    try {
+      j = await _send('POST', '/login',
+          body: {'login': login.trim(), 'password': password.trim()}, auth: false);
+    } on ServerException catch (e) {
+      if (e.status == 401) throw ServerException('Неверный логин или пароль', 401);
+      if (e.status == 429) throw ServerException('Слишком много попыток — попробуй позже', 429);
+      rethrow;
+    }
+    final auth = '${j['id']}:${j['token']}';
+    await _prefs.setString(_authKey, auth);
+    _auth = auth;
+    return (j['save'] as Map?)?.cast<String, dynamic>();
   }
 
   /// Облачная копия сохранения и снимок тапка для соперников.

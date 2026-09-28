@@ -1,7 +1,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- Арена, рейтинг и облачное сохранение ходят на сервер. -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Картинка с данными входа в галерею: на Android 9 и старше нужно разрешение. -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
     <application
+        android:requestLegacyExternalStorage="true"
         android:label="idle_slipper"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
