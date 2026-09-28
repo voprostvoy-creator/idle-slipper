@@ -45,7 +45,7 @@ class GemsTab extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Три одинаковых гема сливаются в один уровнем выше. '
+          'Три одинаковых гема улучшаются в один уровнем выше. '
           'Вставляются в окне тапка.',
           style: theme.textTheme.bodySmall,
         ),
@@ -68,12 +68,20 @@ class GemsTab extends StatelessWidget {
                         top: -4,
                         child: Icon(Icons.check_circle, size: 18, color: GameColors.gold),
                       ),
-                    // Можно слить — стрелка вверх.
+                    // Можно улучшить — зелёный кружок в углу.
                     if (game.canMerge(g))
-                      const Positioned(
-                        right: -4,
-                        top: -4,
-                        child: Icon(Icons.arrow_circle_up_rounded, size: 18, color: GameColors.green),
+                      Positioned(
+                        right: -3,
+                        top: -3,
+                        child: Container(
+                          width: 14,
+                          height: 14,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: GameColors.green,
+                            border: Border.all(color: GameColors.outline, width: 2),
+                          ),
+                        ),
                       ),
                   ],
                 ),
@@ -105,8 +113,15 @@ Future<void> _sheet(BuildContext context, GameState game, WidgetBuilder builder)
       ),
     );
 
-/// Окно гема: что даёт, где стоит, слияние.
-Future<void> showGemSheet(BuildContext context, GameState game, int gemId) =>
+/// Окно гема: что даёт, где стоит, улучшение. Открытое из слота тапка
+/// ([kindId], [slot]) — ещё и кнопка «Извлечь».
+Future<void> showGemSheet(
+  BuildContext context,
+  GameState game,
+  int gemId, {
+  String? kindId,
+  int? slot,
+}) =>
     _sheet(context, game, (context) {
       final theme = Theme.of(context);
       final gem = game.gemById(gemId);
@@ -114,6 +129,8 @@ Future<void> showGemSheet(BuildContext context, GameState game, int gemId) =>
       final where = game.socketedIn(gem.id);
       final mates = game.mergeMates(gem);
       final maxed = gem.level >= Gem.maxLevel;
+      final fromSlot = kindId != null && slot != null;
+      final canUp = game.canMerge(gem);
       return Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -133,34 +150,76 @@ Future<void> showGemSheet(BuildContext context, GameState game, int gemId) =>
           const SizedBox(height: 14),
           GamePanel(
             color: GameColors.panelDark,
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
             child: maxed
                 ? Text('Максимальный уровень', style: theme.textTheme.titleSmall)
                 : Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Слияние: этот гем + 2 таких же → уровень ${gem.level + 1} '
-                        '(${gem.copyWith(level: gem.level + 1).bonusText})',
-                        textAlign: TextAlign.center,
-                        style: theme.textTheme.bodySmall,
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'Таких же свободных: ${mates > 2 ? 2 : mates}/2',
+                        'Для уровня ${gem.level + 1} нужно собрать:',
                         style: theme.textTheme.titleSmall,
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          GemIcon(gem: gem, size: 24, showLevel: false),
+                          const SizedBox(width: 8),
+                          SizedBox(
+                            width: 96,
+                            child: Text('Таких же', style: theme.textTheme.bodyMedium),
+                          ),
+                          Expanded(
+                            child: GameBar(
+                              value: (mates / 2).clamp(0.0, 1.0),
+                              height: 18,
+                              color: mates >= 2 ? GameColors.green : GameColors.blue,
+                              label: '${mates > 2 ? 2 : mates}/2',
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Icon(
+                            mates >= 2 ? Icons.check_circle : Icons.radio_button_unchecked,
+                            size: 20,
+                            color: mates >= 2 ? GameColors.green : GameColors.textDim,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Уровень ${gem.level + 1}: ${gem.copyWith(level: gem.level + 1).bonusText}. '
+                        'Гемы находятся «Под диваном».',
+                        style: theme.textTheme.bodySmall,
                       ),
                     ],
                   ),
           ),
           const SizedBox(height: 14),
-          SizedBox(
-            width: double.infinity,
-            child: GameButton(
-              color: game.canMerge(gem) ? GameColors.gold : GameColors.panelDark,
-              height: 50,
-              onPressed: game.canMerge(gem) ? () => game.mergeGem(gem) : null,
-              child: const Text('Слить'),
-            ),
+          Row(
+            children: [
+              if (fromSlot) ...[
+                Expanded(
+                  child: GameButton(
+                    color: GameColors.panelLight,
+                    height: 50,
+                    onPressed: () {
+                      game.removeGem(kindId, slot);
+                      Navigator.pop(context);
+                    },
+                    child: const Text('Извлечь', style: TextStyle(color: GameColors.text)),
+                  ),
+                ),
+                const SizedBox(width: 10),
+              ],
+              Expanded(
+                child: GameButton(
+                  color: canUp ? GameColors.gold : GameColors.panelDark,
+                  height: 50,
+                  onPressed: canUp ? () => game.mergeGem(gem) : null,
+                  child: const Text('Улучшить'),
+                ),
+              ),
+            ],
           ),
         ],
       );
@@ -185,7 +244,9 @@ class GemSlotsRow extends StatelessWidget {
             GemSlotBox(size: 52, lockedStar: Gems.slotStar(i))
           else
             GestureDetector(
-              onTap: () => _pick(context, i),
+              onTap: () => open[i] == null
+                  ? _pick(context, i)
+                  : showGemSheet(context, game, open[i]!.id, kindId: kindId, slot: i),
               child: open[i] == null
                   ? const GemSlotBox(size: 52)
                   : GemIcon(gem: open[i]!, size: 52),

@@ -50,6 +50,9 @@ class _RootShellState extends State<RootShell> {
   /// Открытый режим во вкладке «В бой»; null — экран выбора режима.
   BattleMode? _battleMode;
 
+  /// Меняется — коллекция открывается на вкладке тапков.
+  int _collectionReset = 0;
+
   void _select(_Tab tab) => setState(() {
     // Повторное нажатие на «В бой» возвращает к выбору режима.
     if (tab == _Tab.battle && _tab == _Tab.battle) _battleMode = null;
@@ -60,8 +63,16 @@ class _RootShellState extends State<RootShell> {
   Widget build(BuildContext context) {
     final game = widget.game;
     final pages = [
-      HomeScreen(game: game, onOpenCollection: () => _select(_Tab.collection)),
-      CollectionScreen(game: game),
+      HomeScreen(
+        game: game,
+        onOpenCollection: () {
+          // «Сменить тапок» всегда ведёт к тапкам, даже если в коллекции
+          // до этого был открыт инвентарь.
+          _collectionReset++;
+          _select(_Tab.collection);
+        },
+      ),
+      CollectionScreen(game: game, resetToken: _collectionReset),
       BattleHubScreen(
         game: game,
         mode: _battleMode,

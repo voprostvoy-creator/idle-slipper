@@ -15,8 +15,11 @@ import '../widgets/game_widgets.dart';
 /// Коллекция: тапки по редкостям, от обычных к мифическим. Свои можно
 /// открыть — там надеть и улучшить; чужие показаны тёмным силуэтом.
 class CollectionScreen extends StatefulWidget {
-  const CollectionScreen({super.key, required this.game});
+  const CollectionScreen({super.key, required this.game, this.resetToken = 0});
   final GameState game;
+
+  /// Сменился — вернуться на вкладку тапков.
+  final int resetToken;
 
   @override
   State<CollectionScreen> createState() => _CollectionScreenState();
@@ -25,6 +28,12 @@ class CollectionScreen extends StatefulWidget {
 class _CollectionScreenState extends State<CollectionScreen> {
   /// Открыта вкладка гемов, а не тапков.
   bool _gems = false;
+
+  @override
+  void didUpdateWidget(CollectionScreen old) {
+    super.didUpdateWidget(old);
+    if (old.resetToken != widget.resetToken) _gems = false;
+  }
 
   GameState get game => widget.game;
 
@@ -71,7 +80,7 @@ class _CollectionScreenState extends State<CollectionScreen> {
               children: [
                 _tab('Тапки', false),
                 const SizedBox(width: 10),
-                _tab('Гемы', true),
+                _tab('Инвентарь', true),
               ],
             ),
             if (_gems) ...[const SizedBox(height: 14), GemsTab(game: game)],
