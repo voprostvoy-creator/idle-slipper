@@ -7,15 +7,43 @@ import '../../game/slipper.dart';
 import '../../game/slipper_kind.dart';
 import '../../game/stars.dart';
 import '../format.dart';
+import '../gems_ui.dart';
 import '../slipper_sprite.dart';
 import '../theme.dart';
 import '../widgets/game_widgets.dart';
 
 /// Коллекция: тапки по редкостям, от обычных к мифическим. Свои можно
 /// открыть — там надеть и улучшить; чужие показаны тёмным силуэтом.
-class CollectionScreen extends StatelessWidget {
+class CollectionScreen extends StatefulWidget {
   const CollectionScreen({super.key, required this.game});
   final GameState game;
+
+  @override
+  State<CollectionScreen> createState() => _CollectionScreenState();
+}
+
+class _CollectionScreenState extends State<CollectionScreen> {
+  /// Открыта вкладка гемов, а не тапков.
+  bool _gems = false;
+
+  GameState get game => widget.game;
+
+  Widget _tab(String label, bool gems) {
+    final active = _gems == gems;
+    return Expanded(
+      child: GameButton(
+        color: active ? GameColors.gold : GameColors.panelLight,
+        height: 40,
+        onPressed: () => setState(() => _gems = gems),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: active ? GameColors.outline : GameColors.text,
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -32,30 +60,43 @@ class CollectionScreen extends StatelessWidget {
             const SizedBox(height: 4),
             Center(
               child: Text(
-                'Собрано $owned из ${kinds.length}',
+                _gems
+                    ? 'Гемов: ${game.gems.length}'
+                    : 'Собрано $owned из ${kinds.length}',
                 style: theme.textTheme.bodySmall,
               ),
             ),
-            for (final rarity in Rarity.values)
-              if (SlipperCatalog.byRarity(rarity).isNotEmpty) ...[
-                const SizedBox(height: 16),
-                _RarityHeader(game: game, rarity: rarity),
-                const SizedBox(height: 8),
-                GridView(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    mainAxisSpacing: 10,
-                    crossAxisSpacing: 10,
-                    mainAxisExtent: 156,
-                  ),
-                  children: [
-                    for (final kind in SlipperCatalog.byRarity(rarity))
-                      _KindCard(game: game, kind: kind),
-                  ],
-                ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                _tab('Тапки', false),
+                const SizedBox(width: 10),
+                _tab('Гемы', true),
               ],
+            ),
+            if (_gems) ...[const SizedBox(height: 14), GemsTab(game: game)],
+            if (!_gems)
+              for (final rarity in Rarity.values)
+                if (SlipperCatalog.byRarity(rarity).isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  _RarityHeader(game: game, rarity: rarity),
+                  const SizedBox(height: 8),
+                  GridView(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          mainAxisSpacing: 10,
+                          crossAxisSpacing: 10,
+                          mainAxisExtent: 156,
+                        ),
+                    children: [
+                      for (final kind in SlipperCatalog.byRarity(rarity))
+                        _KindCard(game: game, kind: kind),
+                    ],
+                  ),
+                ],
           ],
         );
       },
@@ -266,10 +307,7 @@ class _KindSheet extends StatelessWidget {
               runSpacing: 4,
               alignment: WrapAlignment.center,
               children: [
-                GameBadge(
-                  text: kind.rarity.label,
-                  color: kind.rarity.color,
-                ),
+                GameBadge(text: kind.rarity.label, color: kind.rarity.color),
                 for (final e in kind.bonuses.entries)
                   GameBadge(
                     text: e.key.format(e.value),
@@ -284,6 +322,10 @@ class _KindSheet extends StatelessWidget {
                 'Сейчас: удар, прочность и здоровье +$bonusNow%',
                 style: theme.textTheme.bodySmall,
               ),
+            const SizedBox(height: 12),
+            Text('Гемы', style: theme.textTheme.titleSmall),
+            const SizedBox(height: 6),
+            GemSlotsRow(game: game, kindId: kind.id),
             const SizedBox(height: 12),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -452,7 +494,11 @@ class _SkillTile extends StatelessWidget {
               border: Border.all(color: GameColors.outline, width: 2.5),
             ),
             child: _locked
-                ? const Icon(Icons.lock_rounded, size: 16, color: GameColors.textDim)
+                ? const Icon(
+                    Icons.lock_rounded,
+                    size: 16,
+                    color: GameColors.textDim,
+                  )
                 : Text(
                     '$index',
                     style: const TextStyle(
@@ -475,7 +521,9 @@ class _SkillTile extends StatelessWidget {
           if (_locked)
             Text(
               '★$unlockStar',
-              style: theme.textTheme.labelSmall?.copyWith(color: GameColors.gold),
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: GameColors.gold,
+              ),
             ),
         ],
       ),
@@ -502,7 +550,9 @@ class _SkillTile extends StatelessWidget {
             if (_locked) ...[
               Text(
                 'Откроется на ★$unlockStar',
-                style: theme.textTheme.titleSmall?.copyWith(color: GameColors.gold),
+                style: theme.textTheme.titleSmall?.copyWith(
+                  color: GameColors.gold,
+                ),
               ),
               const SizedBox(height: 6),
             ],
@@ -527,11 +577,11 @@ class _SkillTile extends StatelessWidget {
 
 /// Какой скилл откроет звезда [star] — хвост фразы или пустая строка.
 String _unlocks(SkillSet skills, int star) => switch (star) {
-      SkillSet.activeStar => ' и откроет скилл «${skills.active.name}»',
-      SkillSet.passiveStar => ' и откроет пассивку «${skills.passive.name}»',
-      SkillSet.ultimateStar => ' и откроет ульту «${skills.ultimate.name}»',
-      _ => '',
-    };
+  SkillSet.activeStar => ' и откроет скилл «${skills.active.name}»',
+  SkillSet.passiveStar => ' и откроет пассивку «${skills.passive.name}»',
+  SkillSet.ultimateStar => ' и откроет ульту «${skills.ultimate.name}»',
+  _ => '',
+};
 
 /// Строка требования: иконка, название, полоса «есть/нужно».
 class _Need extends StatelessWidget {

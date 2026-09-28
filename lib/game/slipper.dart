@@ -4,6 +4,7 @@ import 'dart:ui';
 import 'battle/combatant.dart';
 import 'battle/skill_catalog.dart';
 import 'battle/skills.dart';
+import 'gems.dart';
 import 'slipper_kind.dart';
 import 'stars.dart';
 
@@ -28,6 +29,7 @@ class Slipper implements Combatant {
     this.kindId = SlipperCatalog.defaultId,
     Map<Stat, int>? levels,
     this.stars = 0,
+    this.gems = const [],
   }) : levels = {for (final s in Stat.values) s: levels?[s] ?? 1};
 
   @override
@@ -40,6 +42,11 @@ class Slipper implements Combatant {
 
   double get _starMul => Stars.multiplier(stars);
 
+  /// Гемы, вставленные в слоты этого вида.
+  final List<Gem> gems;
+
+  GemBonus get _gem => gems.isEmpty ? GemBonus.none : GemBonus(gems);
+
   SlipperKind get kind => SlipperCatalog.byId(kindId);
 
   int level(Stat s) => levels[s]!;
@@ -50,31 +57,49 @@ class Slipper implements Combatant {
   @override
   double get attack =>
       (10 + level(Stat.attack) * 4.0 + pow(level(Stat.attack), 1.3)) *
-      (1 + kind.bonus(Bonus.damage)) *
-      _starMul;
+          (1 + kind.bonus(Bonus.damage) + _gem.attackPct) *
+          _starMul +
+      _gem.attackFlat;
 
   /// Защита работает по формуле 100/(100+def) — никогда не даёт иммунитет.
   @override
   double get defense =>
-      level(Stat.defense) * 5.0 * (1 + kind.bonus(Bonus.defense)) * _starMul;
+      level(Stat.defense) *
+          5.0 *
+          (1 + kind.bonus(Bonus.defense) + _gem.defensePct) *
+          _starMul +
+      _gem.defenseFlat;
 
   @override
   double get maxHp =>
-      (100 + level(Stat.health) * 25.0) * (1 + kind.bonus(Bonus.hp)) * _starMul;
+      (100 + level(Stat.health) * 25.0) *
+          (1 + kind.bonus(Bonus.hp) + _gem.hpPct) *
+          _starMul +
+      _gem.hpFlat;
 
   /// Скорость определяет порядок и частоту ходов (см. BattleSim).
   @override
-  double get speed => 10 + level(Stat.speed) * 2.0;
+  double get speed =>
+      (10 + level(Stat.speed) * 2.0) * (1 + _gem.speedPct) + _gem.speedFlat;
 
   /// Шанс уворота, мягко ограниченный 35% (+ бонус вида).
   @override
-  double get dodgeChance =>
-      min(0.6, 0.35 * (1 - exp(-level(Stat.speed) / 40)) + kind.bonus(Bonus.dodge));
+  double get dodgeChance => min(
+    0.6,
+    0.35 * (1 - exp(-level(Stat.speed) / 40)) +
+        kind.bonus(Bonus.dodge) +
+        _gem.dodge,
+  );
 
   /// Шанс крита растёт от атаки, потолок 40% (+ бонус вида).
   @override
-  double get critChance =>
-      min(0.75, 0.05 + 0.35 * (1 - exp(-level(Stat.attack) / 50)) + kind.bonus(Bonus.crit));
+  double get critChance => min(
+    0.75,
+    0.05 +
+        0.35 * (1 - exp(-level(Stat.attack) / 50)) +
+        kind.bonus(Bonus.crit) +
+        _gem.crit,
+  );
 
   /// Размер тапка на экране: 60% на старте, каждый уровень Здоровья
   /// съедает 1% оставшегося до 100% — растёт всегда, но не достигает предела.
@@ -123,28 +148,27 @@ class Slipper implements Combatant {
     String? kindId,
     Map<Stat, int>? levels,
     int? stars,
-  }) =>
-      Slipper(
-        name: name ?? this.name,
-        kindId: kindId ?? this.kindId,
-        levels: levels ?? Map.of(this.levels),
-        stars: stars ?? this.stars,
-      );
+    List<Gem>? gems,
+  }) => Slipper(
+    name: name ?? this.name,
+    kindId: kindId ?? this.kindId,
+    levels: levels ?? Map.of(this.levels),
+    stars: stars ?? this.stars,
+    gems: gems ?? this.gems,
+  );
 
   Map<String, dynamic> toJson() => {
-        'name': name,
-        'kind': kindId,
-        'levels': {for (final e in levels.entries) e.key.name: e.value},
-      };
+    'name': name,
+    'kind': kindId,
+    'levels': {for (final e in levels.entries) e.key.name: e.value},
+  };
 
   factory Slipper.fromJson(Map<String, dynamic> json) {
     final raw = (json['levels'] as Map?) ?? const {};
     return Slipper(
       name: json['name'] as String? ?? 'Тапок',
       kindId: json['kind'] as String? ?? SlipperCatalog.defaultId,
-      levels: {
-        for (final s in Stat.values) s: (raw[s.name] as int?) ?? 1,
-      },
+      levels: {for (final s in Stat.values) s: (raw[s.name] as int?) ?? 1},
     );
   }
 }

@@ -8,10 +8,11 @@ import '../../game/story/enemies.dart';
 import '../theme.dart';
 import '../widgets/game_widgets.dart';
 import 'arena_screen.dart';
+import 'dig_screen.dart';
 import 'story_screen.dart';
 
 /// Режимы боя, доступные из кнопки «В бой».
-enum BattleMode { story, arena }
+enum BattleMode { story, arena, dig }
 
 /// Вкладка «В бой»: сначала выбор режима, затем сам режим внутри той же
 /// вкладки — шапка с валютами и меню остаются на месте.
@@ -34,6 +35,7 @@ class BattleHubScreen extends StatelessWidget {
     return switch (mode) {
       BattleMode.arena => ArenaScreen(game: game, onBack: () => onMode(null)),
       BattleMode.story => StoryScreen(game: game, onBack: () => onMode(null)),
+      BattleMode.dig => DigScreen(game: game, onBack: () => onMode(null)),
       null => _ModePicker(onMode: onMode),
     };
   }
@@ -80,6 +82,44 @@ class _ModePicker extends StatelessWidget {
                   art: const _ArenaArt(),
                   color: GameColors.blue,
                   onTap: () => onMode(BattleMode.arena),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        // Режим без боёв «в лоб» — широкой карточкой под основными.
+        GamePanel(
+          padding: const EdgeInsets.all(12),
+          onTap: () => onMode(BattleMode.dig),
+          child: Row(
+            children: [
+              Container(
+                width: 84,
+                height: 84,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: GameColors.outline, width: 3),
+                  gradient: const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [Color(0xFFB59A7A), Color(0xFF6F5E4B)],
+                  ),
+                ),
+                child: const DigArt(),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const StrokeText('Под диваном', size: 24),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Раскопки в пыли: гемы, нитки и монеты. Новое поле каждый день.',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
                 ),
               ),
             ],

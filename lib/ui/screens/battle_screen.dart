@@ -5,10 +5,12 @@ import 'package:flutter/material.dart';
 import '../../game/battle/battle_sim.dart';
 import '../../game/battle/combatant.dart';
 import '../../game/battle/skills.dart';
+import '../../game/gems.dart';
 import '../../game/slipper.dart';
 import '../../game/slipper_kind.dart';
 import '../attack_animation.dart';
 import '../format.dart';
+import '../gem_icon.dart';
 import '../battle_effects.dart';
 import '../status_icons.dart';
 import '../slipper_sprite.dart';
@@ -26,6 +28,7 @@ class BattleScreen extends StatefulWidget {
     this.threadsDelta = 0,
     this.coinsDelta = 0,
     this.rewardKind,
+    this.rewardGem,
     this.exitLabel = 'На арену',
     this.intro,
   });
@@ -41,6 +44,9 @@ class BattleScreen extends StatefulWidget {
 
   /// Тапок, выпавший за победу.
   final SlipperKind? rewardKind;
+
+  /// Гем, выпавший за победу.
+  final Gem? rewardGem;
 
   /// Подпись кнопки выхода после боя.
   final String exitLabel;
@@ -535,6 +541,7 @@ class _BattleScreenState extends State<BattleScreen>
                 threadsDelta: widget.threadsDelta,
                 coinsDelta: widget.coinsDelta,
                 rewardKind: widget.rewardKind,
+                rewardGem: widget.rewardGem,
                 exitLabel: widget.exitLabel,
               )
             else
@@ -1202,9 +1209,11 @@ class _ResultPanel extends StatelessWidget {
     required this.threadsDelta,
     required this.coinsDelta,
     required this.rewardKind,
+    required this.rewardGem,
     required this.exitLabel,
   });
 
+  final Gem? rewardGem;
   final bool won;
   final int? ratingDelta;
   final int threadsDelta;
@@ -1239,6 +1248,25 @@ class _ResultPanel extends StatelessWidget {
           children: [
             StrokeText(won ? 'ПОБЕДА!' : 'ПОРАЖЕНИЕ', size: 32, color: color),
             const SizedBox(height: 10),
+            if (rewardGem != null) ...[
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  GemIcon(gem: rewardGem!, size: 48),
+                  const SizedBox(width: 10),
+                  Flexible(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(gemTitle(rewardGem!), style: theme.textTheme.titleSmall),
+                        Text(rewardGem!.bonusText, style: theme.textTheme.bodySmall),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+            ],
             if (items.isNotEmpty)
               Wrap(spacing: 22, alignment: WrapAlignment.center, children: items)
             else if (!won)

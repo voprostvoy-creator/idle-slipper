@@ -10,11 +10,14 @@ import 'economy.dart';
 import 'leaderboard.dart';
 import 'case_box.dart';
 import 'daily.dart';
+import 'dig.dart';
+import 'gems.dart';
 import 'rating.dart';
 import 'slipper.dart';
 import 'slipper_kind.dart';
 import 'stars.dart';
 import 'story/chapters.dart';
+import 'story/enemies.dart';
 
 /// Единственный источник правды для UI. Сохраняется в SharedPreferences.
 class GameState extends ChangeNotifier with WidgetsBindingObserver {
@@ -57,6 +60,20 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
 
   /// Текущие очки ботов рейтинга, если отличаются от стартовых.
   Map<String, int> botRatings = {};
+
+  /// Все гемы игрока и следующий свободный id.
+  List<Gem> gems = [];
+  int _nextGemId = 1;
+
+  /// Слоты гемов по видам тапков: id вида → id гемов в слотах (null — пусто).
+  Map<String, List<int?>> sockets = {};
+
+  /// «Под диваном»: день поля, сколько пыли осталось на клетках,
+  /// потраченные взмахи и клетки, с которых награда уже забрана.
+  String digDay = '';
+  List<int> digLayers = [];
+  int digSwingsUsed = 0;
+  Set<int> digTaken = {};
 
   /// День, когда забран ежедневный кейс.
   String dailyCaseDay = '';
@@ -147,7 +164,8 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
   /// Сменить вид тапка — только на то, что есть в инвентаре.
   void equip(String kindId) {
     if ((inventory[kindId] ?? 0) == 0) return;
-    slipper = slipper.copyWith(kindId: kindId, stars: starsOf(kindId));
+    slipper = slipper.copyWith(kindId: kindId);
+    _syncSlipper();
     _save();
     notifyListeners();
   }
@@ -258,6 +276,13 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
         'questProgress': questProgress,
         'questClaimed': questClaimed.toList(),
         'questBonus': questBonusClaimed,
+        'gems': [for (final g in gems) g.toJson()],
+        'gemNext': _nextGemId,
+        'sockets': sockets,
+        'digDay': digDay,
+        'digLayers': digLayers,
+        'digSwings': digSwingsUsed,
+        'digTaken': digTaken.toList(),
         'chestSince': chestSince.toIso8601String(),
         'storyReplays': storyReplaysUsed,
       }),
@@ -294,7 +319,23 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
           for (final e in starsJson.entries) e.key as String: (e.value as num).toInt(),
         };
       }
-      slipper = slipper.copyWith(stars: starsOf(slipper.kindId));
+      final gemsJson = json['gems'] as List?;
+      if (gemsJson != null) {
+        gems = [
+          for (final g in gemsJson)
+            ?Gem.fromJson((g as Map).cast<String, dynamic>()),
+        ];
+      }
+      _nextGemId = (json['gemNext'] as num?)?.toInt() ??
+          (gems.isEmpty ? 1 : gems.map((g) => g.id).reduce(max) + 1);
+      final socketsJson = json['sockets'] as Map?;
+      if (socketsJson != null) {
+        sockets = {
+          for (final e in socketsJson.entries)
+            e.key as String: [for (final id in e.value as List) (id as num?)?.toInt()],
+        };
+      }
+      _syncSlipper();
       final bots = json['botRatings'] as Map?;
       if (bots != null) {
         botRatings = {
@@ -311,6 +352,10 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
       }
       questClaimed = {...?(json['questClaimed'] as List?)?.cast<String>()};
       questBonusClaimed = json['questBonus'] as bool? ?? false;
+      digDay = json['digDay'] as String? ?? '';
+      digLayers = [for (final v in (json['digLayers'] as List? ?? const [])) (v as num).toInt()];
+      digSwingsUsed = (json['digSwings'] as num?)?.toInt() ?? 0;
+      digTaken = {for (final v in (json['digTaken'] as List? ?? const [])) (v as num).toInt()};
       _rollDay();
       final story = json['story'] as Map?;
       if (story != null) {
@@ -379,6 +424,197 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
     questClaimed = {};
     questBonusClaimed = false;
     storyReplaysUsed = 0;
+    _rollDig();
+  }
+
+  // --- Гемы ----------------------------------------------------------------
+
+  /// Тапок получает гемы из слотов своего вида.
+  void _syncSlipper() {
+    final kind = slipper.kindId;
+    slipper = slipper.copyWith(
+      stars: starsOf(kind),
+      gems: [for (final g in socketsOf(kind)) ?g],
+    );
+  }
+
+  Gem? gemById(int id) => gems.where((g) => g.id == id).firstOrNull;
+
+  /// Слоты вида с учётом звёзд: открытых — столько, сколько позволяют звёзды.
+  List<Gem?> socketsOf(String kindId) {
+    final ids = sockets[kindId] ?? const [];
+    return [
+      for (var i = 0; i < Gems.slotsFor(starsOf(kindId)); i++)
+        i < ids.length && ids[i] != null ? gemById(ids[i]!) : null,
+    ];
+  }
+
+  /// В какой вид вставлен гем; null — лежит свободно.
+  String? socketedIn(int gemId) {
+    for (final e in sockets.entries) {
+      if (e.value.contains(gemId)) return e.key;
+    }
+    return null;
+  }
+
+  List<Gem> get freeGems => [for (final g in gems) if (socketedIn(g.id) == null) g];
+
+  /// Вставить гем в слот вида. Если гем стоял в другом слоте — переезжает,
+  /// а гем, занимавший слот, освобождается.
+  void insertGem(String kindId, int slot, int gemId) {
+    if (slot >= Gems.slotsFor(starsOf(kindId)) || gemById(gemId) == null) return;
+    for (final list in sockets.values) {
+      for (var i = 0; i < list.length; i++) {
+        if (list[i] == gemId) list[i] = null;
+      }
+    }
+    final list = sockets.putIfAbsent(kindId, () => List.filled(Gems.maxSlots, null, growable: true));
+    while (list.length < Gems.maxSlots) {
+      list.add(null);
+    }
+    list[slot] = gemId;
+    _gemsChanged();
+  }
+
+  void removeGem(String kindId, int slot) {
+    final list = sockets[kindId];
+    if (list == null || slot >= list.length) return;
+    list[slot] = null;
+    _gemsChanged();
+  }
+
+  /// Свободные гемы, с которыми можно слить [gem]: такие же, но не он сам.
+  List<Gem> _mergeMates(Gem gem) =>
+      [for (final g in freeGems) if (g.id != gem.id && g.sameAs(gem)) g];
+
+  /// Сколько подходящих свободных гемов есть для слияния (нужно 2).
+  int mergeMates(Gem gem) => _mergeMates(gem).length;
+
+  bool canMerge(Gem gem) => gem.level < Gem.maxLevel && _mergeMates(gem).length >= 2;
+
+  /// Слияние 3 → 1: [gem] получает уровень выше, два таких же исчезают.
+  /// Если [gem] был вставлен, он остаётся в слоте.
+  void mergeGem(Gem gem) {
+    if (!canMerge(gem)) return;
+    final used = _mergeMates(gem).take(2).map((g) => g.id).toSet();
+    gems = [
+      for (final g in gems)
+        if (g.id == gem.id) g.copyWith(level: g.level + 1) else if (!used.contains(g.id)) g,
+    ];
+    _gemsChanged();
+  }
+
+  Gem _giveGem(Rarity rarity) {
+    final gem = Gem.random(Random(), id: _nextGemId++, rarity: rarity);
+    gems.add(gem);
+    return gem;
+  }
+
+  void _gemsChanged() {
+    _syncSlipper();
+    _save();
+    notifyListeners();
+  }
+
+  // --- Под диваном -----------------------------------------------------------
+
+  DigBoard get digBoard => DigBoard.forDay(clock());
+
+  int get digSwingsLeft => max(0, DigBoard.swingsPerDay - digSwingsUsed);
+
+  /// Сколько слоёв пыли снимает один взмах: растёт с Ударом.
+  int get digStrength {
+    final atk = slipper.level(Stat.attack);
+    return 1 + (atk >= 10 ? 1 : 0) + (atk >= 25 ? 1 : 0);
+  }
+
+  /// Новый день — новое поле.
+  void _rollDig() {
+    final today = dayKey(clock());
+    if (digDay == today && digLayers.length == DigBoard.size) return;
+    digDay = today;
+    digLayers = [for (final c in digBoard.cells) c.layers];
+    digSwingsUsed = 0;
+    digTaken = {};
+  }
+
+  bool digRevealed(int i) => digLayers.length > i && digLayers[i] <= 0;
+
+  /// Взмах по клетке: снимает пыль, а расчищенная клетка сразу отдаёт
+  /// находку. Страж не отдаёт награду сам — с ним надо сразиться.
+  DigOutcome? dig(int i) {
+    _rollDay();
+    if (digRevealed(i) || digSwingsLeft == 0) return null;
+    digSwingsUsed++;
+    digLayers[i] = max(0, digLayers[i] - digStrength);
+    DigOutcome outcome = const (threads: 0, coins: 0, gem: null, revealed: false);
+    if (digLayers[i] == 0) {
+      outcome = _takeDigLoot(i);
+    }
+    _save();
+    notifyListeners();
+    return outcome;
+  }
+
+  DigOutcome _takeDigLoot(int i) {
+    final cell = digBoard.cells[i];
+    var t = 0;
+    var c = 0;
+    Gem? gem;
+    switch (cell.loot) {
+      case DigLoot.threads:
+        t = Economy.withBonus(15 + slipper.power * 0.08, slipper);
+        threads += t;
+      case DigLoot.coins:
+        c = 8 + i % 5;
+        coins += c;
+      case DigLoot.gem:
+      case DigLoot.treasure:
+        gem = _giveGem(cell.gemRarity!);
+      case DigLoot.guard:
+        return const (threads: 0, coins: 0, gem: null, revealed: true);
+      case DigLoot.empty:
+        break;
+    }
+    digTaken.add(i);
+    return (threads: t, coins: c, gem: gem, revealed: true);
+  }
+
+  bool digGuardWaiting(int i) =>
+      digRevealed(i) && digBoard.cells[i].loot == DigLoot.guard && !digTaken.contains(i);
+
+  /// Страж под диваном: элитное насекомое примерно твоей силы.
+  Enemy digGuard(int i) {
+    const kinds = [
+      EnemyCatalog.cockroach,
+      EnemyCatalog.fly,
+      EnemyCatalog.mosquito,
+      EnemyCatalog.rhinoBeetle,
+    ];
+    final avg = max(1, (slipper.totalLevel / 4 * 0.85).round());
+    return Enemy(
+      kind: kinds[i % kinds.length],
+      levels: {for (final s in Stat.values) s: avg},
+      name: 'Страж: ${kinds[i % kinds.length].name.toLowerCase()}',
+      elite: true,
+    );
+  }
+
+  /// Бой со стражем стоит взмах. Победа — гем, проигрыш — можно ещё раз.
+  ({BattleResult result, Enemy enemy, Gem? gem})? fightDigGuard(int i) {
+    _rollDay();
+    if (!digGuardWaiting(i) || digSwingsLeft == 0) return null;
+    digSwingsUsed++;
+    final enemy = digGuard(i);
+    final result = BattleSim.run(slipper, enemy, seed: Random().nextInt(1 << 31));
+    Gem? gem;
+    if (result.playerWon) {
+      gem = _giveGem(digBoard.cells[i].gemRarity!);
+      digTaken.add(i);
+    }
+    _save();
+    notifyListeners();
+    return (result: result, enemy: enemy, gem: gem);
   }
 
   void _progress(QuestKind kind) {
@@ -472,9 +708,8 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
     inventory[kindId] = count(kindId) - cost.copies;
     coins -= cost.coins;
     stars[kindId] = starsOf(kindId) + 1;
-    if (kindId == slipper.kindId) {
-      slipper = slipper.copyWith(stars: starsOf(kindId));
-      }
+    // Звезда могла открыть новый слот — тапок пересобирается с гемами.
+    if (kindId == slipper.kindId) _syncSlipper();
     _save();
     notifyListeners();
   }
@@ -495,8 +730,22 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
     notifyListeners();
   }
 
+  /// Для отладки: три одинаковых гема (проверить слияние) и по гему
+  /// каждой редкости.
+  void cheatGems() {
+    final type = GemType.values[Random().nextInt(GemType.values.length)];
+    for (var i = 0; i < 3; i++) {
+      gems.add(Gem(id: _nextGemId++, type: type, rarity: Rarity.common));
+    }
+    for (final r in Rarity.values) {
+      _giveGem(r);
+    }
+    _gemsChanged();
+  }
+
   /// Для отладки: как будто наступил новый день.
   void cheatNewDay() {
+    digDay = '';
     chestSince = clock().subtract(Economy.chestFillTime);
     dailyCaseDay = '';
     questDay = '';
@@ -525,6 +774,10 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
     storyCleared = {};
     stars = {};
     botRatings = {};
+    gems = [];
+    _nextGemId = 1;
+    sockets = {};
+    digDay = '';
     chestSince = clock();
     dailyCaseDay = '';
     questDay = '';
@@ -544,3 +797,6 @@ typedef ArenaOutcome = ({
   int ratingDelta,
   int threads,
 });
+
+/// Итог взмаха под диваном: что выдано и расчищена ли клетка.
+typedef DigOutcome = ({int threads, int coins, Gem? gem, bool revealed});
