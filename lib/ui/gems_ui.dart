@@ -23,33 +23,14 @@ class GemsTab extends StatelessWidget {
         return t != 0 ? t : b.level.compareTo(a.level);
       });
     if (gems.isEmpty) {
-      return GamePanel(
-        color: GameColors.panelDark,
-        padding: const EdgeInsets.all(18),
-        child: Column(
-          children: [
-            const Icon(Icons.diamond_outlined, size: 44, color: GameColors.textDim),
-            const SizedBox(height: 8),
-            Text('Гемов пока нет', style: theme.textTheme.titleMedium),
-            const SizedBox(height: 4),
-            Text(
-              'Их можно найти «Под диваном» — режим во вкладке «В бой».',
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodySmall,
-            ),
-          ],
-        ),
+      return Padding(
+        padding: const EdgeInsets.only(top: 24),
+        child: Center(child: Text('Пока пусто', style: theme.textTheme.titleMedium)),
       );
     }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Три одинаковых гема улучшаются в один уровнем выше. '
-          'Вставляются в окне тапка.',
-          style: theme.textTheme.bodySmall,
-        ),
-        const SizedBox(height: 10),
         Wrap(
           spacing: 10,
           runSpacing: 12,
