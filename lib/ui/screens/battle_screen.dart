@@ -171,6 +171,23 @@ class _BattleScreenState extends State<BattleScreen>
 
   final _log = <String>[];
   final _popups = <_Popup>[];
+  int _popupCounter = 0;
+
+  /// Подпись живёт сама по себе: всплывает, гаснет и исчезает, не дожидаясь
+  /// следующих событий. Одновременные встают друг над другом, а не в кучу.
+  void _addPopup(_Popup p) {
+    p.id = ++_popupCounter;
+    final busy = {for (final q in _popups) if (q.side == p.side) q.slot};
+    var slot = 0;
+    while (busy.contains(slot)) {
+      slot++;
+    }
+    p.slot = slot;
+    _popups.add(p);
+    Future.delayed(_Popup.life, () {
+      if (mounted) setState(() => _popups.remove(p));
+    });
+  }
   int _index = 0;
   bool _finished = false;
   Timer? _timer;
@@ -281,7 +298,7 @@ class _BattleScreenState extends State<BattleScreen>
             // Ответ брони — без замаха, поэтому сразу.
             land();
             // Шипы — ответ брони, а не удар: замаха нет и поза не меняется.
-            _popups.add(_Popup(side: target, text: '$damage', crit: false));
+            _addPopup(_Popup(side: target, text: '$damage', crit: false));
             _log.insert(0, '${nameOf(attacker)}: шипы на $damage');
           } else {
             // Удар другой стороны — прежний скилл закончился.
@@ -295,7 +312,7 @@ class _BattleScreenState extends State<BattleScreen>
             // Урон, цифра и вспышки — в момент касания.
             _atImpact(attacker, () {
               land();
-              _popups.add(_Popup(side: target, text: crit ? '$damage!' : '$damage', crit: crit));
+              _addPopup(_Popup(side: target, text: crit ? '$damage!' : '$damage', crit: crit));
               _impactVfx(attacker, crit: crit);
             });
           }
@@ -307,7 +324,7 @@ class _BattleScreenState extends State<BattleScreen>
           _mood = {attacker: SlipperMood.attack, target: SlipperMood.idle};
           _log.insert(0, '${nameOf(attacker)} промахивается');
           _startLunge(attacker);
-          _atImpact(attacker, () => _popups.add(_Popup(side: target, text: 'мимо', crit: false)));
+          _atImpact(attacker, () => _addPopup(_Popup(side: target, text: 'мимо', crit: false)));
 
         case HealEvent(:final side, :final amount, :final hpAfter):
           if (side == Side.player) {
@@ -315,7 +332,7 @@ class _BattleScreenState extends State<BattleScreen>
           } else {
             _hpOpponent = hpAfter;
           }
-          _popups.add(_Popup(side: side, text: '+$amount', crit: false, heal: true));
+          _addPopup(_Popup(side: side, text: '+$amount', crit: false, heal: true));
           _flashEffect(side, BattleEffect.heal);
           _log.insert(0, '${nameOf(side)} восстанавливает $amount');
 
@@ -328,13 +345,13 @@ class _BattleScreenState extends State<BattleScreen>
           _mood = {side: hpAfter <= 0 ? SlipperMood.dead : SlipperMood.hurt, side.other: SlipperMood.idle};
           _hits[side] = _hits[side]! + 1;
           _soft[side] = false;
-          _popups.add(_Popup(side: side, text: '$damage', crit: false, burn: true));
+          _addPopup(_Popup(side: side, text: '$damage', crit: false, burn: true));
           _log.insert(0, '${nameOf(side)} ${poison ? 'отравлен' : 'горит'}: $damage');
           _cast = null;
 
         case StunEvent(:final side):
           _cast = null;
-          _popups.add(_Popup(side: side, text: 'оглушён', crit: false));
+          _addPopup(_Popup(side: side, text: 'оглушён', crit: false));
           _log.insert(0, '${nameOf(side)} пропускает ход');
       }
       if (_log.length > 4) _log.removeLast();
@@ -357,7 +374,6 @@ class _BattleScreenState extends State<BattleScreen>
     Future.delayed(Duration(milliseconds: max(600, impact + 380)), () {
       if (!mounted || _moodStamp != stamp) return;
       setState(() {
-        if (_popups.isNotEmpty) _popups.removeAt(0);
         _banner = null;
         for (final side in Side.values) {
           if (_mood[side] != SlipperMood.dead) _mood[side] = SlipperMood.idle;
@@ -793,7 +809,7 @@ class _IntroOverlay extends StatelessWidget {
 }
 
 class _Popup {
-  const _Popup({
+  _Popup({
     required this.side,
     required this.text,
     required this.crit,
@@ -806,6 +822,14 @@ class _Popup {
   final bool crit;
   final bool heal;
   final bool burn;
+
+  /// Сколько подпись видна целиком: всплытие и полное угасание.
+  static const life = Duration(milliseconds: 950);
+
+  int id = 0;
+
+  /// Ярус над бойцом: занятые ярусы не перекрываются.
+  int slot = 0;
 
   Color get color {
     if (heal) return GameColors.green;
@@ -1159,16 +1183,17 @@ class _Fighter extends StatelessWidget {
             ),
           for (final p in popups)
             Positioned(
-              top: -10,
+              top: -10 - p.slot * 30.0,
               child: TweenAnimationBuilder<double>(
-                key: ValueKey(p),
+                key: ValueKey(p.id),
                 tween: Tween(begin: 0, end: 1),
-                duration: const Duration(milliseconds: 600),
+                duration: _Popup.life,
                 curve: Curves.easeOut,
+                // Держится ярко, потом гаснет полностью — без хвостов.
                 builder: (_, t, child) => Opacity(
-                  opacity: 1 - t * 0.8,
+                  opacity: t < 0.55 ? 1 : (1 - (t - 0.55) / 0.45).clamp(0.0, 1.0),
                   child: Transform.translate(
-                    offset: Offset(0, -30 * t),
+                    offset: Offset(0, -34 * t),
                     child: Transform.scale(scale: p.crit ? 1 + 0.4 * (1 - t) : 1, child: child),
                   ),
                 ),
