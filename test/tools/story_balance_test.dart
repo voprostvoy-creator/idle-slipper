@@ -10,11 +10,11 @@ void main() {
     for (final kindId in ['basic', 'blue_slide', 'red_spike']) {
       // ignore: avoid_print
       print('--- $kindId');
-      for (final (i, stage) in StoryCatalog.chapter1.stages.indexed) {
+      for (final (i, stage) in StoryCatalog.chapters.last.stages.indexed) {
         final enemy = stage.enemy;
         String row = '';
         int? first;
-        for (var lv = 1; lv <= 14; lv++) {
+        for (var lv = 6; lv <= 30; lv += 2) {
           final me = Slipper(
             name: 'я',
             kindId: kindId,

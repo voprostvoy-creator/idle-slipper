@@ -56,7 +56,18 @@ void main() {
 
     tearDown(() => game.dispose());
 
-    test('ежедневный кейс — раз в день', () {
+    test('глава 2 закрыта, пока не пройдена первая', () {
+      const c1 = StoryCatalog.chapter1;
+      const c2 = StoryCatalog.chapter2;
+      expect(game.chapterOpen(c2), isFalse);
+      expect(game.fightStage(c2, 0), isNull);
+      game.storyCleared[c1.id] = c1.stages.length;
+      expect(game.chapterOpen(c2), isTrue);
+      expect(game.currentChapter, c2);
+      expect(game.fightStage(c2, 0), isNotNull);
+    });
+
+        test('ежедневный кейс — раз в день', () {
       const daily = CaseCatalog.dailyCase;
       expect(game.canOpen(daily), isTrue);
       expect(game.openCase(daily), isNotNull);

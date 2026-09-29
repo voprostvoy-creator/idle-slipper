@@ -246,6 +246,18 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
 
   int cleared(Chapter chapter) => storyCleared[chapter.id] ?? 0;
 
+  /// Глава открыта: первая — всегда, следующие — после всей предыдущей.
+  bool chapterOpen(Chapter chapter) {
+    final i = StoryCatalog.chapters.indexOf(chapter);
+    if (i <= 0) return true;
+    final prev = StoryCatalog.chapters[i - 1];
+    return cleared(prev) >= prev.stages.length;
+  }
+
+  /// Последняя открытая глава — с неё начинается экран сюжета.
+  Chapter get currentChapter =>
+      StoryCatalog.chapters.lastWhere(chapterOpen, orElse: () => StoryCatalog.chapter1);
+
   /// Доступны пройденные бои и первый непройденный.
   bool stageOpen(Chapter chapter, int index) => index <= cleared(chapter);
 
@@ -256,6 +268,7 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
   /// Повтор пройденного тратит дневной лимит и даёт треть ниток.
   /// Без повторов в запасе — null.
   StoryOutcome? fightStage(Chapter chapter, int index) {
+    if (!chapterOpen(chapter) || index > cleared(chapter)) return null;
     final stage = chapter.stages[index];
     final first = index == cleared(chapter);
     _rollDay();

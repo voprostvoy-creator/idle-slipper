@@ -9,15 +9,24 @@ import '../widgets/game_widgets.dart';
 import 'battle_hub_screen.dart';
 import 'battle_screen.dart';
 
-/// Сюжет: глава из десяти боёв подряд, в конце — босс.
-/// Бои открываются по одному; пройденные можно переигрывать за часть награды.
-class StoryScreen extends StatelessWidget {
+/// Сюжет: главы из десяти боёв подряд, в конце — босс.
+/// Бои открываются по одному, главы — по порядку; пройденные бои можно
+/// переигрывать за часть награды.
+class StoryScreen extends StatefulWidget {
   const StoryScreen({super.key, required this.game, required this.onBack});
 
   final GameState game;
   final VoidCallback onBack;
 
-  static const chapter = StoryCatalog.chapter1;
+  @override
+  State<StoryScreen> createState() => _StoryScreenState();
+}
+
+class _StoryScreenState extends State<StoryScreen> {
+  GameState get game => widget.game;
+
+  /// Выбранная глава; по умолчанию — последняя открытая.
+  late Chapter chapter = game.currentChapter;
 
   @override
   Widget build(BuildContext context) {
@@ -26,10 +35,21 @@ class StoryScreen extends StatelessWidget {
       builder: (context, _) {
         final cleared = game.cleared(chapter);
         final done = cleared >= chapter.stages.length;
+        final i = StoryCatalog.chapters.indexOf(chapter);
+        final next = i + 1 < StoryCatalog.chapters.length ? StoryCatalog.chapters[i + 1] : null;
         return ListView(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
           children: [
-            BackToModes(title: 'Сюжет', onBack: onBack),
+            BackToModes(title: 'Сюжет', onBack: widget.onBack),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                for (final (k, c) in StoryCatalog.chapters.indexed) ...[
+                  if (k > 0) const SizedBox(width: 8),
+                  Expanded(child: _chapterTab(c)),
+                ],
+              ],
+            ),
             const SizedBox(height: 12),
             _ChapterHeader(
               chapter: chapter,
@@ -55,7 +75,9 @@ class StoryScreen extends StatelessWidget {
                 color: GameColors.panelDark,
                 padding: const EdgeInsets.all(14),
                 child: Text(
-                  'Глава пройдена! Следующая скоро появится.',
+                  next == null
+                      ? 'Глава пройдена! Следующая скоро появится.'
+                      : 'Глава пройдена! Открыта глава ${next.number} «${next.title}».',
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.titleSmall,
                 ),
@@ -63,6 +85,42 @@ class StoryScreen extends StatelessWidget {
           ],
         );
       },
+    );
+  }
+
+  Widget _chapterTab(Chapter c) {
+    final open = game.chapterOpen(c);
+    final active = c == chapter;
+    return GameButton(
+      color: active ? GameColors.gold : (open ? GameColors.panelLight : GameColors.panelDark),
+      height: 40,
+      padding: const EdgeInsets.symmetric(horizontal: 6),
+      onPressed: open
+          ? () => setState(() => chapter = c)
+          : () => ScaffoldMessenger.of(context)
+            ..hideCurrentSnackBar()
+            ..showSnackBar(SnackBar(
+              content: Text('Глава ${c.number} откроется, когда пройдёшь главу ${c.number - 1}'),
+            )),
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (!open) ...[
+              const Icon(Icons.lock_rounded, size: 16, color: GameColors.textDim),
+              const SizedBox(width: 4),
+            ],
+            Text(
+              'Глава ${c.number}',
+              style: TextStyle(
+                fontSize: 15,
+                color: active ? GameColors.outline : (open ? GameColors.text : GameColors.textDim),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

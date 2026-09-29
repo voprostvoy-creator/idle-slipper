@@ -267,4 +267,180 @@ class EnemyCatalog {
       ),
     ),
   );
+
+  // --- Глава 2: «Ванная» ---------------------------------------------------
+
+  /// Чешуйница: быстрая и скользкая, бьёт сериями по чуть-чуть.
+  static const silverfish = EnemyKind(
+    id: 'silverfish',
+    name: 'Чешуйница',
+    attackStyle: AttackStyle.dash,
+    size: 0.6,
+    hp: 0.75,
+    attack: 0.85,
+    defense: 0.7,
+    speed: 1.3,
+    skills: SkillSet(
+      active: ActiveSkill(
+        name: 'Шмыг-шмыг',
+        description: 'Две атаки по ×0.8, следующая атака противника мимо.',
+        damageMul: 0.8,
+        hits: 2,
+        evadeTurns: 1,
+      ),
+      activeCooldown: 3,
+      passive: PassiveSkill(
+        name: 'Скользкая чешуя',
+        description: '+10% к шансу уворота, после уворота 30% шанс ударить в ответ.',
+        dodgeBonus: 0.1,
+        dodgeCounterChance: 0.3,
+      ),
+      ultimate: ActiveSkill(
+        name: 'Серебряный вихрь',
+        description: 'Четыре атаки по ×0.8 и +30% скорости (2 хода).',
+        damageMul: 0.8,
+        hits: 4,
+        haste: 0.3,
+        hasteTurns: 2,
+      ),
+    ),
+  );
+
+  /// Мокрица: сворачивается в шар — барьер и броня, бьёт слабо.
+  static const woodlouse = EnemyKind(
+    id: 'woodlouse',
+    name: 'Мокрица',
+    attackStyle: AttackStyle.spin,
+    size: 0.66,
+    hp: 1.2,
+    attack: 0.8,
+    defense: 1.5,
+    speed: 0.85,
+    skills: SkillSet(
+      active: ActiveSkill(
+        name: 'Свернуться',
+        description: 'Атака и барьер на 20% здоровья.',
+        barrierPercent: 0.2,
+      ),
+      activeCooldown: 3,
+      passive: PassiveSkill(
+        name: 'Панцирь',
+        description: '+15 к защите, 10% урона возвращается атакующему.',
+        defenseBonus: 15,
+        thorns: 0.1,
+      ),
+      ultimate: ActiveSkill(
+        name: 'Каток',
+        description: 'Атака с уроном ×2, противник пропускает ход.',
+        damageMul: 2,
+        stun: true,
+      ),
+    ),
+  );
+
+  /// Паук: травит и опутывает паутиной.
+  static const spider = EnemyKind(
+    id: 'spider',
+    name: 'Паук',
+    attackStyle: AttackStyle.blink,
+    size: 0.66,
+    hp: 0.9,
+    attack: 1.05,
+    speed: 1.1,
+    skills: SkillSet(
+      active: ActiveSkill(
+        name: 'Ядовитый укус',
+        description: 'Атака с уроном ×1.2 и 3 стопки яда.',
+        damageMul: 1.2,
+        poisonStacks: 3,
+      ),
+      activeCooldown: 3,
+      passive: PassiveSkill(
+        name: 'Охотник',
+        description: '+10% урона, 20% шанс ударить в ответ.',
+        damageBonus: 0.1,
+        counterChance: 0.2,
+      ),
+      ultimate: ActiveSkill(
+        name: 'Паутина',
+        description: 'Атака с уроном ×1.5, −40% скорости противника (3 хода) и 2 стопки яда.',
+        damageMul: 1.5,
+        slow: 0.4,
+        slowTurns: 3,
+        poisonStacks: 2,
+      ),
+    ),
+  );
+
+  /// Слизень: медленный, лечится каждый ход, слизь ослабляет.
+  static const slug = EnemyKind(
+    id: 'slug',
+    name: 'Слизень',
+    attackStyle: AttackStyle.slam,
+    size: 0.72,
+    hp: 1.4,
+    attack: 0.9,
+    defense: 1.1,
+    speed: 0.7,
+    skills: SkillSet(
+      active: ActiveSkill(
+        name: 'Слизь',
+        description: 'Атака с уроном ×1.2, −25% урона противника (3 хода).',
+        damageMul: 1.2,
+        weaken: 0.25,
+        weakenTurns: 3,
+      ),
+      activeCooldown: 3,
+      passive: PassiveSkill(
+        name: 'Липкая кожа',
+        description: '+4% здоровья каждый ход.',
+        regenPercent: 0.04,
+      ),
+      ultimate: ActiveSkill(
+        name: 'Склизкий шлепок',
+        description: 'Атака с уроном ×1.8, лечение на 15% здоровья, снимает с себя вредные эффекты.',
+        damageMul: 1.8,
+        healPercent: 0.15,
+        cleanse: true,
+      ),
+    ),
+  );
+
+  /// Паучиха-королева — босс второй главы.
+  static const spiderQueen = EnemyKind(
+    id: 'spider_queen',
+    name: 'Паучиха-королева',
+    attackStyle: AttackStyle.meteor,
+    // Картинка почти квадратная — крупнее бокса, как у Таракана-короля.
+    size: 1.2,
+    hp: 1.45,
+    attack: 1.1,
+    defense: 1.2,
+    speed: 1.0,
+    skills: SkillSet(
+      active: ActiveSkill(
+        name: 'Королевский яд',
+        description: 'Атака с уроном ×1.4, 3 стопки яда, противник 2 хода не может применять скиллы.',
+        damageMul: 1.4,
+        poisonStacks: 3,
+        silenceTurns: 2,
+      ),
+      activeCooldown: 3,
+      passive: PassiveSkill(
+        name: 'Шёлковый трон',
+        description: '+10 к защите, +2% здоровья каждый ход, 15% шанс ударить в ответ.',
+        defenseBonus: 10,
+        regenPercent: 0.02,
+        counterChance: 0.15,
+      ),
+      ultimate: ActiveSkill(
+        name: 'Кокон',
+        description: 'Атака с уроном ×2.2, противник пропускает ход, 4 стопки яда, барьер на 20% здоровья.',
+        damageMul: 2.2,
+        stun: true,
+        poisonStacks: 4,
+        barrierPercent: 0.2,
+      ),
+    ),
+  );
 }

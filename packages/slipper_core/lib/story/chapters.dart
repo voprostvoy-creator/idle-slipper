@@ -116,5 +116,55 @@ class StoryCatalog {
     ],
   );
 
-  static const chapters = [chapter1];
+  static const chapter2 = Chapter(
+    id: 'bathroom',
+    number: 2,
+    title: 'Ванная',
+    intro: 'Уцелевшие жуки сбежали в сырую ванную. Здесь водятся твари похитрее: '
+        'яд, паутина и слизь.',
+    stages: [
+      Stage(kind: EnemyCatalog.silverfish, levels: (8, 6, 8, 9), threads: 60, coins: 20),
+      Stage(kind: EnemyCatalog.woodlouse, levels: (9, 8, 9, 7), threads: 70, coins: 24),
+      Stage(kind: EnemyCatalog.spider, levels: (10, 8, 10, 9), threads: 80, coins: 28),
+      Stage(kind: EnemyCatalog.silverfish, levels: (10, 8, 10, 10), threads: 90, coins: 32),
+      Stage(kind: EnemyCatalog.slug, levels: (11, 10, 12, 8), threads: 120, coins: 50),
+      Stage(
+        kind: EnemyCatalog.silverfish,
+        levels: (12, 10, 12, 13),
+        threads: 120, coins: 45,
+        name: 'Серебряная чешуйница',
+        elite: true,
+      ),
+      Stage(
+        kind: EnemyCatalog.woodlouse,
+        levels: (12, 13, 13, 9),
+        threads: 140, coins: 50,
+        name: 'Панцирная мокрица',
+        elite: true,
+      ),
+      Stage(
+        kind: EnemyCatalog.spider,
+        levels: (13, 11, 13, 12),
+        threads: 160, coins: 60,
+        name: 'Ядовитый паук',
+        elite: true,
+      ),
+      Stage(
+        kind: EnemyCatalog.slug,
+        levels: (14, 12, 15, 10),
+        threads: 200, coins: 70,
+        name: 'Королевский слизень',
+        elite: true,
+      ),
+      Stage(
+        kind: EnemyCatalog.spiderQueen,
+        levels: (15, 13, 16, 12),
+        threads: 500, coins: 200,
+        boss: true,
+        rewardKindId: 'purple_neon',
+      ),
+    ],
+  );
+
+  static const chapters = [chapter1, chapter2];
 }

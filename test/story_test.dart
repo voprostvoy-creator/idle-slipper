@@ -30,8 +30,10 @@ void main() {
   });
 
   test('картинки противников на месте', () {
-    for (final stage in chapter.stages) {
-      expect(File(stage.enemy.asset).existsSync(), isTrue, reason: stage.enemy.asset);
+    for (final c in StoryCatalog.chapters) {
+      for (final stage in c.stages) {
+        expect(File(stage.enemy.asset).existsSync(), isTrue, reason: stage.enemy.asset);
+      }
     }
   });
 
@@ -48,5 +50,15 @@ void main() {
     for (final stage in chapter.stages) {
       expect(_winRate(_even(12), stage), greaterThan(0.9), reason: stage.enemy.name);
     }
+  });
+
+  test('глава 2: 10 боёв, босс даёт тапок, продолжает первую по сложности', () {
+    const c2 = StoryCatalog.chapter2;
+    expect(c2.stages, hasLength(10));
+    expect(c2.stages.last.boss, isTrue);
+    expect(c2.stages.last.rewardKindId, isNotNull);
+    // Первый бой главы 2 не проще босса главы 1.
+    expect(_winRate(_even(9), c2.stages.first), lessThan(0.5));
+    expect(_winRate(_even(30), c2.stages.last), greaterThan(0.9));
   });
 }
