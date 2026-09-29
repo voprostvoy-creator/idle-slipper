@@ -26,6 +26,7 @@ class AttackAnimation {
     // Таран возвращается сам, поэтому это длина всего цикла.
     AttackStyle.charge => const Duration(milliseconds: 600),
     AttackStyle.taichi => const Duration(milliseconds: 620),
+    AttackStyle.pounce => const Duration(milliseconds: 360),
   };
 
   /// Кладёт [aura] под тапок так, чтобы она повторяла только сдвиг удара:
@@ -114,6 +115,7 @@ class AttackAnimation {
       AttackStyle.uppercut => _uppercut(progress, dir, reach, child),
       AttackStyle.charge => _charge(progress, dir, reach, child),
       AttackStyle.taichi => _taichi(progress, dir, reach, child),
+      AttackStyle.pounce => _pounce(progress, dir, reach, child),
     };
   }
 
@@ -162,6 +164,44 @@ class AttackAnimation {
             ),
           ),
       ],
+    );
+  }
+
+  /// Бросок хищника: до трети хода припадает и оттягивается назад, дальше
+  /// низкая быстрая дуга к цели; в конце — приземление с придавливанием
+  /// и наклоном вперёд, «впивается» в противника.
+  static Widget _pounce(double t, double dir, double reach, Widget child) {
+    const crouchEnd = 0.3;
+    double x;
+    double y;
+    double squash;
+    double tilt;
+    if (t < crouchEnd) {
+      final c = Curves.easeOutCubic.transform(t / crouchEnd);
+      x = -0.12 * c;
+      y = 0;
+      squash = 0.18 * c;
+      tilt = -0.08 * c;
+    } else {
+      final j = Curves.easeInOutSine.transform((t - crouchEnd) / (1 - crouchEnd));
+      x = -0.12 + 1.07 * j;
+      y = -0.32 * sin(pi * j);
+      // В полёте вытягивается, у цели снова приседает — придавливает.
+      squash = 0.18 * (1 - j) - 0.08 * sin(pi * j) + 0.14 * max(0.0, (j - 0.85) / 0.15);
+      tilt = -0.08 + 0.2 * j;
+    }
+    return Transform.translate(
+      offset: Offset(reach * x * dir, reach * y),
+      child: Transform.rotate(
+        angle: tilt * dir,
+        alignment: Alignment.bottomCenter,
+        child: Transform.scale(
+          scaleX: 1 + squash * 0.5,
+          scaleY: 1 - squash,
+          alignment: Alignment.bottomCenter,
+          child: child,
+        ),
+      ),
     );
   }
 

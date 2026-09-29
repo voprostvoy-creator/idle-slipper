@@ -410,7 +410,7 @@ class EnemyCatalog {
   static const spiderQueen = EnemyKind(
     id: 'spider_queen',
     name: 'Паучиха-королева',
-    attackStyle: AttackStyle.meteor,
+    attackStyle: AttackStyle.pounce,
     // Картинка почти квадратная — крупнее бокса, как у Таракана-короля.
     size: 1.2,
     hp: 1.45,
