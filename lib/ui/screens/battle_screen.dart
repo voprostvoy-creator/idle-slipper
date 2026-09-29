@@ -250,7 +250,7 @@ class _BattleScreenState extends State<BattleScreen>
           _flashEffect(side, BattleEffect.heal);
           _log.insert(0, '${nameOf(side)} восстанавливает $amount');
 
-        case BurnEvent(:final side, :final damage, :final hpAfter):
+        case BurnEvent(:final side, :final damage, :final hpAfter, :final poison):
           if (side == Side.player) {
             _hpPlayer = hpAfter;
           } else {
@@ -260,7 +260,7 @@ class _BattleScreenState extends State<BattleScreen>
           _hits[side] = _hits[side]! + 1;
           _soft[side] = false;
           _popups.add(_Popup(side: side, text: '$damage', crit: false, burn: true));
-          _log.insert(0, '${nameOf(side)} горит: $damage');
+          _log.insert(0, '${nameOf(side)} ${poison ? 'отравлен' : 'горит'}: $damage');
 
         case StunEvent(:final side):
           _popups.add(_Popup(side: side, text: 'оглушён', crit: false));

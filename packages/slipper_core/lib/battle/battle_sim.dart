@@ -22,6 +22,11 @@ class SideSnapshot {
     this.slowTurns = 0,
     this.hasteTurns = 0,
     this.formTurns = 0,
+    this.poisonStacks = 0,
+    this.vulnerableTurns = 0,
+    this.silenceTurns = 0,
+    this.rage = 0,
+    this.reflecting = false,
     this.stunned = false,
     this.barriered = false,
     this.evading = false,
@@ -44,6 +49,15 @@ class SideSnapshot {
   /// Сколько ходов ещё длится преображение (тёмная форма).
   final int formTurns;
 
+  /// Стопки яда, ходы уязвимости и немоты, стопки ярости.
+  final int poisonStacks;
+  final int vulnerableTurns;
+  final int silenceTurns;
+  final int rage;
+
+  /// Следующий удар по бойцу вернётся атакующему.
+  final bool reflecting;
+
   /// Эффекты без счёта ходов: пропустит ближайший ход, барьер на запасе
   /// поглощения, уклонение на зарядах.
   final bool stunned;
@@ -56,6 +70,9 @@ class SideSnapshot {
   bool get slowed => slowTurns > 0;
   bool get hasted => hasteTurns > 0;
   bool get transformed => formTurns > 0;
+  bool get poisoned => poisonStacks > 0;
+  bool get vulnerable => vulnerableTurns > 0;
+  bool get silenced => silenceTurns > 0;
 }
 
 /// Одно событие боя. UI проигрывает их последовательно.
@@ -142,10 +159,14 @@ class BurnEvent extends BattleEvent {
     required this.hpAfter,
     required super.player,
     required super.opponent,
+    this.poison = false,
   });
 
   /// Кто горит.
   final Side side;
+
+  /// Урон от яда, а не от огня.
+  final bool poison;
   final int damage;
   final double hpAfter;
 }
@@ -230,6 +251,25 @@ class _State {
   /// Пропустить следующий ход.
   bool stunned = false;
 
+  /// Стопки яда.
+  int poison = 0;
+
+  /// Уязвимость: доля добавочного урона и сколько своих ходов длится.
+  double vulnerable = 0;
+  int vulnerableTurns = 0;
+
+  /// Сколько своих ходов нельзя применять скиллы.
+  int silenceTurns = 0;
+
+  /// Следующий удар по бойцу вернётся атакующему.
+  bool reflect = false;
+
+  /// Второе дыхание уже сработало.
+  bool revived = false;
+
+  /// Стопки ярости (не больше 5).
+  int rage = 0;
+
   SkillSet get skills => who.skills;
   PassiveSkill get passive => who.skills.passive;
 
@@ -252,6 +292,13 @@ class BattleSim {
   static const double _ultPerDamageDealt = 0.4375;
   static const double _ultPerDamageTaken = 0.3125;
 
+  /// Одна стопка яда — такая доля максимума здоровья за ход; стопок не больше.
+  static const double _poisonPerStack = 0.02;
+  static const int _poisonCap = 10;
+
+  /// Контратака бьёт слабее обычного удара.
+  static const double _counterMul = 0.6;
+
   static BattleResult run(Combatant player, Combatant opponent, {required int seed}) {
     final rng = Random(seed);
     final fighters = [_State(player), _State(opponent)];
@@ -270,6 +317,11 @@ class BattleSim {
           slowTurns: st.slowTurns,
           hasteTurns: st.hasteTurns,
           formTurns: st.formTurns,
+          poisonStacks: st.poison,
+          vulnerableTurns: st.vulnerableTurns,
+          silenceTurns: st.silenceTurns,
+          rage: st.rage,
+          reflecting: st.reflect,
           stunned: st.stunned,
           barriered: st.barrier > 0,
           evading: st.evadeCharges > 0,
@@ -290,6 +342,56 @@ class BattleSim {
         st.slowTurns--;
         if (st.slowTurns == 0) st.slow = 0;
       }
+      if (st.vulnerableTurns > 0) {
+        st.vulnerableTurns--;
+        if (st.vulnerableTurns == 0) st.vulnerable = 0;
+      }
+      if (st.silenceTurns > 0) st.silenceTurns--;
+    }
+
+    /// Здоровье ушло в ноль — боец выбыл? Второе дыхание один раз
+    /// оставляет его в бою с частью здоровья.
+    bool dead(_State st, Side stSide) {
+      if (st.hp > 0) return false;
+      if (!st.revived && st.passive.revivePercent > 0) {
+        st.revived = true;
+        st.hp = st.who.maxHp * st.passive.revivePercent;
+        final amount = st.hp.round();
+        add((p, o) => HealEvent(side: stSide, amount: amount, hpAfter: st.hp, player: p, opponent: o));
+        return false;
+      }
+      return true;
+    }
+
+    /// Снижение урона целью: защита, щит, форма, уязвимость.
+    double mitigationOf(_State target, {double pierce = 0}) {
+      final defense = (target.who.defense + target.passive.defenseBonus) * (1 - pierce);
+      return 100 / (100 + defense) * (1 - target.shield) * (1 - target.formGuard) * (1 + target.vulnerable);
+    }
+
+    /// Урон по цели через барьер. Возвращает то, что дошло до здоровья.
+    int throughBarrier(_State target, int damage) {
+      if (target.barrier <= 0) return damage;
+      final absorbed = min(target.barrier, damage.toDouble());
+      target.barrier -= absorbed;
+      return max(0, damage - absorbed.round());
+    }
+
+    /// Контратака: [striker] сразу бьёт [target] ослабленным ударом.
+    /// true — цель выбыла.
+    bool counter(_State striker, _State target, Side strikerSide) {
+      final raw = striker.who.attack * (1 + striker.passive.damageBonus - striker.weaken);
+      final damage = throughBarrier(target, max(1, (raw * _counterMul * mitigationOf(target)).round()));
+      target.hp = max(0.0, target.hp - damage);
+      add((p, o) => HitEvent(
+            attacker: strikerSide,
+            damage: damage,
+            crit: false,
+            targetHpAfter: target.hp,
+            player: p,
+            opponent: o,
+          ));
+      return dead(target, strikerSide.other);
     }
 
     BattleResult finish(Side winner) => BattleResult(
@@ -321,13 +423,27 @@ class BattleSim {
       final foe = fighters[1 - who];
       final side = Side.values[who];
 
-      // --- Начало хода: поджог ---
+      // --- Начало хода: поджог и яд ---
       if (me.burnTurns > 0) {
         final dmg = max(1, me.burnDamage.round());
         me.hp = max(0.0, me.hp - dmg);
         me.burnTurns--;
         add((p, o) => BurnEvent(side: side, damage: dmg, hpAfter: me.hp, player: p, opponent: o));
-        if (me.hp <= 0) return finish(side.other);
+        if (dead(me, side)) return finish(side.other);
+      }
+      if (me.poison > 0) {
+        final dmg = max(1, (me.who.maxHp * _poisonPerStack * me.poison).round());
+        me.hp = max(0.0, me.hp - dmg);
+        me.poison--;
+        add((p, o) => BurnEvent(
+              side: side,
+              damage: dmg,
+              hpAfter: me.hp,
+              poison: true,
+              player: p,
+              opponent: o,
+            ));
+        if (dead(me, side)) return finish(side.other);
       }
 
       // --- Оглушение ---
@@ -370,9 +486,12 @@ class BattleSim {
       }
 
       // --- Выбор действия: ульта → скилл по откату → обычный удар ---
+      // Под немотой — только обычный удар; шкала ульты при этом не теряется.
       ActiveSkill? skill;
       var isUltimate = false;
-      if (me.skills.hasUltimate && me.ult >= 1) {
+      if (me.silenceTurns > 0) {
+        // Ни ульты, ни скилла.
+      } else if (me.skills.hasUltimate && me.ult >= 1) {
         skill = me.skills.ultimate;
         isUltimate = true;
         me.ult = 0;
@@ -407,6 +526,34 @@ class BattleSim {
           me.hasteTurns = skill.hasteTurns;
         }
         if (skill.evadeTurns > 0) me.evadeCharges = skill.evadeTurns;
+        if (skill.reflect) me.reflect = true;
+        if (skill.cleanse) {
+          me
+            ..poison = 0
+            ..burnTurns = 0
+            ..weaken = 0
+            ..weakenTurns = 0
+            ..slow = 0
+            ..slowTurns = 0
+            ..silenceTurns = 0
+            ..vulnerable = 0
+            ..vulnerableTurns = 0;
+        }
+        // Развеивание — до ударов, чтобы щит и барьер противника не мешали.
+        if (skill.dispel) {
+          foe
+            ..shield = 0
+            ..shieldTurns = 0
+            ..barrier = 0
+            ..haste = 0
+            ..hasteTurns = 0
+            ..evadeCharges = 0
+            ..reflect = false
+            ..formTurns = 0
+            ..formDamage = 0
+            ..formGuard = 0
+            ..formSpeed = 0;
+        }
         if (skill.formTurns > 0) {
           me.formTurns = skill.formTurns;
           me.formDamage = skill.formDamage;
@@ -438,6 +585,10 @@ class BattleSim {
         final dodge = (foe.who.dodgeChance + foe.passive.dodgeBonus).clamp(0.0, 0.85);
         if (rng.nextDouble() < dodge) {
           add((p, o) => DodgeEvent(attacker: side, player: p, opponent: o));
+          // Увернулся — может сразу ответить.
+          if (foe.passive.dodgeCounterChance > 0 && rng.nextDouble() < foe.passive.dodgeCounterChance) {
+            if (counter(foe, me, side.other)) return finish(side.other);
+          }
           continue;
         }
 
@@ -446,12 +597,10 @@ class BattleSim {
         final variance = 0.85 + rng.nextDouble() * 0.3;
         // Пробитие срезает часть защиты цели.
         final pierce = skill?.pierce ?? 0;
-        final defense = (foe.who.defense + foe.passive.defenseBonus) * (1 - pierce);
-        final mitigation =
-            100 / (100 + defense) * (1 - foe.shield) * (1 - foe.formGuard);
+        final mitigation = mitigationOf(foe, pierce: pierce);
 
         var raw = me.who.attack *
-            (1 + me.passive.damageBonus + me.formDamage - me.weaken);
+            (1 + me.passive.damageBonus + me.formDamage - me.weaken + me.rage * me.passive.rageStep);
         if (me.lowHp) raw *= 1 + me.passive.lowHpDamageBonus;
         // Добивание: по еле живой цели удар проходит вдвое сильнее.
         if (me.passive.executeThreshold > 0 &&
@@ -461,6 +610,29 @@ class BattleSim {
         var dmg = raw * variance * mitigation * damageMul;
         if (crit) dmg *= 1.75 + me.passive.critDamageBonus;
         var damage = max(1, dmg.round());
+        if (me.passive.rageStep > 0) me.rage = min(5, me.rage + 1);
+        if (crit && me.passive.critVulnerable > 0) {
+          foe.vulnerable = max(foe.vulnerable, me.passive.critVulnerable);
+          foe.vulnerableTurns = max(foe.vulnerableTurns, 2);
+        }
+
+        // Отражение: удар целиком уходит обратно атакующему.
+        if (foe.reflect) {
+          foe.reflect = false;
+          final back = throughBarrier(me, damage);
+          me.hp = max(0.0, me.hp - back);
+          add((p, o) => HitEvent(
+                attacker: side.other,
+                damage: back,
+                crit: crit,
+                targetHpAfter: me.hp,
+                thorns: true,
+                player: p,
+                opponent: o,
+              ));
+          if (dead(me, side)) return finish(side.other);
+          continue;
+        }
 
         // Барьер съедает урон до того, как тот дойдёт до здоровья.
         if (foe.barrier > 0) {
@@ -498,7 +670,7 @@ class BattleSim {
 
         // Добитый противник шипами уже не отвечает — иначе он «оживал»
         // на экране после смертельного удара.
-        if (foe.hp <= 0) return finish(side);
+        if (dead(foe, side.other)) return finish(side);
 
         // Шипы: часть урона возвращается атакующему.
         if (foe.passive.thorns > 0 && me.hp > 0) {
@@ -513,7 +685,12 @@ class BattleSim {
                 player: p,
                 opponent: o,
               ));
-          if (me.hp <= 0) return finish(side.other);
+          if (dead(me, side)) return finish(side.other);
+        }
+
+        // Контратака того, по кому попали.
+        if (foe.passive.counterChance > 0 && rng.nextDouble() < foe.passive.counterChance) {
+          if (counter(foe, me, side.other)) return finish(side.other);
         }
       }
 
@@ -544,6 +721,17 @@ class BattleSim {
           foe.slow = skill.slow;
           foe.slowTurns = skill.slowTurns;
         }
+        if (skill.poisonStacks > 0 && dealtTotal > 0) {
+          foe.poison = min(_poisonCap, foe.poison + skill.poisonStacks);
+        }
+        if (skill.vulnerableTurns > 0 && dealtTotal > 0) {
+          foe.vulnerable = max(foe.vulnerable, skill.vulnerable);
+          foe.vulnerableTurns = max(foe.vulnerableTurns, skill.vulnerableTurns);
+        }
+        if (skill.silenceTurns > 0 && dealtTotal > 0) {
+          foe.silenceTurns = max(foe.silenceTurns, skill.silenceTurns);
+        }
+        if (skill.ultSteal > 0) foe.ult = max(0, foe.ult - skill.ultSteal);
         // Дополнительный ход: шкала сразу заполняется заново.
         if (skill.extraTurn) gauge[who] += _gaugeThreshold;
       }

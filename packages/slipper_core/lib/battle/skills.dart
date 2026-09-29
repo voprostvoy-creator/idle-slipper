@@ -34,6 +34,14 @@ class ActiveSkill {
     this.formDamage = 0,
     this.formGuard = 0,
     this.formSpeed = 0,
+    this.poisonStacks = 0,
+    this.vulnerable = 0,
+    this.vulnerableTurns = 0,
+    this.silenceTurns = 0,
+    this.dispel = false,
+    this.cleanse = false,
+    this.ultSteal = 0,
+    this.reflect = false,
   });
 
   final String name;
@@ -96,6 +104,29 @@ class ActiveSkill {
   final double formDamage;
   final double formGuard;
   final double formSpeed;
+
+  /// Стопки яда на противника: каждая бьёт в начале его хода и убывает.
+  final int poisonStacks;
+
+  /// Уязвимость противника: на сколько больше урона он получает и сколько
+  /// его ходов это длится.
+  final double vulnerable;
+  final int vulnerableTurns;
+
+  /// Немота: противник столько своих ходов не применяет скиллы.
+  final int silenceTurns;
+
+  /// Развеять полезное с противника: щит, барьер, ускорение, форму и т. д.
+  final bool dispel;
+
+  /// Снять с себя вредное: яд, поджог, ослабление, замедление, немоту.
+  final bool cleanse;
+
+  /// Какую долю шкалы ульты отнять у противника.
+  final double ultSteal;
+
+  /// Следующий удар по себе вернётся противнику целиком.
+  final bool reflect;
 }
 
 /// Постоянный эффект — работает весь бой без срабатываний.
@@ -114,6 +145,11 @@ class PassiveSkill {
     this.lowHpDamageBonus = 0,
     this.executeThreshold = 0,
     this.ultCharge = 0,
+    this.counterChance = 0,
+    this.dodgeCounterChance = 0,
+    this.revivePercent = 0,
+    this.rageStep = 0,
+    this.critVulnerable = 0,
   });
 
   final String name;
@@ -148,6 +184,21 @@ class PassiveSkill {
 
   /// Ульта копится быстрее на эту долю.
   final double ultCharge;
+
+  /// Шанс ударить в ответ, когда по тебе попали.
+  final double counterChance;
+
+  /// Шанс ударить в ответ после своего уворота.
+  final double dodgeCounterChance;
+
+  /// Второе дыхание: раз за бой не умирает и остаётся с этой долей здоровья.
+  final double revivePercent;
+
+  /// Ярость: каждый свой удар +эта доля урона, до 5 раз.
+  final double rageStep;
+
+  /// Крит вешает на противника уязвимость +эта доля на 2 его хода.
+  final double critVulnerable;
 }
 
 /// Набор из трёх скиллов бойца.

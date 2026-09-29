@@ -1,10 +1,11 @@
 import 'skills.dart';
 
-/// Скиллы по видам тапков. Пока открыты сразу; позже будут выдаваться
-/// за улучшение тапка копиями.
+/// Скиллы по видам тапков; открываются звёздами (★1, ★3, ★5).
 ///
-/// У каждого свой почерк: кто-то давит уроном, кто-то контролит,
-/// кто-то живёт с чужого здоровья.
+/// У каждого свой почерк, и чем выше редкость, тем больше эффектов
+/// в одном скилле: обычный лечится, редкий уворачивается и отвечает,
+/// эпические танкуют и контролят, легендарный жжёт и травит,
+/// мифические сочетают всё сразу.
 class SkillCatalog {
   SkillCatalog._();
 
@@ -28,192 +29,196 @@ class SkillCatalog {
   );
 
   static const _byKind = <String, SkillSet>{
-    // Инь-Ян: равновесие — бьёт и лечится, крепнет, когда тяжело,
-    // а в ульте разит светом и тьмой.
+    // Обычный — «домашний лекарь»: простые эффекты, держится лечением.
+    'basic': SkillSet(
+      active: ActiveSkill(
+        name: 'Шлепок с оттяжкой',
+        description: 'Атака с уроном ×1.6 и лечение на 8% здоровья.',
+        damageMul: 1.6,
+        healPercent: 0.08,
+      ),
+      activeCooldown: 4,
+      passive: PassiveSkill(
+        name: 'Бабушкина забота',
+        description: '+3% здоровья каждый ход.',
+        regenPercent: 0.03,
+      ),
+      ultimate: ActiveSkill(
+        name: 'Бабушкин гнев',
+        description: 'Атака с уроном ×2.2, противник пропускает ход.',
+        damageMul: 2.2,
+        stun: true,
+      ),
+    ),
+    // Редкий — «скользкий»: замедляет, уворачивается и отвечает.
+    'blue_slide': SkillSet(
+      active: ActiveSkill(
+        name: 'Подкат',
+        description: 'Атака с уроном ×1.3 и −30% скорости противника (2 хода).',
+        damageMul: 1.3,
+        slow: 0.3,
+        slowTurns: 2,
+      ),
+      activeCooldown: 3,
+      passive: PassiveSkill(
+        name: 'Скользкая подошва',
+        description: '+10% к шансу уворота, после уворота 50% шанс ударить в ответ.',
+        dodgeBonus: 0.1,
+        dodgeCounterChance: 0.5,
+      ),
+      ultimate: ActiveSkill(
+        name: 'Волна',
+        description: 'Три атаки по ×1.0 и +40% скорости (3 хода).',
+        damageMul: 1,
+        hits: 3,
+        haste: 0.4,
+        hasteTurns: 3,
+      ),
+    ),
+    // Эпический — «танк»: барьер, шипы, контратаки, мощный пробивной удар.
+    'carbon_sport': SkillSet(
+      active: ActiveSkill(
+        name: 'Прыжковый удар',
+        description: 'Атака с уроном ×1.5 и барьер на 20% здоровья.',
+        damageMul: 1.5,
+        barrierPercent: 0.2,
+      ),
+      activeCooldown: 4,
+      passive: PassiveSkill(
+        name: 'Карбоновая подошва',
+        description: '+15 к защите, 10% урона возвращается атакующему, 15% шанс контратаки.',
+        defenseBonus: 15,
+        thorns: 0.1,
+        counterChance: 0.15,
+      ),
+      ultimate: ActiveSkill(
+        name: 'Метеорит',
+        description: 'Атака с уроном ×2.6, игнорирует половину защиты, противник '
+            'пропускает ход, с него снимаются щит, барьер и усиления.',
+        damageMul: 2.6,
+        pierce: 0.5,
+        stun: true,
+        dispel: true,
+      ),
+    ),
+    // Эпический — «электрик»: немота, уязвимость от критов, кража ульты.
+    'purple_neon': SkillSet(
+      active: ActiveSkill(
+        name: 'Разряд',
+        description: 'Атака с уроном ×1.7, противник 2 хода не может применять скиллы.',
+        damageMul: 1.7,
+        silenceTurns: 2,
+      ),
+      activeCooldown: 4,
+      passive: PassiveSkill(
+        name: 'Перегрузка',
+        description: '+15% к шансу крита, криты сильнее на 30% и делают противника '
+            'уязвимым: +25% урона (2 хода).',
+        critBonus: 0.15,
+        critDamageBonus: 0.3,
+        critVulnerable: 0.25,
+      ),
+      ultimate: ActiveSkill(
+        name: 'Неоновая буря',
+        description: 'Четыре атаки по ×1.1, −25% урона противника (3 хода), '
+            'отнимает у него 30% шкалы ульты.',
+        damageMul: 1.1,
+        hits: 4,
+        weaken: 0.25,
+        weakenTurns: 3,
+        ultSteal: 0.3,
+      ),
+    ),
+    // Легендарный — «огонь и шипы»: яд, ярость, огненный разлом.
+    'red_spike': SkillSet(
+      active: ActiveSkill(
+        name: 'Шипастый топот',
+        description: 'Атака с уроном ×1.7 и 3 стопки яда (каждая — 2% здоровья за ход).',
+        damageMul: 1.7,
+        poisonStacks: 3,
+      ),
+      activeCooldown: 3,
+      passive: PassiveSkill(
+        name: 'Раскалённые шипы',
+        description: '25% урона возвращается атакующему, каждый свой удар +6% урона (до 5 раз).',
+        thorns: 0.25,
+        rageStep: 0.06,
+      ),
+      ultimate: ActiveSkill(
+        name: 'Адский разлом',
+        description: 'Атака с уроном ×3, всегда крит, поджог на 3 хода, '
+            'снимает с противника щит, барьер и усиления.',
+        damageMul: 3,
+        alwaysCrit: true,
+        burnPercent: 0.3,
+        burnTurns: 3,
+        dispel: true,
+      ),
+    ),
+    // Мифический — «хаос»: урон, уязвимость, вампиризм, контратаки.
+    'rainbow': SkillSet(
+      active: ActiveSkill(
+        name: 'Призма',
+        description: 'Атака с уроном ×1.8, игнорирует 40% защиты, противник уязвим: '
+            '+25% урона (2 хода).',
+        damageMul: 1.8,
+        pierce: 0.4,
+        vulnerable: 0.25,
+        vulnerableTurns: 2,
+      ),
+      activeCooldown: 3,
+      passive: PassiveSkill(
+        name: 'Хаос',
+        description: '+15% урона, +10% к шансу крита, 10% урона возвращается здоровьем, '
+            '30% шанс контратаки.',
+        damageBonus: 0.15,
+        critBonus: 0.1,
+        lifesteal: 0.1,
+        counterChance: 0.3,
+      ),
+      ultimate: ActiveSkill(
+        name: 'Спектральный залп',
+        description: 'Пять атак по ×1.3, 25% урона возвращается здоровьем, '
+            'снимает с себя вредные эффекты и даёт ещё один ход.',
+        damageMul: 1.3,
+        hits: 5,
+        lifesteal: 0.25,
+        cleanse: true,
+        extraTurn: true,
+      ),
+    ),
+    // Мифический — «равновесие»: очищение, второе дыхание, тёмная форма.
     'yin_yang': SkillSet(
       active: ActiveSkill(
         name: 'Равновесие',
-        description:
-            'Атака с уроном ×1.5, лечение на 10% здоровья и −20% урона противника (2 хода).',
+        description: 'Атака с уроном ×1.5, лечение на 10% здоровья, снимает с себя '
+            'вредные эффекты, −20% урона противника (2 хода).',
         damageMul: 1.5,
         healPercent: 0.1,
+        cleanse: true,
         weaken: 0.2,
         weakenTurns: 2,
       ),
       activeCooldown: 3,
       passive: PassiveSkill(
         name: 'Гармония',
-        description: '+2% здоровья каждый ход, +20% урона ниже половины HP, '
-            'ульта копится на 60% быстрее.',
-        regenPercent: 0.02,
-        lowHpDamageBonus: 0.2,
+        description: 'Ульта копится на 60% быстрее. Второе дыхание: раз за бой '
+            'не погибает и остаётся с 20% здоровья.',
         ultCharge: 0.6,
+        revivePercent: 0.2,
       ),
       ultimate: ActiveSkill(
         name: 'Великий предел',
-        description: 'Атака с уроном ×1.3 и тёмная форма на 5 ходов: '
-            '+30% урона, −20% входящего урона, +20% скорости.',
-        damageMul: 1.3,
-        formTurns: 5,
-        formDamage: 0.3,
+        description: 'Тёмная форма на 4 хода: +25% урона, −20% входящего урона, '
+            '+20% скорости. Снимает с противника усиления, следующий удар '
+            'по себе возвращает обратно.',
+        damageMul: 1.2,
+        formTurns: 4,
+        formDamage: 0.25,
         formGuard: 0.2,
         formSpeed: 0.2,
-      ),
-    ),
-    // Клетчатый: держится за счёт лечения и переживает чужие серии.
-    'basic': SkillSet(
-      active: ActiveSkill(
-        name: 'Шлепок с оттяжкой',
-        description: 'Атака с уроном ×1.7 и лечение на 10% здоровья.',
-        damageMul: 1.7,
-        healPercent: 0.1,
-      ),
-      activeCooldown: 4,
-      passive: PassiveSkill(
-        name: 'Домашний уют',
-        description: '+3% здоровья каждый ход, +20% урона ниже половины HP.',
-        regenPercent: 0.03,
-        lowHpDamageBonus: 0.2,
-      ),
-      ultimate: ActiveSkill(
-        name: 'Бабушкин гнев',
-        description:
-            'Атака с уроном ×2.6, противник пропускает ход и слабеет на 25% (3 хода).',
-        damageMul: 2.6,
-        stun: true,
-        weaken: 0.25,
-        weakenTurns: 3,
-      ),
-    ),
-
-    // Слайд: не столько бьёт, сколько не даёт попасть по себе.
-    'blue_slide': SkillSet(
-      active: ActiveSkill(
-        name: 'Подкат',
-        description: 'Атака с уроном ×1.4, следующая атака противника мимо.',
-        damageMul: 1.4,
-        evadeTurns: 1,
-      ),
-      activeCooldown: 3,
-      passive: PassiveSkill(
-        name: 'Скользкая подошва',
-        description: '+7% к шансу уворота.',
-        dodgeBonus: 0.07,
-      ),
-      ultimate: ActiveSkill(
-        name: 'Град шлепков',
-        description: 'Три атаки по ×1.2 и +40% скорости на 3 хода.',
-        damageMul: 1.2,
-        hits: 3,
-        haste: 0.4,
-        hasteTurns: 3,
-      ),
-    ),
-
-    // Карбон: танк, который копит защиту и продавливает её у чужих.
-    'carbon_sport': SkillSet(
-      active: ActiveSkill(
-        name: 'Прыжковый удар',
-        description: 'Атака с уроном ×1.7 и барьер на 18% здоровья.',
-        damageMul: 1.7,
-        barrierPercent: 0.18,
-      ),
-      activeCooldown: 4,
-      passive: PassiveSkill(
-        name: 'Карбоновая подошва',
-        description: '+35 к защите, 10% урона возвращается атакующему.',
-        defenseBonus: 35,
-        thorns: 0.1,
-      ),
-      ultimate: ActiveSkill(
-        name: 'Метеоритный удар',
-        description:
-            'Атака с уроном ×2.8, игнорирует половину защиты, противник пропускает ход.',
-        damageMul: 2.8,
-        pierce: 0.5,
-        stun: true,
-      ),
-    ),
-
-    // Неон: живёт с чужого здоровья и душит уроном по времени.
-    'purple_neon': SkillSet(
-      active: ActiveSkill(
-        name: 'Фазовый рывок',
-        description: 'Атака с уроном ×1.6, 60% урона возвращается здоровьем.',
-        damageMul: 1.6,
-        lifesteal: 0.6,
-      ),
-      activeCooldown: 3,
-      passive: PassiveSkill(
-        name: 'Неоновый заряд',
-        description: '+10% к шансу крита, криты бьют сильнее на 40%.',
-        critBonus: 0.1,
-        critDamageBonus: 0.4,
-      ),
-      ultimate: ActiveSkill(
-        name: 'Перегрузка',
-        description:
-            'Атака с уроном ×2.2, поджог на 3 хода и −25% урона противника (3 хода).',
-        damageMul: 2.2,
-        burnPercent: 0.35,
-        burnTurns: 3,
-        weaken: 0.25,
-        weakenTurns: 3,
-      ),
-    ),
-
-    // Адский шип: контроль темпа — замедляет и добивает.
-    'red_spike': SkillSet(
-      active: ActiveSkill(
-        name: 'Тяжёлый топот',
-        description: 'Атака с уроном ×1.9 и −35% скорости противника (2 хода).',
-        damageMul: 1.9,
-        slow: 0.35,
-        slowTurns: 2,
-      ),
-      activeCooldown: 3,
-      passive: PassiveSkill(
-        name: 'Шипы',
-        description:
-            '20% полученного урона возвращается атакующему, добивание ниже 25% HP бьёт вдвое.',
-        thorns: 0.2,
-        executeThreshold: 0.25,
-      ),
-      ultimate: ActiveSkill(
-        name: 'Адский разлом',
-        description:
-            'Атака с уроном ×3, всегда крит, игнорирует 40% защиты и поджигает на 2 хода.',
-        damageMul: 3,
-        alwaysCrit: true,
-        pierce: 0.4,
-        burnPercent: 0.3,
-        burnTurns: 2,
-      ),
-    ),
-
-    // Радужный: мифический — берёт всем понемногу и ходит вне очереди.
-    'rainbow': SkillSet(
-      active: ActiveSkill(
-        name: 'Призматический луч',
-        description: 'Атака с уроном ×2, игнорирует половину защиты.',
-        damageMul: 2,
-        pierce: 0.5,
-      ),
-      activeCooldown: 3,
-      passive: PassiveSkill(
-        name: 'Хаос',
-        description: '+12% урона, +10% к шансу крита, 8% урона возвращается здоровьем.',
-        damageBonus: 0.12,
-        critBonus: 0.1,
-        lifesteal: 0.08,
-      ),
-      ultimate: ActiveSkill(
-        name: 'Спектральный залп',
-        description: 'Четыре атаки по ×1.3 с вампиризмом и сразу ещё один ход.',
-        damageMul: 1.3,
-        hits: 4,
-        lifesteal: 0.2,
-        extraTurn: true,
+        dispel: true,
+        reflect: true,
       ),
     ),
   };

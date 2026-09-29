@@ -1,16 +1,24 @@
 import 'battle/combatant.dart';
 
 /// Редкость тапка: пять ступеней, от обычного до мифического.
-/// Чем выше — тем сильнее бонус и реже выпадает из кейса.
+/// Чем выше — тем сильнее сам тапок (множитель характеристик) и тем реже
+/// он выпадает из кейса.
 enum Rarity {
-  common('Обычный', 0xFFB9B0C4, 75),
-  rare('Редкий', 0xFF5BC8FF, 300),
-  epic('Эпический', 0xFFC77DFF, 800),
-  legendary('Легендарный', 0xFFFFC93C, 2500),
-  mythic('Мифический', 0xFFFF5FA2, 8000);
+  common('Обычный', 0xFFB9B0C4, 75, 1.0, 0),
+  rare('Редкий', 0xFF5BC8FF, 300, 1.2, 1),
+  epic('Эпический', 0xFFC77DFF, 800, 1.45, 2),
+  legendary('Легендарный', 0xFFFFC93C, 2500, 1.75, 3),
+  mythic('Мифический', 0xFFFF5FA2, 8000, 2.1, 4);
 
-  const Rarity(this.label, this.argb, this.sellPrice);
+  const Rarity(this.label, this.argb, this.sellPrice, this.statMul, this.speedBonus);
   final String label;
+
+  /// Множитель удара, прочности и здоровья: мифический при той же
+  /// прокачке примерно вдвое сильнее обычного.
+  final double statMul;
+
+  /// Прибавка к скорости.
+  final double speedBonus;
 
   /// Цвет редкости, 0xAARRGGBB.
   final int argb;
@@ -101,7 +109,7 @@ class SlipperCatalog {
       rarity: Rarity.epic,
       asset: 'assets/slippers/purple_neon.png',
       attack: AttackStyle.blink,
-      bonuses: {Bonus.crit: 0.06, Bonus.income: 0.08},
+      bonuses: {Bonus.damage: 0.1, Bonus.crit: 0.06, Bonus.income: 0.08},
     ),
     SlipperKind(
       id: 'red_spike',

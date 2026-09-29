@@ -8,8 +8,9 @@ import 'package:idle_slipper/game/slipper.dart';
 import 'package:idle_slipper/game/slipper_kind.dart';
 
 /// Боец без скиллов — чтобы проверять чистую механику ударов.
+/// С [skills] — чтобы проверить отдельный эффект.
 class _Dummy implements Combatant {
-  _Dummy({required this.name, this.maxHp = 100});
+  _Dummy({required this.name, this.maxHp = 100, this.skills = SkillSet.none, this.speed = 10});
 
   @override
   final String name;
@@ -21,7 +22,7 @@ class _Dummy implements Combatant {
   @override
   double get defense => 0;
   @override
-  double get speed => 10;
+  final double speed;
   @override
   double get dodgeChance => 0;
   @override
@@ -36,8 +37,16 @@ class _Dummy implements Combatant {
   @override
   AuraSpec? get aura => null;
   @override
-  SkillSet get skills => SkillSet.none;
+  final SkillSet skills;
 }
+
+/// Набор с одним активным скиллом каждый ход и пассивкой.
+SkillSet _set({ActiveSkill? active, PassiveSkill? passive}) => SkillSet(
+      active: active ?? SkillSet.none.active,
+      activeCooldown: 1,
+      passive: passive ?? SkillSet.none.passive,
+      ultimate: SkillSet.none.ultimate,
+    );
 
 void main() {
   Slipper make(String name,
@@ -113,7 +122,7 @@ void main() {
     expect(Leaderboard.nextOpponent(1040, after).name, 'Пыльный Тапок');
   });
 
-  test('dark form: ultimate transforms for 5 turns, counting down', () {
+  test('dark form: ultimate transforms for 4 turns, counting down', () {
     final yy = Slipper(
         name: 'yy', kindId: 'yin_yang', stars: 5, levels: {for (final s in Stat.values) s: 15});
     final foe = Slipper(name: 'o', kindId: 'carbon_sport', levels: {for (final s in Stat.values) s: 15});
@@ -125,7 +134,7 @@ void main() {
         if (f > 0 && (seq.isEmpty || seq.last != f)) seq.add(f);
       }
       if (seq.length >= 3) {
-        expect(seq.take(3), [5, 4, 3]);
+        expect(seq.take(3), [4, 3, 2]);
         return;
       }
     }
@@ -148,6 +157,76 @@ void main() {
     for (var seed = 0; seed < 20; seed++) {
       expect(BattleSim.run(a, b, seed: seed).events.whereType<SkillEvent>(), isEmpty);
     }
+  });
+
+  group('new effects', () {
+    test('poison ticks by stacks and fades', () {
+      final r = BattleSim.run(
+        _Dummy(name: 'A', skills: _set(active: const ActiveSkill(name: 'Яд', description: '', poisonStacks: 3))),
+        _Dummy(name: 'B', maxHp: 1000),
+        seed: 1,
+      );
+      final ticks = r.events.whereType<BurnEvent>().where((e) => e.poison).toList();
+      expect(ticks, isNotEmpty);
+      expect(r.events.any((e) => e.opponent.poisonStacks > 0), isTrue);
+    });
+
+    test('silence blocks the victim skills', () {
+      final r = BattleSim.run(
+        _Dummy(name: 'A', speed: 30, skills: _set(active: const ActiveSkill(name: 'Немота', description: '', silenceTurns: 3))),
+        _Dummy(name: 'B', skills: _set(active: const ActiveSkill(name: 'Удар', description: '', damageMul: 2))),
+        seed: 1,
+      );
+      // B медленнее: A успевает наложить немоту раньше первого хода B.
+      final firstOpponentSkill = r.events.indexWhere((e) => e is SkillEvent && e.side == Side.opponent);
+      final firstSilence = r.events.indexWhere((e) => e.opponent.silenced);
+      expect(firstSilence, isNot(-1));
+      expect(firstOpponentSkill == -1 || firstOpponentSkill > firstSilence + 1, isTrue);
+    });
+
+    test('second wind saves once', () {
+      final r = BattleSim.run(
+        _Dummy(name: 'A', maxHp: 1000),
+        _Dummy(name: 'B', maxHp: 60, skills: _set(passive: const PassiveSkill(name: 'Второе дыхание', description: '', revivePercent: 0.5))),
+        seed: 1,
+      );
+      final revived = r.events.whereType<HealEvent>().where((e) => e.side == Side.opponent);
+      expect(revived, hasLength(1));
+      expect(revived.first.hpAfter, closeTo(30, 0.001));
+    });
+
+    test('reflect returns the next hit to the attacker', () {
+      final r = BattleSim.run(
+        _Dummy(name: 'A', maxHp: 1000),
+        _Dummy(name: 'B', maxHp: 1000, speed: 30, skills: _set(active: const ActiveSkill(name: 'Зеркало', description: '', reflect: true))),
+        seed: 1,
+      );
+      expect(r.events.any((e) => e is HitEvent && e.attacker == Side.opponent && e.thorns), isTrue);
+    });
+
+    test('counter hits back sometimes', () {
+      final r = BattleSim.run(
+        _Dummy(name: 'A', maxHp: 1000),
+        _Dummy(name: 'B', maxHp: 1000, skills: _set(passive: const PassiveSkill(name: 'Ответ', description: '', counterChance: 1))),
+        seed: 1,
+      );
+      // При шансе 100% за каждым ударом A сразу идёт удар B.
+      final hits = r.events.whereType<HitEvent>().toList();
+      final i = hits.indexWhere((e) => e.attacker == Side.player);
+      expect(hits[i + 1].attacker, Side.opponent);
+    });
+
+    test('dispel strips the barrier', () {
+      final r = BattleSim.run(
+        _Dummy(name: 'A', maxHp: 1000, speed: 10, skills: _set(active: const ActiveSkill(name: 'Развеять', description: '', dispel: true))),
+        _Dummy(name: 'B', maxHp: 1000, speed: 20, skills: _set(active: const ActiveSkill(name: 'Барьер', description: '', barrierPercent: 0.9))),
+        seed: 1,
+      );
+      // Событие скилла пишется до эффекта — смотрим на следующее, удар.
+      final i = r.events.indexWhere((e) => e is SkillEvent && e.side == Side.player);
+      expect(r.events[i].opponent.barriered, isTrue);
+      expect(r.events[i + 1].opponent.barriered, isFalse);
+    });
   });
 
   group('skills', () {
@@ -221,11 +300,11 @@ void main() {
     });
 
     test('lasting effects stay on across the opponent turns', () {
-      // Неон поджигает ультой: горение должно держаться подряд,
+      // Адский шип поджигает ультой: горение должно держаться подряд,
       // а не гаснуть в ходы противника.
       final r = BattleSim.run(
-        make('Neon', atk: 8, hp: 30, spd: 9, kind: 'purple_neon'),
-        make('B', atk: 6, hp: 40, spd: 6),
+        make('Spike', atk: 8, hp: 30, spd: 9, kind: 'red_spike'),
+        make('B', atk: 6, hp: 200, def: 20, spd: 6),
         seed: 12,
       );
       final events = r.events;
@@ -257,17 +336,17 @@ void main() {
     });
 
     test('slow and weaken are reported as state', () {
-      // Адский шип замедляет топотом, клетчатый ослабляет ультой.
+      // Синий слайд замедляет подкатом, Неон ослабляет ультой.
       final slowed = BattleSim.run(
-        make('Spike', atk: 8, hp: 40, spd: 8, kind: 'red_spike'),
-        make('B', atk: 6, hp: 40, spd: 6),
+        make('Slide', atk: 8, hp: 40, spd: 8, kind: 'blue_slide'),
+        make('B', atk: 6, hp: 200, def: 20, spd: 6),
         seed: 5,
       );
       expect(slowed.events.any((e) => e.opponent.slowed), isTrue);
 
       final weakened = BattleSim.run(
-        make('Granny', atk: 8, hp: 40, spd: 8),
-        make('B', atk: 6, hp: 40, spd: 6),
+        make('Neon', atk: 8, hp: 40, spd: 8, kind: 'purple_neon'),
+        make('B', atk: 6, hp: 200, def: 20, spd: 6),
         seed: 5,
       );
       expect(weakened.events.any((e) => e.opponent.weakened), isTrue);
@@ -316,11 +395,11 @@ void main() {
     });
 
     test('turn counters count down and match the skill description', () {
-      // Клетчатый ослабляет ультой на 3 хода: счётчик на противнике должен
+      // Неон ослабляет ультой на 3 хода: счётчик на противнике должен
       // пройти 3 → 2 → 1 и погаснуть, не перескакивая.
       final r = BattleSim.run(
-        make('Granny', atk: 8, hp: 40, spd: 8),
-        make('B', atk: 6, hp: 60, spd: 6),
+        make('Neon', atk: 8, hp: 40, spd: 8, kind: 'purple_neon'),
+        make('B', atk: 6, hp: 200, def: 20, spd: 6),
         seed: 5,
       );
       final seen = <int>[];
@@ -336,8 +415,8 @@ void main() {
       // Ослабление на 3 хода должно накрыть ровно три хода противника,
       // а не два, как было, когда счётчик убывал до удара.
       final r = BattleSim.run(
-        make('Granny', atk: 8, hp: 40, spd: 8),
-        make('B', atk: 6, hp: 60, spd: 6),
+        make('Neon', atk: 8, hp: 40, spd: 8, kind: 'purple_neon'),
+        make('B', atk: 6, hp: 200, def: 20, spd: 6),
         seed: 5,
       );
       final start = r.events.indexWhere((e) => e.opponent.weakened);

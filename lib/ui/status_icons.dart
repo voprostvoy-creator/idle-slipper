@@ -15,10 +15,17 @@ enum StatusKind {
   evade('Уклонение', 'Следующая атака по нему пройдёт мимо.', positive: true),
   form('Тёмная форма', 'Ушёл во тьму: бьёт сильнее, получает меньше урона и ходит чаще.',
       positive: true),
+  reflect('Отражение', 'Следующий удар по нему вернётся атакующему.', positive: true),
+  rage('Ярость', 'Каждый свой удар сильнее предыдущего. Число — стопки ярости.',
+      positive: true),
   burn('Горение', 'Теряет здоровье в начале каждого своего хода.', positive: false),
   stun('Оглушение', 'Пропустит следующий ход.', positive: false),
   weaken('Ослабление', 'Наносит меньше урона.', positive: false),
-  slow('Замедление', 'Ходит реже обычного.', positive: false);
+  slow('Замедление', 'Ходит реже обычного.', positive: false),
+  poison('Яд', 'Каждая стопка — 2% здоровья в начале хода, стопок становится меньше. '
+      'Число — стопки.', positive: false),
+  vulnerable('Уязвимость', 'Получает больше урона.', positive: false),
+  silence('Немота', 'Не может применять скиллы — только обычные удары.', positive: false);
 
   const StatusKind(this.label, this.description, {required this.positive});
 
@@ -47,10 +54,15 @@ List<ActiveStatus> statusesOf(SideSnapshot s) => [
       if (s.hasted) ActiveStatus(StatusKind.haste, s.hasteTurns),
       if (s.evading) const ActiveStatus(StatusKind.evade),
       if (s.transformed) ActiveStatus(StatusKind.form, s.formTurns),
+      if (s.reflecting) const ActiveStatus(StatusKind.reflect),
+      if (s.rage > 0) ActiveStatus(StatusKind.rage, s.rage),
       if (s.burning) ActiveStatus(StatusKind.burn, s.burnTurns),
       if (s.stunned) const ActiveStatus(StatusKind.stun),
       if (s.weakened) ActiveStatus(StatusKind.weaken, s.weakenTurns),
       if (s.slowed) ActiveStatus(StatusKind.slow, s.slowTurns),
+      if (s.poisoned) ActiveStatus(StatusKind.poison, s.poisonStacks),
+      if (s.vulnerable) ActiveStatus(StatusKind.vulnerable, s.vulnerableTurns),
+      if (s.silenced) ActiveStatus(StatusKind.silence, s.silenceTurns),
     ];
 
 /// Значок эффекта: схематичный рисунок в круглой рамке цвета «плюс/минус».
@@ -207,6 +219,16 @@ class _StatusPainter extends CustomPainter {
         _evade(c, s);
       case StatusKind.form:
         _form(c, s);
+      case StatusKind.reflect:
+        _reflect(c, s);
+      case StatusKind.rage:
+        _rage(c, s);
+      case StatusKind.poison:
+        _poison(c, s);
+      case StatusKind.vulnerable:
+        _vulnerable(c, s);
+      case StatusKind.silence:
+        _silence(c, s);
       case StatusKind.burn:
         _burn(c, s);
       case StatusKind.stun:
@@ -336,6 +358,84 @@ class _StatusPainter extends CustomPainter {
       i == 0 ? p.moveTo(pt.dx, pt.dy) : p.lineTo(pt.dx, pt.dy);
     }
     c.drawPath(p..close(), _fill(GameColors.gold));
+  }
+
+  /// Отражение — зеркальная пластина со стрелкой назад.
+  void _reflect(Canvas c, double s) {
+    final r = Rect.fromCenter(center: Offset(s * 0.5, s * 0.5), width: s * 0.36, height: s * 0.44);
+    c.drawRRect(RRect.fromRectAndRadius(r, Radius.circular(s * 0.06)), _fill(const Color(0xFFBFE9FF)));
+    c.drawPath(
+      Path()
+        ..moveTo(s * 0.62, s * 0.4)
+        ..lineTo(s * 0.4, s * 0.4)
+        ..moveTo(s * 0.46, s * 0.33)
+        ..lineTo(s * 0.39, s * 0.4)
+        ..lineTo(s * 0.46, s * 0.47),
+      _line(GameColors.blueDark, s * 0.06),
+    );
+  }
+
+  /// Ярость — три красных зубца пламени.
+  void _rage(Canvas c, double s) {
+    c.drawPath(
+      Path()
+        ..moveTo(s * 0.3, s * 0.7)
+        ..lineTo(s * 0.34, s * 0.34)
+        ..lineTo(s * 0.43, s * 0.52)
+        ..lineTo(s * 0.5, s * 0.26)
+        ..lineTo(s * 0.57, s * 0.52)
+        ..lineTo(s * 0.66, s * 0.34)
+        ..lineTo(s * 0.7, s * 0.7)
+        ..close(),
+      _fill(GameColors.red),
+    );
+  }
+
+  /// Яд — зелёная капля.
+  void _poison(Canvas c, double s) {
+    const color = Color(0xFF7CE35A);
+    c.drawPath(
+      Path()
+        ..moveTo(s * 0.5, s * 0.24)
+        ..quadraticBezierTo(s * 0.7, s * 0.5, s * 0.68, s * 0.6)
+        ..arcToPoint(Offset(s * 0.32, s * 0.6), radius: Radius.circular(s * 0.18))
+        ..quadraticBezierTo(s * 0.3, s * 0.5, s * 0.5, s * 0.24)
+        ..close(),
+      _fill(color),
+    );
+    c.drawCircle(Offset(s * 0.44, s * 0.56), s * 0.04, _fill(Colors.white.withValues(alpha: 0.8)));
+  }
+
+  /// Уязвимость — треснувший щит.
+  void _vulnerable(Canvas c, double s) {
+    final p = Path()
+      ..moveTo(s * 0.5, s * 0.24)
+      ..lineTo(s * 0.72, s * 0.33)
+      ..quadraticBezierTo(s * 0.72, s * 0.62, s * 0.5, s * 0.77)
+      ..quadraticBezierTo(s * 0.28, s * 0.62, s * 0.28, s * 0.33)
+      ..close();
+    c.drawPath(p, _fill(const Color(0xFFFF9F43)));
+    c.drawPath(
+      Path()
+        ..moveTo(s * 0.52, s * 0.27)
+        ..lineTo(s * 0.45, s * 0.45)
+        ..lineTo(s * 0.56, s * 0.52)
+        ..lineTo(s * 0.48, s * 0.72),
+      _line(GameColors.outline, s * 0.05),
+    );
+  }
+
+  /// Немота — перечёркнутый рот.
+  void _silence(Canvas c, double s) {
+    const color = Color(0xFFCDBBE0);
+    c.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromCenter(center: Offset(s * 0.5, s * 0.52), width: s * 0.4, height: s * 0.16),
+        Radius.circular(s * 0.08),
+      ),
+      _fill(color),
+    );
+    c.drawLine(Offset(s * 0.3, s * 0.32), Offset(s * 0.7, s * 0.72), _line(GameColors.red, s * 0.08));
   }
 
   /// Ослабление — стрелка вниз.

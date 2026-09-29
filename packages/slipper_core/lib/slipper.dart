@@ -56,6 +56,7 @@ class Slipper implements Combatant {
   @override
   double get attack =>
       (10 + level(Stat.attack) * 4.0 + pow(level(Stat.attack), 1.3)) *
+          kind.rarity.statMul *
           (1 + kind.bonus(Bonus.damage) + _gem.attackPct) *
           _starMul +
       _gem.attackFlat;
@@ -65,6 +66,7 @@ class Slipper implements Combatant {
   double get defense =>
       level(Stat.defense) *
           5.0 *
+          kind.rarity.statMul *
           (1 + kind.bonus(Bonus.defense) + _gem.defensePct) *
           _starMul +
       _gem.defenseFlat;
@@ -72,6 +74,7 @@ class Slipper implements Combatant {
   @override
   double get maxHp =>
       (100 + level(Stat.health) * 25.0) *
+          kind.rarity.statMul *
           (1 + kind.bonus(Bonus.hp) + _gem.hpPct) *
           _starMul +
       _gem.hpFlat;
@@ -79,7 +82,8 @@ class Slipper implements Combatant {
   /// Скорость определяет порядок и частоту ходов (см. BattleSim).
   @override
   double get speed =>
-      (10 + level(Stat.speed) * 2.0) * (1 + _gem.speedPct) + _gem.speedFlat;
+      (10 + kind.rarity.speedBonus + level(Stat.speed) * 2.0) * (1 + _gem.speedPct) +
+      _gem.speedFlat;
 
   /// Шанс уворота, мягко ограниченный 35% (+ бонус вида).
   @override
