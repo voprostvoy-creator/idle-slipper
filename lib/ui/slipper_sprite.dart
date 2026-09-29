@@ -4,6 +4,11 @@ import 'package:flutter/material.dart';
 
 import '../game/battle/combatant.dart';
 
+/// Что рисует спрайт: всё сразу, только тапок или только ауру.
+/// В бою тапок и аура рисуются отдельно: тапок крутится в анимации удара,
+/// а аура только сдвигается следом и всегда смотрит вниз.
+enum SpriteLayer { all, body, aura }
+
 /// Состояние тапка в бою. Лица нет — настроение передаётся движением и цветом.
 enum SlipperMood { idle, attack, hurt, happy, dead }
 
@@ -21,7 +26,10 @@ class SlipperSprite extends StatefulWidget {
     this.impulse = 0,
     this.shake = true,
     this.negative = false,
+    this.layer = SpriteLayer.all,
   });
+
+  final SpriteLayer layer;
 
   final Combatant fighter;
   final SlipperMood mood;
@@ -131,6 +139,7 @@ class _SlipperSpriteState extends State<SlipperSprite>
         clipBehavior: Clip.none,
         children: [
           // Аура прокачки — за тапком, арт не перекрывается.
+          if (widget.layer != SpriteLayer.body)
           Positioned.fill(
             child: CustomPaint(
               painter: AuraPainter(
@@ -142,10 +151,11 @@ class _SlipperSpriteState extends State<SlipperSprite>
               ),
             ),
           ),
-          Positioned.fromRect(
-            rect: fitted,
-            child: Image.asset(widget.fighter.asset, fit: BoxFit.fill),
-          ),
+          if (widget.layer != SpriteLayer.aura)
+            Positioned.fromRect(
+              rect: fitted,
+              child: Image.asset(widget.fighter.asset, fit: BoxFit.fill),
+            ),
         ],
       ),
     );
@@ -170,6 +180,9 @@ class _SlipperSpriteState extends State<SlipperSprite>
       );
     }
     if (widget.flip) sprite = Transform.flip(flipX: true, child: sprite);
+
+    // Аура не качается и не трясётся вместе с тапком — стоит на полу.
+    if (widget.layer == SpriteLayer.aura) return sprite;
 
     return AnimatedBuilder(
       animation: Listenable.merge([_breath, _fx]),

@@ -288,9 +288,9 @@ class BattleSim {
   static const double _gaugeThreshold = 100;
 
   /// Сколько ульты копится за свой ход и за каждый процент урона.
-  static const double _ultPerTurn = 0.1;
-  static const double _ultPerDamageDealt = 0.4375;
-  static const double _ultPerDamageTaken = 0.3125;
+  static const double _ultPerTurn = 0.115;
+  static const double _ultPerDamageDealt = 0.503;
+  static const double _ultPerDamageTaken = 0.359;
 
   /// Одна стопка яда — такая доля максимума здоровья за ход; стопок не больше.
   static const double _poisonPerStack = 0.02;

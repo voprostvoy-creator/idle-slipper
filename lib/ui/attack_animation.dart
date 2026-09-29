@@ -28,6 +28,41 @@ class AttackAnimation {
     AttackStyle.taichi => const Duration(milliseconds: 620),
   };
 
+  /// Кладёт [aura] под тапок так, чтобы она повторяла только сдвиг удара:
+  /// внешний перенос анимации сохраняется, повороты и масштаб — нет.
+  static Widget _withAura(Widget body, Widget aura) {
+    Widget under(Widget w) => Stack(
+          clipBehavior: Clip.none,
+          children: [Positioned.fill(child: aura), w],
+        );
+    if (body is Transform && body.child != null && _isTranslation(body.transform)) {
+      return Transform(transform: body.transform, child: under(body.child!));
+    }
+    if (body is Opacity && body.child != null) {
+      return Opacity(opacity: body.opacity, child: _withAura(body.child!, aura));
+    }
+    if (body is Stack) {
+      // Лазер и призыв: сам тапок — единственный Transform среди детей.
+      final i = body.children.indexWhere((c) => c is Transform);
+      if (i >= 0) {
+        final children = [...body.children];
+        children[i] = _withAura(children[i], aura);
+        return Stack(clipBehavior: body.clipBehavior, alignment: body.alignment, children: children);
+      }
+    }
+    return under(body);
+  }
+
+  static bool _isTranslation(Matrix4 m) {
+    final s = m.storage;
+    for (var i = 0; i < 16; i++) {
+      if (i == 12 || i == 13 || i == 14) continue;
+      final identity = (i % 5 == 0) ? 1.0 : 0.0;
+      if ((s[i] - identity).abs() > 1e-9) return false;
+    }
+    return true;
+  }
+
   /// Момент касания: через сколько после начала удара тапок достигает
   /// цели. В этот момент на цели вспыхивают эффекты и появляется урон —
   /// не раньше и не позже.
@@ -58,7 +93,12 @@ class AttackAnimation {
     required bool flip,
     required double reach,
     required Widget child,
+    Widget? aura,
   }) {
+    if (aura != null) {
+      final body = apply(style: style, progress: progress, flip: flip, reach: reach, child: child);
+      return _withAura(body, aura);
+    }
     if (progress <= 0.001) return child;
     // Движение всегда «к противнику»: для правого бойца — в другую сторону.
     final dir = flip ? -1.0 : 1.0;

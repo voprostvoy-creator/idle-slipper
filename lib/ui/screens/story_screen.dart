@@ -70,14 +70,28 @@ class _StoryScreenState extends State<StoryScreen> {
               ),
               const SizedBox(height: 10),
             ],
-            if (done)
+            if (done && next != null)
+              SizedBox(
+                width: double.infinity,
+                child: GameButton(
+                  color: GameColors.gold,
+                  height: 56,
+                  onPressed: () => setState(() => chapter = next),
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      'Глава ${next.number}: «${next.title}» →',
+                      style: const TextStyle(fontSize: 18),
+                    ),
+                  ),
+                ),
+              )
+            else if (done)
               GamePanel(
                 color: GameColors.panelDark,
                 padding: const EdgeInsets.all(14),
                 child: Text(
-                  next == null
-                      ? 'Глава пройдена! Следующая скоро появится.'
-                      : 'Глава пройдена! Открыта глава ${next.number} «${next.title}».',
+                  'Глава пройдена! Следующая скоро появится.',
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.titleSmall,
                 ),

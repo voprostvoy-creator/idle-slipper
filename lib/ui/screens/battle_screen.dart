@@ -203,6 +203,7 @@ class _BattleScreenState extends State<BattleScreen>
   /// ключом он переносится между обёртками, а не создаётся заново — иначе
   /// аура и дыхание каждый раз начинались бы сначала.
   final _spriteKeys = {Side.player: GlobalKey(), Side.opponent: GlobalKey()};
+  final _auraKeys = {Side.player: GlobalKey(), Side.opponent: GlobalKey()};
 
   @override
   void initState() {
@@ -557,6 +558,7 @@ class _BattleScreenState extends State<BattleScreen>
                             left: 6,
                             child: _Fighter(
                               spriteKey: _spriteKeys[Side.player]!,
+                              auraKey: _auraKeys[Side.player]!,
                               fighter: widget.player,
                               mood: _mood[Side.player]!,
                               width: w,
@@ -575,6 +577,7 @@ class _BattleScreenState extends State<BattleScreen>
                             right: 6,
                             child: _Fighter(
                               spriteKey: _spriteKeys[Side.opponent]!,
+                              auraKey: _auraKeys[Side.opponent]!,
                               fighter: widget.opponent,
                               mood: _mood[Side.opponent]!,
                               width: w,
@@ -1069,6 +1072,7 @@ class _Banner {
 class _Fighter extends StatelessWidget {
   const _Fighter({
     required this.spriteKey,
+    required this.auraKey,
     required this.fighter,
     required this.mood,
     required this.width,
@@ -1084,6 +1088,7 @@ class _Fighter extends StatelessWidget {
   });
 
   final GlobalKey spriteKey;
+  final GlobalKey auraKey;
   final Combatant fighter;
   final SlipperMood mood;
   final double width;
@@ -1143,8 +1148,17 @@ class _Fighter extends StatelessWidget {
             progress: attack,
             flip: flip,
             reach: reach,
+            aura: SlipperSprite(
+              key: auraKey,
+              fighter: fighter,
+              flip: flip,
+              width: width,
+              negative: dark,
+              layer: SpriteLayer.aura,
+            ),
             child: SlipperSprite(
               key: spriteKey,
+              layer: SpriteLayer.body,
               fighter: fighter,
               mood: mood,
               flip: flip,
