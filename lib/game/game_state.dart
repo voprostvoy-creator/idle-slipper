@@ -608,13 +608,15 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
 
   DigBoard get digBoard => DigBoard.forDay(clock());
 
-  int get digSwingsLeft => max(0, DigBoard.swingsPerDay - digSwingsUsed);
+  /// Взмахи за задания дня: +3 за каждое задание, +1 за бонус — ещё 10.
+  static const swingsPerQuest = 3;
+  static const swingsForBonus = 1;
 
-  /// Сколько слоёв пыли снимает один взмах: растёт с Ударом.
-  int get digStrength {
-    final atk = slipper.level(Stat.attack);
-    return 1 + (atk >= 10 ? 1 : 0) + (atk >= 25 ? 1 : 0);
-  }
+  int get digSwingsEarned =>
+      questClaimed.length * swingsPerQuest + (questBonusClaimed ? swingsForBonus : 0);
+
+  int get digSwingsLeft =>
+      max(0, DigBoard.swingsPerDay + digSwingsEarned - digSwingsUsed);
 
   /// Новый день — новое поле.
   void _rollDig() {
@@ -634,7 +636,7 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
     _rollDay();
     if (digRevealed(i) || digSwingsLeft == 0) return null;
     digSwingsUsed++;
-    digLayers[i] = max(0, digLayers[i] - digStrength);
+    digLayers[i] = 0;
     DigOutcome outcome = const (
       threads: 0,
       coins: 0,

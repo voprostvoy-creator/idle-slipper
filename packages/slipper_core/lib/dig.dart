@@ -20,17 +20,28 @@ class DigCell {
   bool get shines => gemRarity != null;
 }
 
-/// Поле «Под диваном»: 6×8 клеток, каждый день новое. Раскладка зависит
-/// только от даты — весь день одна и та же и не меняется от перезапуска.
+/// Поле «Под диваном»: 6×6 клеток, каждый день новое. Под каждой клеткой
+/// что-то лежит — случайно. Раскладка зависит только от даты: весь день
+/// одна и та же и не меняется от перезапуска. Клетка — один взмах.
 class DigBoard {
   DigBoard._(this.cells);
 
   static const cols = 6;
-  static const rows = 8;
+  static const rows = 6;
   static const size = cols * rows;
 
-  /// Взмахов тапком в день.
-  static const swingsPerDay = 20;
+  /// Взмахов тапком в день без заданий; ещё столько же дают задания дня.
+  static const swingsPerDay = 10;
+
+  /// Сколько находок каждого вида на сотню клеток — веса случайного выбора.
+  static const _weights = [
+    (DigLoot.threads, null, 38),
+    (DigLoot.coins, Rarity.common, 24),
+    (DigLoot.gem, Rarity.common, 20),
+    (DigLoot.gem, Rarity.rare, 7),
+    (DigLoot.guard, Rarity.rare, 8),
+    (DigLoot.treasure, Rarity.epic, 3),
+  ];
 
   final List<DigCell> cells;
 
@@ -42,22 +53,21 @@ class DigBoard {
 
   factory DigBoard.seeded(int seed) {
     final rng = Random(seed);
-    DigCell cell(DigLoot loot, {Rarity? gem, int? layers}) =>
-        DigCell(loot: loot, gemRarity: gem, layers: layers ?? (rng.nextDouble() < 0.3 ? 2 : 1));
-    final cells = <DigCell>[
-      // Клад: эпический гем под тремя слоями.
-      cell(DigLoot.treasure, gem: Rarity.epic, layers: 3),
-      for (var i = 0; i < 3; i++) cell(DigLoot.guard, gem: Rarity.rare, layers: 2),
-      for (var i = 0; i < 2; i++) cell(DigLoot.gem, gem: Rarity.rare, layers: 2),
-      for (var i = 0; i < 5; i++) cell(DigLoot.gem, gem: Rarity.common),
-      for (var i = 0; i < 9; i++) cell(DigLoot.threads),
-      for (var i = 0; i < 4; i++) cell(DigLoot.coins),
-    ];
-    while (cells.length < size) {
-      cells.add(cell(DigLoot.empty));
+    final total = _weights.fold(0, (a, w) => a + w.$3);
+    DigCell pick() {
+      var roll = rng.nextInt(total);
+      for (final (loot, rarity, weight) in _weights) {
+        roll -= weight;
+        if (roll < 0) {
+          // У монет редкость не нужна — это не гем.
+          final gem = loot == DigLoot.coins || loot == DigLoot.threads ? null : rarity;
+          return DigCell(loot: loot, layers: 1, gemRarity: gem);
+        }
+      }
+      return const DigCell(loot: DigLoot.threads, layers: 1);
     }
-    cells.shuffle(rng);
-    return DigBoard._(cells);
+
+    return DigBoard._([for (var i = 0; i < size; i++) pick()]);
   }
 
   /// Подсказка на расчищенной клетке: сколько соседних клеток «блестят»,

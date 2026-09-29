@@ -41,21 +41,24 @@ class DigScreen extends StatelessWidget {
                   const Icon(Icons.back_hand_rounded, color: GameColors.orange, size: 22),
                   const SizedBox(width: 6),
                   Text(
-                    '${game.digSwingsLeft}/${DigBoard.swingsPerDay}',
+                    '${game.digSwingsLeft}',
                     style: theme.textTheme.titleMedium,
                   ),
                   const SizedBox(width: 10),
-                  Text(
-                    'Сила: ${game.digStrength} ${game.digStrength == 1 ? 'слой' : 'слоя'}',
-                    style: theme.textTheme.bodySmall,
+                  Expanded(
+                    child: Text(
+                      'Ещё взмахи — за задания дня',
+                      style: theme.textTheme.bodySmall,
+                      textAlign: TextAlign.end,
+                    ),
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 6),
             Text(
-              'Взмах снимает слой пыли. Цифра — сколько гемов спрятано рядом. '
-              'Сила взмаха растёт с Ударом. '
+              'Под каждой клеткой что-то есть, одна клетка — один взмах. '
+              'Цифра — сколько гемов спрятано рядом. '
               'Новое поле через ${fmtClock(untilMidnight(game.clock()))}.',
               textAlign: TextAlign.center,
               style: theme.textTheme.bodySmall,

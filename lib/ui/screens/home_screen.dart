@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../game/game_state.dart';
 import '../../game/slipper.dart';
+import '../../game/stars.dart';
 import '../format.dart';
 import '../duty_chest.dart';
 import '../quests_sheet.dart';
@@ -163,8 +164,22 @@ class _NameRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final kind = game.slipper.kind;
+    final stars = game.slipper.stars;
     return Column(
       children: [
+        // Звёзды тапка — сразу под ним.
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (var i = 0; i < Stars.max; i++)
+              Icon(
+                i < stars ? Icons.star_rounded : Icons.star_outline_rounded,
+                size: 26,
+                color: i < stars ? GameColors.gold : GameColors.textDim,
+              ),
+          ],
+        ),
+        const SizedBox(height: 2),
         GestureDetector(
           onTap: () => _edit(context),
           child: Row(
@@ -182,8 +197,6 @@ class _NameRow extends StatelessWidget {
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
             GameBadge(text: '${kind.rarity.label} · ${kind.name}', color: kind.rarity.color),
-            if (game.slipper.stars > 0)
-              GameBadge(text: '★' * game.slipper.stars, color: GameColors.gold),
             for (final e in kind.bonuses.entries)
               GameBadge(text: e.key.format(e.value), color: GameColors.green),
           ],

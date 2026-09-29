@@ -29,13 +29,17 @@ void main() {
   });
 
   group('под диваном', () {
-    test('поле одно на весь день и содержит клад, стражей и гемы', () {
+    test('поле 6×6 одно на весь день, под каждой клеткой есть находка', () {
       final a = DigBoard.forDay(DateTime(2026, 9, 28, 9));
       final b = DigBoard.forDay(DateTime(2026, 9, 28, 22));
       expect(a.cells.map((c) => c.loot), b.cells.map((c) => c.loot));
-      expect(a.cells, hasLength(DigBoard.size));
-      expect(a.cells.where((c) => c.loot == DigLoot.treasure), hasLength(1));
-      expect(a.cells.where((c) => c.loot == DigLoot.guard), hasLength(3));
+      expect(a.cells, hasLength(36));
+      expect(a.cells.every((c) => c.loot != DigLoot.empty && c.layers == 1), isTrue);
+      // За месяц встречаются все виды находок.
+      final seen = {
+        for (var d = 1; d <= 30; d++) ...DigBoard.forDay(DateTime(2026, 9, d)).cells.map((c) => c.loot),
+      };
+      expect(seen, containsAll([DigLoot.threads, DigLoot.coins, DigLoot.gem, DigLoot.guard, DigLoot.treasure]));
     });
 
     test('подсказка считает блестящих соседей', () {
@@ -107,6 +111,11 @@ void main() {
       }
       expect(game.digSwingsLeft, 0);
       expect(swings, lessThanOrEqualTo(DigBoard.swingsPerDay));
+      // Задание дня добавляет взмахи.
+      final quest = game.quests.first;
+      game.questProgress[quest.kind.name] = quest.target;
+      game.claimQuest(quest);
+      expect(game.digSwingsLeft, GameState.swingsPerQuest);
       now = now.add(const Duration(days: 1));
       expect(game.dig(0), isNotNull);
     });
