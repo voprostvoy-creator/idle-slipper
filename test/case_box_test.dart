@@ -21,15 +21,15 @@ void main() {
     final ad = CaseCatalog.ad.chances();
     expect(ad[Rarity.rare]!, greaterThan(std[Rarity.rare]!));
     expect(ad[Rarity.epic]!, greaterThan(std[Rarity.epic]!));
-    // Легендарный есть только в рекламном кейсе.
-    expect(std[Rarity.legendary], isNull);
-    expect(ad[Rarity.legendary], greaterThan(0));
+    expect(ad[Rarity.legendary]!, greaterThan(std[Rarity.legendary]!));
+    expect(ad[Rarity.mythic]!, greaterThan(std[Rarity.mythic]!));
   });
 
-  test('mythic drops only from the ad case, at 1%', () {
-    expect(CaseCatalog.standard.chances()[Rarity.mythic], isNull);
-    expect(CaseCatalog.dailyCase.chances()[Rarity.mythic], isNull);
-    expect(CaseCatalog.ad.chances()[Rarity.mythic], closeTo(0.01, 1e-9));
+  test('mythic: 1% in the standard and daily cases, 2% in the ad case', () {
+    expect(CaseCatalog.standard.chances()[Rarity.mythic], closeTo(0.01, 1e-9));
+    expect(CaseCatalog.standard.chances()[Rarity.legendary], closeTo(0.02, 1e-9));
+    expect(CaseCatalog.dailyCase.chances()[Rarity.mythic], closeTo(0.01, 1e-9));
+    expect(CaseCatalog.ad.chances()[Rarity.mythic], closeTo(0.02, 1e-9));
   });
 
   test('roll respects weights over many draws', () {

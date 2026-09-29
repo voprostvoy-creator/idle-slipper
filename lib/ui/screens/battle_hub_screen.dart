@@ -36,14 +36,20 @@ class BattleHubScreen extends StatelessWidget {
       BattleMode.arena => ArenaScreen(game: game, onBack: () => onMode(null)),
       BattleMode.story => StoryScreen(game: game, onBack: () => onMode(null)),
       BattleMode.dig => DigScreen(game: game, onBack: () => onMode(null)),
-      null => _ModePicker(onMode: onMode),
+      null => ListenableBuilder(
+          listenable: game,
+          builder: (_, _) => _ModePicker(onMode: onMode, digReady: game.digTasksReady),
+        ),
     };
   }
 }
 
 class _ModePicker extends StatelessWidget {
-  const _ModePicker({required this.onMode});
+  const _ModePicker({required this.onMode, this.digReady = false});
   final ValueChanged<BattleMode?> onMode;
+
+  /// Выполнено задание «Под диваном» — точка на карточке режима.
+  final bool digReady;
 
   @override
   Widget build(BuildContext context) {
@@ -113,7 +119,23 @@ class _ModePicker extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const StrokeText('Под диваном', size: 24),
+                    Row(
+                      children: [
+                        const StrokeText('Под диваном', size: 24),
+                        if (digReady) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            width: 14,
+                            height: 14,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: GameColors.red,
+                              border: Border.all(color: GameColors.outline, width: 2),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
                     const SizedBox(height: 4),
                     Text(
                       'Раскопки в пыли: гемы, нитки и монеты. Новое поле каждый день.',

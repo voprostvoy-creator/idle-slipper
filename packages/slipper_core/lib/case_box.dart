@@ -76,7 +76,13 @@ class CaseCatalog {
     name: 'Ежедневный кейс',
     description: 'Бесплатно раз в день. Шансы как у обычного кейса.',
     price: 0,
-    weights: {Rarity.common: 62, Rarity.rare: 30, Rarity.epic: 8},
+    weights: {
+      Rarity.common: 59,
+      Rarity.rare: 30,
+      Rarity.epic: 8,
+      Rarity.legendary: 2,
+      Rarity.mythic: 1,
+    },
     daily: true,
   );
 
@@ -86,7 +92,13 @@ class CaseCatalog {
     name: 'Кейс с тапками',
     description: 'Внутри случайный тапок. Выпавшее можно оставить или продать.',
     price: 500,
-    weights: {Rarity.common: 62, Rarity.rare: 30, Rarity.epic: 8},
+    weights: {
+      Rarity.common: 59,
+      Rarity.rare: 30,
+      Rarity.epic: 8,
+      Rarity.legendary: 2,
+      Rarity.mythic: 1,
+    },
   );
 
   /// Кейс за рекламу: шансы на редкое заметно выше, и есть легендарный.
@@ -96,11 +108,11 @@ class CaseCatalog {
     description: 'Шансы на редкое выше, может выпасть даже мифический тапок.',
     price: 0,
     weights: {
-      Rarity.common: 29,
+      Rarity.common: 28,
       Rarity.rare: 38,
       Rarity.epic: 25,
       Rarity.legendary: 7,
-      Rarity.mythic: 1,
+      Rarity.mythic: 2,
     },
   );
 

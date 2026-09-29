@@ -633,6 +633,9 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
 
   bool canClaimDigTask(DigTask t) => !digTaskClaimed(t) && digTaskValue(t) >= t.target;
 
+  /// Есть выполненное задание «Под диваном» — красная точка.
+  bool get digTasksReady => DigTasks.all.any(canClaimDigTask);
+
   void claimDigTask(DigTask t) {
     if (!canClaimDigTask(t)) return;
     digTasksClaimed.add(t.kind.name);

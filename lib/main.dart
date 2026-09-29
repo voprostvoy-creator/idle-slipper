@@ -124,6 +124,7 @@ class _RootShellState extends State<RootShell> {
           dots: {
             if (game.questsReady || game.chestFull) _Tab.home,
             if (game.dailyCaseAvailable) _Tab.shop,
+            if (game.digTasksReady) _Tab.battle,
           },
         ),
       ),
@@ -246,6 +247,7 @@ class _GameNavBar extends StatelessWidget {
           top: -_lift,
           child: _FightButton(
             active: tab == _Tab.battle,
+            dot: dots.contains(_Tab.battle),
             onTap: () => onChanged(_Tab.battle),
           ),
         ),
@@ -256,9 +258,12 @@ class _GameNavBar extends StatelessWidget {
 
 /// Центральная кнопка «В бой»: крупная, красная, со скрещёнными мечами.
 class _FightButton extends StatefulWidget {
-  const _FightButton({required this.active, required this.onTap});
+  const _FightButton({required this.active, required this.onTap, this.dot = false});
   final bool active;
   final VoidCallback onTap;
+
+  /// Есть что забрать в режимах боя (задания «Под диваном»).
+  final bool dot;
 
   @override
   State<_FightButton> createState() => _FightButtonState();
@@ -341,6 +346,20 @@ class _FightButtonState extends State<_FightButton> {
                 ),
               ),
             ),
+            if (widget.dot)
+              Positioned(
+                top: 2,
+                right: 4,
+                child: Container(
+                  width: 16,
+                  height: 16,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: GameColors.red,
+                    border: Border.all(color: GameColors.outline, width: 2),
+                  ),
+                ),
+              ),
           ],
         ),
       ),
