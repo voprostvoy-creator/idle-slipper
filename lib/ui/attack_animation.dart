@@ -28,6 +28,23 @@ class AttackAnimation {
     AttackStyle.taichi => const Duration(milliseconds: 620),
   };
 
+  /// Момент касания: через сколько после начала удара тапок достигает
+  /// цели. В этот момент на цели вспыхивают эффекты и появляется урон —
+  /// не раньше и не позже.
+  static Duration impactDelay(AttackStyle style) {
+    final d = duration(style).inMilliseconds;
+    final ms = switch (style) {
+      // Таран врезается на 58% прохода, призыв инь-ян вспыхивает на ~45%.
+      AttackStyle.charge => d * 0.58,
+      AttackStyle.taichi => d * 0.45,
+      // Лазер: после накопления заряда луч доходит почти сразу.
+      AttackStyle.laser => d * 0.55,
+      // Остальные бьют в пике замаха — в конце прямого хода.
+      _ => d.toDouble(),
+    };
+    return Duration(milliseconds: ms.round());
+  }
+
   /// Стили, которые сами возвращают бойца на место за один проход 0 → 1.
   /// Для них экран не проигрывает анимацию в обратную сторону: у тарана
   /// обратный ход прошёл бы через замах, то есть откатил бы назад дальше

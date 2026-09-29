@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 
@@ -13,6 +14,7 @@ import '../format.dart';
 import '../gem_icon.dart';
 import '../battle_effects.dart';
 import '../status_icons.dart';
+import '../skill_vfx.dart';
 import '../slipper_sprite.dart';
 import '../theme.dart';
 import '../widgets/game_widgets.dart';
@@ -118,6 +120,55 @@ class _BattleScreenState extends State<BattleScreen>
     toggle(BattleEffect.shield, snap.shielded);
     toggle(BattleEffect.stun, snap.stunned);
   }
+  /// Вспышки поверх бойцов: блики ударов и эффекты скиллов.
+  final _vfx = <_Vfx>[];
+  int _vfxCounter = 0;
+
+  /// Скилл, который сейчас применяется: его удары получают эффекты.
+  _Cast? _cast;
+
+  /// Вспышка всего экрана в момент удара ультой.
+  int _screenFlash = 0;
+
+  void _spawn(Side side, VfxKind kind) {
+    final v = _Vfx(side: side, kind: kind, id: ++_vfxCounter);
+    _vfx.add(v);
+    Future.delayed(kind.duration, () {
+      if (mounted) setState(() => _vfx.remove(v));
+    });
+  }
+
+  /// Выполнить [apply] в момент касания удара [attacker] — не раньше и не
+  /// позже: тогда урон, реакция цели и вспышки совпадают с анимацией.
+  void _atImpact(Side attacker, VoidCallback apply) {
+    final style = (attacker == Side.player ? widget.player : widget.opponent).attackStyle;
+    Future.delayed(AttackAnimation.impactDelay(style), () {
+      if (!mounted || _finished) return;
+      setState(apply);
+    });
+  }
+
+  /// Удар дошёл до цели: блик, крит, эффекты скилла.
+  void _impactVfx(Side attacker, {required bool crit}) {
+    final target = attacker.other;
+    _spawn(target, crit ? VfxKind.crit : VfxKind.hit);
+    final cast = _cast;
+    if (cast == null || cast.side != attacker) return;
+    if (cast.ultimate) {
+      _spawn(target, VfxKind.ultBurst);
+      _screenFlash++;
+    } else {
+      _spawn(target, VfxKind.skillRing);
+    }
+    // Эффекты скилла — на первом ударе серии, чтобы не рябило.
+    if (!cast.effectsShown) {
+      cast.effectsShown = true;
+      for (final k in hitVfxOf(cast.skill)) {
+        _spawn(target, k);
+      }
+    }
+  }
+
   final _log = <String>[];
   final _popups = <_Popup>[];
   int _index = 0;
@@ -199,6 +250,11 @@ class _BattleScreenState extends State<BattleScreen>
         case SkillEvent(:final side, :final skill, :final ultimate):
           // Объявление скилла: баннер над бойцом и запись в лог.
           _banner = _Banner(side: side, text: skill.name, ultimate: ultimate);
+          _cast = _Cast(side: side, skill: skill, ultimate: ultimate);
+          // Что скилл делает с самим бойцом — видно сразу, при применении.
+          for (final k in castVfxOf(skill)) {
+            _spawn(side, k);
+          }
           _mood = {side: SlipperMood.attack, side.other: _mood[side.other]!};
           _log.insert(0, '${nameOf(side)}: ${skill.name}${ultimate ? '!' : ''}');
 
@@ -210,35 +266,48 @@ class _BattleScreenState extends State<BattleScreen>
             :final thorns
           ):
           final target = attacker.other;
-          if (target == Side.player) {
-            _hpPlayer = targetHpAfter;
-          } else {
-            _hpOpponent = targetHpAfter;
+          void land() {
+            if (target == Side.player) {
+              _hpPlayer = targetHpAfter;
+            } else {
+              _hpOpponent = targetHpAfter;
+            }
+            _mood[target] = targetHpAfter <= 0 ? SlipperMood.dead : SlipperMood.hurt;
+            _hits[target] = _hits[target]! + 1;
+            _soft[target] = thorns;
           }
-          _mood[target] = targetHpAfter <= 0 ? SlipperMood.dead : SlipperMood.hurt;
-          _hits[target] = _hits[target]! + 1;
-          _soft[target] = thorns;
+
           if (thorns) {
+            // Ответ брони — без замаха, поэтому сразу.
+            land();
             // Шипы — ответ брони, а не удар: замаха нет и поза не меняется.
             _popups.add(_Popup(side: target, text: '$damage', crit: false));
             _log.insert(0, '${nameOf(attacker)}: шипы на $damage');
           } else {
+            // Удар другой стороны — прежний скилл закончился.
+            if (_cast?.side != attacker) _cast = null;
             _lunging = attacker;
             if (_mood[attacker] != SlipperMood.dead) {
               _mood[attacker] = SlipperMood.attack;
             }
-            _popups.add(_Popup(side: target, text: crit ? '$damage!' : '$damage', crit: crit));
             _log.insert(0, '${nameOf(attacker)} бьёт на $damage${crit ? ' (крит!)' : ''}');
             _startLunge(attacker);
+            // Урон, цифра и вспышки — в момент касания.
+            _atImpact(attacker, () {
+              land();
+              _popups.add(_Popup(side: target, text: crit ? '$damage!' : '$damage', crit: crit));
+              _impactVfx(attacker, crit: crit);
+            });
           }
 
         case DodgeEvent(:final attacker):
           final target = attacker.other;
+          if (_cast?.side != attacker) _cast = null;
           _lunging = attacker;
           _mood = {attacker: SlipperMood.attack, target: SlipperMood.idle};
-          _popups.add(_Popup(side: target, text: 'мимо', crit: false));
           _log.insert(0, '${nameOf(attacker)} промахивается');
           _startLunge(attacker);
+          _atImpact(attacker, () => _popups.add(_Popup(side: target, text: 'мимо', crit: false)));
 
         case HealEvent(:final side, :final amount, :final hpAfter):
           if (side == Side.player) {
@@ -261,8 +330,10 @@ class _BattleScreenState extends State<BattleScreen>
           _soft[side] = false;
           _popups.add(_Popup(side: side, text: '$damage', crit: false, burn: true));
           _log.insert(0, '${nameOf(side)} ${poison ? 'отравлен' : 'горит'}: $damage');
+          _cast = null;
 
         case StunEvent(:final side):
+          _cast = null;
           _popups.add(_Popup(side: side, text: 'оглушён', crit: false));
           _log.insert(0, '${nameOf(side)} пропускает ход');
       }
@@ -273,7 +344,17 @@ class _BattleScreenState extends State<BattleScreen>
     // новое событие: иначе старый таймер гасил свежую реакцию на удар.
     final stamp = ++_moodCounter;
     _moodStamp = stamp;
-    Future.delayed(const Duration(milliseconds: 600), () {
+    final attacker = switch (e) {
+      HitEvent(:final attacker, :final thorns) when !thorns => attacker,
+      DodgeEvent(:final attacker) => attacker,
+      _ => null,
+    };
+    final impact = attacker == null
+        ? 0
+        : AttackAnimation.impactDelay(
+            (attacker == Side.player ? widget.player : widget.opponent).attackStyle,
+          ).inMilliseconds;
+    Future.delayed(Duration(milliseconds: max(600, impact + 380)), () {
       if (!mounted || _moodStamp != stamp) return;
       setState(() {
         if (_popups.isNotEmpty) _popups.removeAt(0);
@@ -470,6 +551,7 @@ class _BattleScreenState extends State<BattleScreen>
                               hits: _hits[Side.player]!,
                               softHit: _soft[Side.player]!,
                               popups: _popups.where((p) => p.side == Side.player),
+                              vfx: _vfx.where((v) => v.side == Side.player),
                             ),
                           ),
                           Positioned(
@@ -488,6 +570,7 @@ class _BattleScreenState extends State<BattleScreen>
                               hits: _hits[Side.opponent]!,
                               softHit: _soft[Side.opponent]!,
                               popups: _popups.where((p) => p.side == Side.opponent),
+                              vfx: _vfx.where((v) => v.side == Side.opponent),
                             ),
                           ),
                         ],
@@ -565,6 +648,19 @@ class _BattleScreenState extends State<BattleScreen>
         ),
         ),
       ),
+          // Удар ультой — короткая белая вспышка на весь экран.
+          if (_screenFlash > 0)
+            Positioned.fill(
+              child: IgnorePointer(
+                child: TweenAnimationBuilder<double>(
+                  key: ValueKey(_screenFlash),
+                  tween: Tween(begin: 1, end: 0),
+                  duration: const Duration(milliseconds: 260),
+                  builder: (_, t, _) =>
+                      ColoredBox(color: Colors.white.withValues(alpha: 0.35 * t)),
+                ),
+              ),
+            ),
           if (_introShown)
             Positioned.fill(
               child: AnimatedOpacity(
@@ -958,6 +1054,7 @@ class _Fighter extends StatelessWidget {
     required this.effects,
     required this.hits,
     required this.softHit,
+    this.vfx = const [],
     this.flip = false,
     this.dark = false,
   });
@@ -987,6 +1084,9 @@ class _Fighter extends StatelessWidget {
   final bool softHit;
 
   final Iterable<_Popup> popups;
+
+  /// Вспышки ударов и скиллов над этим бойцом.
+  final Iterable<_Vfx> vfx;
 
   /// Где внутри бокса реально стоит тапок: спрайт 2:1 прижат к низу и
   /// уменьшен на sizeFactor, а в самом PNG остаются поля по краям.
@@ -1038,6 +1138,25 @@ class _Fighter extends StatelessWidget {
               body: _bodyRect(box),
             ),
           ),
+          for (final v in vfx)
+            Positioned.fill(
+              child: IgnorePointer(
+                child: TweenAnimationBuilder<double>(
+                  key: ValueKey(v.id),
+                  tween: Tween(begin: 0, end: 1),
+                  duration: v.kind.duration,
+                  builder: (_, t, _) => CustomPaint(
+                    painter: VfxPainter(
+                      kind: v.kind,
+                      t: t,
+                      body: _bodyRect(box),
+                      // Удар по бойцу летит от соперника.
+                      dir: flip ? -1 : 1,
+                    ),
+                  ),
+                ),
+              ),
+            ),
           for (final p in popups)
             Positioned(
               top: -10,
@@ -1336,4 +1455,21 @@ class _RewardItem extends StatelessWidget {
       ],
     );
   }
+}
+
+/// Вспышка над бойцом.
+class _Vfx {
+  _Vfx({required this.side, required this.kind, required this.id});
+  final Side side;
+  final VfxKind kind;
+  final int id;
+}
+
+/// Применяемый скилл: чей, какой и показаны ли уже его эффекты.
+class _Cast {
+  _Cast({required this.side, required this.skill, required this.ultimate});
+  final Side side;
+  final ActiveSkill skill;
+  final bool ultimate;
+  bool effectsShown = false;
 }
