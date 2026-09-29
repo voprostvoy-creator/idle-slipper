@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:idle_slipper/game/daily.dart';
 import 'package:idle_slipper/game/dig.dart';
 import 'package:idle_slipper/game/game_state.dart';
 import 'package:idle_slipper/game/gems.dart';
@@ -111,11 +112,13 @@ void main() {
       }
       expect(game.digSwingsLeft, 0);
       expect(swings, lessThanOrEqualTo(DigBoard.swingsPerDay));
-      // Задание дня добавляет взмахи.
-      final quest = game.quests.first;
-      game.questProgress[quest.kind.name] = quest.target;
-      game.claimQuest(quest);
-      expect(game.digSwingsLeft, GameState.swingsPerQuest);
+      // Задание мини-игры добавляет взмахи, задание дня — нет.
+      final task = DigTasks.all.first;
+      game.questProgress[task.kind.name] = task.target;
+      game.claimQuest(game.quests.first);
+      expect(game.digSwingsLeft, 0);
+      game.claimDigTask(task);
+      expect(game.digSwingsLeft, task.swings);
       now = now.add(const Duration(days: 1));
       expect(game.dig(0), isNotNull);
     });

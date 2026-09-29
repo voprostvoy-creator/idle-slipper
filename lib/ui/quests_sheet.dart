@@ -96,7 +96,6 @@ class _QuestsSheet extends StatelessWidget {
             for (final q in quests) ...[
               _QuestRow(
                 title: q.title,
-                swings: GameState.swingsPerQuest,
                 value: game.questValue(q),
                 target: q.target,
                 coins: q.coins,
@@ -107,7 +106,6 @@ class _QuestsSheet extends StatelessWidget {
             ],
             _QuestRow(
               title: 'Все задания дня',
-              swings: GameState.swingsForBonus,
               value: quests.where(game.questClaimedToday).length,
               target: quests.length,
               coins: DailyQuests.bonusCoins,
@@ -137,12 +135,9 @@ class _QuestRow extends StatelessWidget {
     required this.coins,
     required this.claimed,
     required this.onClaim,
-    required this.swings,
     this.bonus = false,
   });
 
-  /// Сколько взмахов «Под диваном» даёт награда.
-  final int swings;
   final String title;
   final int value;
   final int target;
@@ -164,11 +159,7 @@ class _QuestRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(title, style: theme.textTheme.titleSmall),
-                Text(
-                  '+$swings ${swings == 1 ? 'взмах' : 'взмаха'} под диваном',
-                  style: theme.textTheme.labelSmall,
-                ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 6),
                 GameBar(
                   value: value / target,
                   height: 16,

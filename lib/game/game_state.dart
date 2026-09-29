@@ -83,6 +83,13 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
   int digSwingsUsed = 0;
   Set<int> digTaken = {};
 
+  /// Полученные сегодня награды за задания «Под диваном».
+  Set<String> digTasksClaimed = {};
+
+  /// Лавка за монеты: день и купленные в этот день виды.
+  String shopDay = '';
+  Set<String> shopBought = {};
+
   /// День, когда забран ежедневный кейс.
   String dailyCaseDay = '';
 
@@ -343,6 +350,9 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
     'digLayers': digLayers,
     'digSwings': digSwingsUsed,
     'digTaken': digTaken.toList(),
+    'digTasks': digTasksClaimed.toList(),
+    'shopDay': shopDay,
+    'shopBought': shopBought.toList(),
     'chestSince': chestSince.toIso8601String(),
     'storyReplays': storyReplaysUsed,
   };
@@ -430,6 +440,9 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
         for (final v in (json['digTaken'] as List? ?? const []))
           (v as num).toInt(),
       };
+      digTasksClaimed = {...?(json['digTasks'] as List?)?.cast<String>()};
+      shopDay = json['shopDay'] as String? ?? '';
+      shopBought = {...?(json['shopBought'] as List?)?.cast<String>()};
       _rollDay();
       final story = json['story'] as Map?;
       if (story != null) {
@@ -608,12 +621,24 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
 
   DigBoard get digBoard => DigBoard.forDay(clock());
 
-  /// Взмахи за задания дня: +3 за каждое задание, +1 за бонус — ещё 10.
-  static const swingsPerQuest = 3;
-  static const swingsForBonus = 1;
+  /// Взмахи за задания мини-игры (свои, не задания дня).
+  int get digSwingsEarned => [
+        for (final t in DigTasks.all)
+          if (digTasksClaimed.contains(t.kind.name)) t.swings,
+      ].fold(0, (a, b) => a + b);
 
-  int get digSwingsEarned =>
-      questClaimed.length * swingsPerQuest + (questBonusClaimed ? swingsForBonus : 0);
+  int digTaskValue(DigTask t) => min(t.target, questProgress[t.kind.name] ?? 0);
+
+  bool digTaskClaimed(DigTask t) => digTasksClaimed.contains(t.kind.name);
+
+  bool canClaimDigTask(DigTask t) => !digTaskClaimed(t) && digTaskValue(t) >= t.target;
+
+  void claimDigTask(DigTask t) {
+    if (!canClaimDigTask(t)) return;
+    digTasksClaimed.add(t.kind.name);
+    _save();
+    notifyListeners();
+  }
 
   int get digSwingsLeft =>
       max(0, DigBoard.swingsPerDay + digSwingsEarned - digSwingsUsed);
@@ -626,6 +651,7 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
     digLayers = [for (final c in digBoard.cells) c.layers];
     digSwingsUsed = 0;
     digTaken = {};
+    digTasksClaimed = {};
   }
 
   bool digRevealed(int i) => digLayers.length > i && digLayers[i] <= 0;
@@ -779,6 +805,28 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
     threads += amount;
     chestSince = clock();
     _progress(QuestKind.chest);
+    _save();
+    notifyListeners();
+  }
+
+  // --- Лавка за монеты ------------------------------------------------------
+
+  List<SlipperKind> get shopOffers => CoinShop.forDay(dayNumber(clock()));
+
+  bool shopSold(SlipperKind k) => shopDay == dayKey(clock()) && shopBought.contains(k.id);
+
+  bool canBuy(SlipperKind k) => !shopSold(k) && coins >= CoinShop.priceOf(k.rarity);
+
+  void buyFromShop(SlipperKind k) {
+    if (!canBuy(k) || !shopOffers.contains(k)) return;
+    final today = dayKey(clock());
+    if (shopDay != today) {
+      shopDay = today;
+      shopBought = {};
+    }
+    coins -= CoinShop.priceOf(k.rarity);
+    inventory[k.id] = count(k.id) + 1;
+    shopBought.add(k.id);
     _save();
     notifyListeners();
   }

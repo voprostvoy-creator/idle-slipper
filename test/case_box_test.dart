@@ -26,10 +26,10 @@ void main() {
     expect(ad[Rarity.legendary], greaterThan(0));
   });
 
-  test('mythic never drops from any case', () {
-    for (final type in CaseCatalog.all) {
-      expect(type.chances()[Rarity.mythic], isNull, reason: type.id);
-    }
+  test('mythic drops only from the ad case, at 1%', () {
+    expect(CaseCatalog.standard.chances()[Rarity.mythic], isNull);
+    expect(CaseCatalog.dailyCase.chances()[Rarity.mythic], isNull);
+    expect(CaseCatalog.ad.chances()[Rarity.mythic], closeTo(0.01, 1e-9));
   });
 
   test('roll respects weights over many draws', () {
@@ -72,5 +72,13 @@ void main() {
       );
       expect(File(k.asset).existsSync(), isTrue, reason: k.asset);
     }
+  });
+
+  test('coin shop: 3 different non-common slippers per day, stable within a day', () {
+    final a = CoinShop.forDay(20000);
+    expect(a, hasLength(3));
+    expect(a.map((k) => k.id).toSet(), hasLength(3));
+    expect(a.every((k) => k.rarity != Rarity.common), isTrue);
+    expect(CoinShop.forDay(20000).map((k) => k.id), a.map((k) => k.id));
   });
 }

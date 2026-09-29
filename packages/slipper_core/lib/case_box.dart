@@ -93,13 +93,14 @@ class CaseCatalog {
   static const ad = CaseType(
     id: 'ad',
     name: 'Кейс за рекламу',
-    description: 'Шансы на редкое выше, может выпасть легендарный тапок.',
+    description: 'Шансы на редкое выше, может выпасть даже мифический тапок.',
     price: 0,
     weights: {
-      Rarity.common: 30,
+      Rarity.common: 29,
       Rarity.rare: 38,
       Rarity.epic: 25,
       Rarity.legendary: 7,
+      Rarity.mythic: 1,
     },
   );
 
@@ -107,4 +108,27 @@ class CaseCatalog {
 
   static CaseType byId(String id) =>
       all.firstWhere((c) => c.id == id, orElse: () => standard);
+}
+
+/// Лавка за монеты: три случайных тапка (кроме обычных), набор меняется
+/// каждый день. Каждый можно купить один раз за день.
+class CoinShop {
+  CoinShop._();
+
+  static const offers = 3;
+
+  static int priceOf(Rarity r) => switch (r) {
+        Rarity.common => 100,
+        Rarity.rare => 200,
+        Rarity.epic => 500,
+        Rarity.legendary => 1500,
+        Rarity.mythic => 4000,
+      };
+
+  /// Предложения на день [day] (номер дня): разные виды, без обычных.
+  static List<SlipperKind> forDay(int day) {
+    final pool = [for (final k in SlipperCatalog.all) if (k.rarity != Rarity.common) k]
+      ..shuffle(Random(day * 31 + 5));
+    return pool.take(offers).toList();
+  }
 }

@@ -47,7 +47,7 @@ class DigScreen extends StatelessWidget {
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'Ещё взмахи — за задания дня',
+                      'Ещё взмахи — за задания ниже',
                       style: theme.textTheme.bodySmall,
                       textAlign: TextAlign.end,
                     ),
@@ -80,6 +80,18 @@ class DigScreen extends StatelessWidget {
                 onTap: () => _tap(context, board, i),
               ),
             ),
+            const SizedBox(height: 16),
+            const StrokeText('Задания', size: 22),
+            const SizedBox(height: 4),
+            Text(
+              'Каждое задание даёт ещё взмахи на сегодня.',
+              style: theme.textTheme.bodySmall,
+            ),
+            const SizedBox(height: 8),
+            for (final t in DigTasks.all) ...[
+              _DigTaskRow(game: game, task: t),
+              const SizedBox(height: 8),
+            ],
           ],
         );
       },
@@ -309,6 +321,59 @@ class DigArt extends StatelessWidget {
         Positioned(right: 10, bottom: 8, child: Icon(Icons.auto_awesome, size: 18, color: GameColors.gold)),
         CaseIcon(size: 54),
       ],
+    );
+  }
+}
+
+/// Задание мини-игры: прогресс и кнопка «+N взмахов».
+class _DigTaskRow extends StatelessWidget {
+  const _DigTaskRow({required this.game, required this.task});
+
+  final GameState game;
+  final DigTask task;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final value = game.digTaskValue(task);
+    final claimed = game.digTaskClaimed(task);
+    final can = game.canClaimDigTask(task);
+    return GamePanel(
+      padding: const EdgeInsets.fromLTRB(12, 10, 10, 10),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(task.title, style: theme.textTheme.titleSmall),
+                const SizedBox(height: 6),
+                GameBar(value: value / task.target, height: 16, label: '$value/${task.target}'),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          SizedBox(
+            width: 84,
+            child: claimed
+                ? const Icon(Icons.check_circle, color: GameColors.green, size: 30)
+                : GameButton(
+                    color: can ? GameColors.gold : GameColors.panelDark,
+                    height: 38,
+                    padding: const EdgeInsets.symmetric(horizontal: 6),
+                    onPressed: can ? () => game.claimDigTask(task) : null,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.back_hand_rounded, size: 16, color: GameColors.orange),
+                        const SizedBox(width: 4),
+                        Text('+${task.swings}'),
+                      ],
+                    ),
+                  ),
+          ),
+        ],
+      ),
     );
   }
 }
