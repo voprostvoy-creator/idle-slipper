@@ -259,12 +259,18 @@ class _UpgradeTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Text(stat.label, style: theme.textTheme.titleMedium),
-                    const SizedBox(width: 8),
-                    GameBadge(text: 'ур. ${game.slipper.level(stat)}', color: color),
-                  ],
+                // На больших уровнях «Здоровье ур. 55» не влезает рядом с ценой —
+                // строка ужимается, а не наезжает на кнопку.
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Row(
+                    children: [
+                      Text(stat.label, style: theme.textTheme.titleMedium),
+                      const SizedBox(width: 8),
+                      GameBadge(text: 'ур. ${game.slipper.level(stat)}', color: color),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 3),
                 Text(_value(), style: theme.textTheme.bodySmall),

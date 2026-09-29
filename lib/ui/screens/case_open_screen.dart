@@ -44,8 +44,10 @@ class _CaseOpenScreenState extends State<CaseOpenScreen>
     vsync: this,
     duration: const Duration(milliseconds: 4600),
   );
-  late final Animation<double> _curve =
-      CurvedAnimation(parent: _spin, curve: Curves.easeOutQuart);
+  late final Animation<double> _curve = CurvedAnimation(
+    parent: _spin,
+    curve: Curves.easeOutQuart,
+  );
 
   bool _done = false;
   bool _sold = false;
@@ -107,7 +109,10 @@ class _CaseOpenScreenState extends State<CaseOpenScreen>
                       color: GameColors.panelLight,
                       height: 36,
                       padding: const EdgeInsets.symmetric(horizontal: 10),
-                      child: const Icon(Icons.arrow_back_rounded, color: GameColors.text),
+                      child: const Icon(
+                        Icons.arrow_back_rounded,
+                        color: GameColors.text,
+                      ),
                     ),
                     const Spacer(),
                     Flexible(
@@ -151,10 +156,12 @@ class _CaseOpenScreenState extends State<CaseOpenScreen>
   Widget _result(ThemeData theme) {
     final kind = _prize;
     final count = widget.game.count(kind.id);
-    final starCost = widget.game.nextStarCost(kind.id);
     final sellPrice = kind.rarity.sellPrice;
     // Последний экземпляр надетого тапка продавать нельзя.
-    final canSell = !_sold && count > 0 && !(count == 1 && kind.id == widget.game.slipper.kindId);
+    final canSell =
+        !_sold &&
+        count > 0 &&
+        !(count == 1 && kind.id == widget.game.slipper.kindId);
     final canOpenAgain = widget.game.canOpen(widget.type);
     return GamePanel(
       child: Column(
@@ -162,23 +169,7 @@ class _CaseOpenScreenState extends State<CaseOpenScreen>
         children: [
           StrokeText(kind.name, size: 24, color: kind.rarity.color),
           const SizedBox(height: 6),
-          Wrap(
-            spacing: 6,
-            runSpacing: 4,
-            alignment: WrapAlignment.center,
-            children: [
-              GameBadge(text: kind.rarity.label, color: kind.rarity.color),
-              for (final e in kind.bonuses.entries)
-                GameBadge(text: e.key.format(e.value), color: GameColors.green),
-              if (count > 1 && !_sold)
-                GameBadge(text: 'в коллекции ×$count', color: GameColors.panelLight),
-              if (!_sold && starCost != null)
-                GameBadge(
-                  text: 'копии на ★: ${widget.game.copiesOf(kind.id)}/${starCost.copies}',
-                  color: GameColors.gold,
-                ),
-            ],
-          ),
+          GameBadge(text: kind.rarity.label, color: kind.rarity.color),
           const SizedBox(height: 14),
           if (_sold)
             Row(
@@ -186,7 +177,11 @@ class _CaseOpenScreenState extends State<CaseOpenScreen>
               children: [
                 const ThreadIcon(size: 22),
                 const SizedBox(width: 6),
-                StrokeText('+${fmtNum(sellPrice)}', size: 22, color: GameColors.thread),
+                StrokeText(
+                  '+${fmtNum(sellPrice)}',
+                  size: 22,
+                  color: GameColors.thread,
+                ),
               ],
             )
           else
@@ -194,22 +189,36 @@ class _CaseOpenScreenState extends State<CaseOpenScreen>
               children: [
                 Expanded(
                   child: GameButton(
-                    color: canSell ? GameColors.panelLight : GameColors.panelDark,
+                    color: canSell
+                        ? GameColors.panelLight
+                        : GameColors.panelDark,
                     onPressed: canSell ? _sell : null,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          'Продать ',
-                          style: TextStyle(color: canSell ? GameColors.text : GameColors.textDim),
-                        ),
-                        const ThreadIcon(size: 16),
-                        const SizedBox(width: 4),
-                        Text(
-                          fmtNum(sellPrice),
-                          style: TextStyle(color: canSell ? GameColors.text : GameColors.textDim),
-                        ),
-                      ],
+                    // Цена бывает длинной — надпись ужимается, а не вылезает.
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'Продать ',
+                            style: TextStyle(
+                              color: canSell
+                                  ? GameColors.text
+                                  : GameColors.textDim,
+                            ),
+                          ),
+                          const ThreadIcon(size: 16),
+                          const SizedBox(width: 4),
+                          Text(
+                            fmtNum(sellPrice),
+                            style: TextStyle(
+                              color: canSell
+                                  ? GameColors.text
+                                  : GameColors.textDim,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -239,7 +248,10 @@ class _CaseOpenScreenState extends State<CaseOpenScreen>
                   child: GameButton(
                     color: GameColors.panelLight,
                     onPressed: () => Navigator.of(context).pop(),
-                    child: const Text('В магазин', style: TextStyle(color: GameColors.text)),
+                    child: const Text(
+                      'В магазин',
+                      style: TextStyle(color: GameColors.text),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -248,7 +260,9 @@ class _CaseOpenScreenState extends State<CaseOpenScreen>
                 flex: _sold ? 1 : 2,
                 child: GameButton(
                   color: canOpenAgain
-                      ? (widget.type.isFree ? GameColors.green : GameColors.gold)
+                      ? (widget.type.isFree
+                            ? GameColors.green
+                            : GameColors.gold)
                       : GameColors.panelDark,
                   onPressed: canOpenAgain ? _again : null,
                   child: widget.type.daily
@@ -310,7 +324,8 @@ class _Reel extends StatelessWidget {
             child: ClipRect(
               child: LayoutBuilder(
                 builder: (context, c) {
-                  final target = winnerIndex * itemW - (c.maxWidth - itemW) / 2 + jitter;
+                  final target =
+                      winnerIndex * itemW - (c.maxWidth - itemW) / 2 + jitter;
                   return AnimatedBuilder(
                     animation: progress,
                     builder: (context, _) {
@@ -322,7 +337,11 @@ class _Reel extends StatelessWidget {
                             Positioned(
                               left: dx + i * itemW,
                               top: 14,
-                              child: _ReelItem(kind: reel[i], width: itemW, height: itemH),
+                              child: _ReelItem(
+                                kind: reel[i],
+                                width: itemW,
+                                height: itemH,
+                              ),
                             ),
                         ],
                       );
@@ -340,7 +359,11 @@ class _Reel extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const _Marker(down: true),
-                  Container(width: 3, height: itemH, color: GameColors.gold.withValues(alpha: 0.35)),
+                  Container(
+                    width: 3,
+                    height: itemH,
+                    color: GameColors.gold.withValues(alpha: 0.35),
+                  ),
                   const _Marker(down: false),
                 ],
               ),
@@ -390,7 +413,11 @@ class _TrianglePainter extends CustomPainter {
 
 /// Карточка в ленте: фон окрашен по редкости.
 class _ReelItem extends StatelessWidget {
-  const _ReelItem({required this.kind, required this.width, required this.height});
+  const _ReelItem({
+    required this.kind,
+    required this.width,
+    required this.height,
+  });
 
   final SlipperKind kind;
   final double width;
@@ -426,7 +453,9 @@ class _ReelItem extends StatelessWidget {
               height: 6,
               decoration: BoxDecoration(
                 color: c,
-                borderRadius: const BorderRadius.vertical(bottom: Radius.circular(9)),
+                borderRadius: const BorderRadius.vertical(
+                  bottom: Radius.circular(9),
+                ),
               ),
             ),
           ),

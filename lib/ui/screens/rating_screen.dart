@@ -319,6 +319,7 @@ class RatingScreen extends StatelessWidget {
   Future<void> _createAccount(BuildContext context) async {
     try {
       await game.createAccount();
+      if (context.mounted) await showNicknameDialog(context, game);
       if (context.mounted) {
         await showAccountDialog(context, game, firstTime: true);
       }

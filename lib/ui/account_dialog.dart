@@ -258,3 +258,50 @@ Future<bool> showLoginDialog(BuildContext context, GameState game, {bool replaci
   );
   return ok;
 }
+
+/// Выбор ника: так тапок будет называться в рейтинге и у соперников.
+Future<void> showNicknameDialog(BuildContext context, GameState game) async {
+  final controller = TextEditingController();
+  await showDialog<void>(
+    context: context,
+    barrierDismissible: false,
+    builder: (context) => StatefulBuilder(
+      builder: (context, setState) {
+        final name = controller.text.trim();
+        final ok = name.length >= 2;
+        return AlertDialog(
+          title: const StrokeText('Придумай ник', size: 22),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: controller,
+                autofocus: true,
+                maxLength: 16,
+                decoration: const InputDecoration(labelText: 'Ник', hintText: 'Шлёпа Гроза'),
+                onChanged: (_) => setState(() {}),
+              ),
+              const Text(
+                'Так тебя увидят в рейтинге и соперники на арене. '
+                'Поменять можно на главной, нажав на имя.',
+                style: TextStyle(fontSize: 12, color: GameColors.textDim),
+              ),
+            ],
+          ),
+          actions: [
+            GameButton(
+              color: ok ? GameColors.green : GameColors.panelDark,
+              onPressed: ok
+                  ? () {
+                      game.rename(name);
+                      Navigator.pop(context);
+                    }
+                  : null,
+              child: const Text('Готово'),
+            ),
+          ],
+        );
+      },
+    ),
+  );
+}

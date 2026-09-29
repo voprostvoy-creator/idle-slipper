@@ -33,6 +33,8 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     try {
       await widget.game.createAccount();
       if (!mounted) return;
+      await showNicknameDialog(context, widget.game);
+      if (!mounted) return;
       await showAccountDialog(context, widget.game, firstTime: true);
       widget.onDone();
     } on ServerException catch (e) {

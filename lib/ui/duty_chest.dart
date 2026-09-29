@@ -28,7 +28,11 @@ class DutyChestTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Сундук дежурства', style: theme.textTheme.titleMedium),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text('Сундук дежурства', style: theme.textTheme.titleMedium),
+                ),
                 const SizedBox(height: 4),
                 GameBar(
                   value: game.chestFill,
