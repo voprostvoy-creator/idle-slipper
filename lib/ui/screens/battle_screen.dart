@@ -33,6 +33,7 @@ class BattleScreen extends StatefulWidget {
     this.rewardGem,
     this.exitLabel = 'На арену',
     this.intro,
+    this.background = 'assets/ui/room_bg.jpg',
   });
 
   final Combatant player;
@@ -55,6 +56,9 @@ class BattleScreen extends StatefulWidget {
 
   /// Представление бойцов перед боем; null — бой начинается сразу.
   final BattleIntro? intro;
+
+  /// Фон боя: комната в сюжете, стадион на арене.
+  final String background;
 
   @override
   State<BattleScreen> createState() => _BattleScreenState();
@@ -469,7 +473,7 @@ class _BattleScreenState extends State<BattleScreen>
       body: Stack(
         children: [
           ArtBackground(
-        asset: 'assets/ui/room_bg.jpg',
+        asset: widget.background,
         child: SafeArea(
         child: Column(
           children: [

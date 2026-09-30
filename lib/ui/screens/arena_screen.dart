@@ -197,6 +197,7 @@ class _ArenaScreenState extends State<ArenaScreen> {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => BattleScreen(
+          background: 'assets/ui/arena_bg.webp',
           player: me,
           opponent: outcome.opponent.slipper,
           result: outcome.result,
