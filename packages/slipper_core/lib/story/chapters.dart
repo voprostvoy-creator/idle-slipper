@@ -166,5 +166,55 @@ class StoryCatalog {
     ],
   );
 
-  static const chapters = [chapter1, chapter2];
+  static const chapter3 = Chapter(
+    id: 'pantry',
+    number: 3,
+    title: 'Кладовка',
+    intro: 'Насекомые отступили в кладовку к крупе и старым шубам. Там у них целая '
+        'армия во главе с муравьиной маткой.',
+    stages: [
+      Stage(kind: EnemyCatalog.moth, levels: (22, 19, 22, 22), threads: 120, coins: 40),
+      Stage(kind: EnemyCatalog.ant, levels: (23, 21, 23, 21), threads: 140, coins: 45),
+      Stage(kind: EnemyCatalog.wasp, levels: (24, 20, 24, 23), threads: 160, coins: 50),
+      Stage(kind: EnemyCatalog.moth, levels: (25, 22, 25, 25), threads: 180, coins: 55),
+      Stage(kind: EnemyCatalog.barkBeetle, levels: (24, 23, 25, 20), threads: 240, coins: 90),
+      Stage(
+        kind: EnemyCatalog.moth,
+        levels: (26, 23, 27, 27),
+        threads: 240, coins: 80,
+        name: 'Бледная моль',
+        elite: true,
+      ),
+      Stage(
+        kind: EnemyCatalog.ant,
+        levels: (27, 25, 28, 25),
+        threads: 280, coins: 90,
+        name: 'Муравей-берсерк',
+        elite: true,
+      ),
+      Stage(
+        kind: EnemyCatalog.wasp,
+        levels: (28, 24, 28, 27),
+        threads: 320, coins: 110,
+        name: 'Шершень',
+        elite: true,
+      ),
+      Stage(
+        kind: EnemyCatalog.barkBeetle,
+        levels: (27, 26, 28, 22),
+        threads: 400, coins: 140,
+        name: 'Жук-древоточец',
+        elite: true,
+      ),
+      Stage(
+        kind: EnemyCatalog.antQueen,
+        levels: (23, 20, 24, 19),
+        threads: 1000, coins: 400,
+        boss: true,
+        rewardKindId: 'red_spike',
+      ),
+    ],
+  );
+
+  static const chapters = [chapter1, chapter2, chapter3];
 }

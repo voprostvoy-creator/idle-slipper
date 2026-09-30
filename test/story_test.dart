@@ -61,4 +61,12 @@ void main() {
     expect(_winRate(_even(9), c2.stages.first), lessThan(0.5));
     expect(_winRate(_even(30), c2.stages.last), greaterThan(0.9));
   });
+
+  test('глава 3: 10 боёв, босс даёт тапок, продолжает вторую по сложности', () {
+    const c3 = StoryCatalog.chapter3;
+    expect(c3.stages, hasLength(10));
+    expect(c3.stages.last.rewardKindId, isNotNull);
+    expect(_winRate(_even(17), c3.stages.first), lessThan(0.5));
+    expect(_winRate(_even(50), c3.stages.last), greaterThan(0.9));
+  });
 }

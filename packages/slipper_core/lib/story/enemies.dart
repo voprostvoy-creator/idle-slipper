@@ -443,4 +443,181 @@ class EnemyCatalog {
       ),
     ),
   );
+
+  // --- Глава 3: «Кладовка» ---------------------------------------------------
+
+  /// Моль: пыльца глушит скиллы и ослабляет, часто уворачивается.
+  static const moth = EnemyKind(
+    id: 'moth',
+    name: 'Моль',
+    attackStyle: AttackStyle.blink,
+    size: 0.66,
+    hp: 0.8,
+    attack: 0.9,
+    defense: 0.7,
+    speed: 1.2,
+    skills: SkillSet(
+      active: ActiveSkill(
+        name: 'Пыльца',
+        description: 'Атака с уроном ×1.1, противник 2 хода не может применять скиллы.',
+        damageMul: 1.1,
+        silenceTurns: 2,
+      ),
+      activeCooldown: 3,
+      passive: PassiveSkill(
+        name: 'Мягкие крылья',
+        description: '+12% к шансу уворота.',
+        dodgeBonus: 0.12,
+      ),
+      ultimate: ActiveSkill(
+        name: 'Пыльное облако',
+        description: 'Атака с уроном ×1.4, −30% урона противника (3 хода) и немота на 2 хода.',
+        damageMul: 1.4,
+        weaken: 0.3,
+        weakenTurns: 3,
+        silenceTurns: 2,
+      ),
+    ),
+  );
+
+  /// Муравей-солдат: копит ярость и отвечает на удары.
+  static const ant = EnemyKind(
+    id: 'ant',
+    name: 'Муравей-солдат',
+    attackStyle: AttackStyle.dash,
+    size: 0.68,
+    defense: 1.1,
+    skills: SkillSet(
+      active: ActiveSkill(
+        name: 'Хватка жвалами',
+        description: 'Две атаки по ×0.9.',
+        damageMul: 0.9,
+        hits: 2,
+      ),
+      activeCooldown: 3,
+      passive: PassiveSkill(
+        name: 'Боевой раж',
+        description: 'Каждый свой удар +6% урона (до 5 раз), 20% шанс контратаки.',
+        rageStep: 0.06,
+        counterChance: 0.2,
+      ),
+      ultimate: ActiveSkill(
+        name: 'Муравьиный натиск',
+        description: 'Три атаки по ×1.1 и +30% скорости (2 хода).',
+        damageMul: 1.1,
+        hits: 3,
+        haste: 0.3,
+        hasteTurns: 2,
+      ),
+    ),
+  );
+
+  /// Оса: крит, яд и уязвимость.
+  static const wasp = EnemyKind(
+    id: 'wasp',
+    name: 'Оса',
+    attackStyle: AttackStyle.lunge,
+    size: 0.66,
+    hp: 0.85,
+    attack: 1.15,
+    defense: 0.8,
+    speed: 1.15,
+    skills: SkillSet(
+      active: ActiveSkill(
+        name: 'Жало',
+        description: 'Атака с уроном ×1.3, 2 стопки яда, противник уязвим: +20% урона (2 хода).',
+        damageMul: 1.3,
+        poisonStacks: 2,
+        vulnerable: 0.2,
+        vulnerableTurns: 2,
+      ),
+      activeCooldown: 3,
+      passive: PassiveSkill(
+        name: 'Меткость',
+        description: '+12% к шансу крита, криты сильнее на 25%.',
+        critBonus: 0.12,
+        critDamageBonus: 0.25,
+      ),
+      ultimate: ActiveSkill(
+        name: 'Рой жал',
+        description: 'Три атаки по ×1.0 и 4 стопки яда.',
+        damageMul: 1,
+        hits: 3,
+        poisonStacks: 4,
+      ),
+    ),
+  );
+
+  /// Жук-короед: пробивает броню и снимает защиту.
+  static const barkBeetle = EnemyKind(
+    id: 'bark_beetle',
+    name: 'Жук-короед',
+    attackStyle: AttackStyle.charge,
+    size: 0.74,
+    hp: 1.3,
+    defense: 1.5,
+    speed: 0.8,
+    skills: SkillSet(
+      active: ActiveSkill(
+        name: 'Прогрызть',
+        description: 'Атака с уроном ×1.4, игнорирует 50% защиты, снимает с противника '
+            'щит, барьер и усиления.',
+        damageMul: 1.4,
+        pierce: 0.5,
+        dispel: true,
+      ),
+      activeCooldown: 3,
+      passive: PassiveSkill(
+        name: 'Древесный панцирь',
+        description: '+20 к защите, 10% урона возвращается атакующему.',
+        defenseBonus: 20,
+        thorns: 0.1,
+      ),
+      ultimate: ActiveSkill(
+        name: 'Жвалы-пилы',
+        description: 'Атака с уроном ×2.2, игнорирует 60% защиты, противник пропускает ход.',
+        damageMul: 2.2,
+        pierce: 0.6,
+        stun: true,
+      ),
+    ),
+  );
+
+  /// Муравьиная матка — босс третьей главы.
+  static const antQueen = EnemyKind(
+    id: 'ant_queen',
+    name: 'Муравьиная матка',
+    attackStyle: AttackStyle.stomp,
+    size: 1.05,
+    hp: 1.5,
+    attack: 1.1,
+    defense: 1.25,
+    speed: 0.95,
+    skills: SkillSet(
+      active: ActiveSkill(
+        name: 'Зов армии',
+        description: 'Три атаки по ×0.8, противник уязвим: +20% урона (2 хода).',
+        damageMul: 0.8,
+        hits: 3,
+        vulnerable: 0.2,
+        vulnerableTurns: 2,
+      ),
+      activeCooldown: 3,
+      passive: PassiveSkill(
+        name: 'Королевская кровь',
+        description: 'Каждый свой удар +5% урона (до 5 раз). Второе дыхание: раз за бой '
+            'не погибает и остаётся с 25% здоровья.',
+        rageStep: 0.05,
+        revivePercent: 0.25,
+      ),
+      ultimate: ActiveSkill(
+        name: 'Приказ матки',
+        description: 'Атака с уроном ×2.3, противник пропускает ход, следующий удар '
+            'по себе возвращает обратно.',
+        damageMul: 2.3,
+        stun: true,
+        reflect: true,
+      ),
+    ),
+  );
 }

@@ -14,7 +14,7 @@ void main() {
         final enemy = stage.enemy;
         String row = '';
         int? first;
-        for (var lv = 6; lv <= 30; lv += 2) {
+        for (var lv = 18; lv <= 48; lv += 2) {
           final me = Slipper(
             name: 'я',
             kindId: kindId,
