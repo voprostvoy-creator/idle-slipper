@@ -55,7 +55,7 @@ class _AccountDialogState extends State<_AccountDialog> {
         setState(() => _status = 'Нет доступа к галерее');
         return;
       }
-      await Gal.putImageBytes(png!.buffer.asUint8List(), name: 'boi-tapkov-${widget.login}');
+      await Gal.putImageBytes(png!.buffer.asUint8List(), name: 'bitva-tapkov-${widget.login}');
       setState(() => _status = 'Картинка сохранена в галерею');
     } catch (_) {
       setState(() => _status = 'Не удалось сохранить — скопируй данные');
@@ -64,7 +64,7 @@ class _AccountDialogState extends State<_AccountDialog> {
 
   Future<void> _copy() async {
     await Clipboard.setData(
-      ClipboardData(text: 'Бои Тапков\nЛогин: ${widget.login}\nПароль: ${widget.password}'),
+      ClipboardData(text: 'Битва тапков\nЛогин: ${widget.login}\nПароль: ${widget.password}'),
     );
     setState(() => _status = 'Скопировано');
   }
@@ -94,7 +94,7 @@ class _AccountDialogState extends State<_AccountDialog> {
               ),
               child: Column(
                 children: [
-                  const StrokeText('Бои Тапков', size: 24, color: GameColors.gold),
+                  const StrokeText('Битва тапков', size: 24, color: GameColors.gold),
                   const SizedBox(height: 2),
                   Text('Данные для входа', style: theme.textTheme.bodySmall),
                   const SizedBox(height: 12),

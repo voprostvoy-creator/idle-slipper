@@ -35,7 +35,7 @@ class _SlipperAppState extends State<SlipperApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Бои Тапков',
+      title: 'Битва тапков',
       debugShowCheckedModeBanner: false,
       theme: buildGameTheme(),
       home: _welcome

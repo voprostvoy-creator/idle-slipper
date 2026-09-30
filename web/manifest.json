@@ -1,6 +1,6 @@
 {
-    "name": "idle_slipper",
-    "short_name": "idle_slipper",
+    "name": "Битва тапков — жуки наступают",
+    "short_name": "Битва тапков",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

@@ -60,7 +60,9 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
             child: Column(
               children: [
                 const Spacer(),
-                const StrokeText('Бои Тапков', size: 42, color: GameColors.gold),
+                const StrokeText('Битва тапков', size: 40, color: GameColors.gold),
+                const SizedBox(height: 2),
+                const StrokeText('Жуки наступают', size: 20, color: GameColors.orange),
                 const SizedBox(height: 16),
                 SlipperSprite(fighter: widget.game.slipper, width: 240, showSize: false),
                 const SizedBox(height: 16),
