@@ -7,6 +7,7 @@ import '../format.dart';
 import '../gem_icon.dart';
 import '../slipper_sprite.dart';
 import '../theme.dart';
+import '../toast.dart';
 import '../widgets/game_widgets.dart';
 import 'battle_hub_screen.dart';
 import 'battle_screen.dart';
@@ -98,11 +99,6 @@ class DigScreen extends StatelessWidget {
     );
   }
 
-  void _toast(BuildContext context, String text) {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(text), duration: const Duration(milliseconds: 1400)));
-  }
 
   void _tap(BuildContext context, DigBoard board, int i) {
     if (game.digGuardWaiting(i)) {
@@ -111,21 +107,22 @@ class DigScreen extends StatelessWidget {
     }
     if (game.digRevealed(i)) return;
     if (game.digSwingsLeft == 0) {
-      _toast(context, 'Взмахи на сегодня кончились — завтра новое поле');
+      showToast(context, 'Взмахи на сегодня кончились — завтра новое поле', kind: ToastKind.warn);
       return;
     }
     final out = game.dig(i);
     if (out == null || !out.revealed) return;
     final gem = out.gem;
-    final text = switch (board.cells[i].loot) {
-      DigLoot.threads => '+${fmtNum(out.threads)} ниток',
-      DigLoot.coins => '+${out.coins} монет',
-      DigLoot.gem => 'Гем! ${gemTitle(gem!)}',
-      DigLoot.treasure => 'Клад! ${gemTitle(gem!)}',
-      DigLoot.guard => 'Страж! Победи его, чтобы забрать гем',
-      DigLoot.empty => 'Пусто',
+    final (text, kind, icon) = switch (board.cells[i].loot) {
+      DigLoot.threads => ('+${fmtNum(out.threads)} ниток', ToastKind.good, toastThread()),
+      DigLoot.coins => ('+${out.coins} монет', ToastKind.good, toastCoin()),
+      DigLoot.gem => ('Гем! ${gemTitle(gem!)}', ToastKind.reward, GemIcon(gem: gem, size: 22, showLevel: false)),
+      DigLoot.treasure =>
+        ('Клад! ${gemTitle(gem!)}', ToastKind.reward, GemIcon(gem: gem, size: 22, showLevel: false)),
+      DigLoot.guard => ('Страж! Победи его, чтобы забрать гем', ToastKind.warn, null),
+      DigLoot.empty => ('Пусто', ToastKind.info, null),
     };
-    _toast(context, text);
+    showToast(context, text, kind: kind, icon: icon);
   }
 
   Future<void> _guardDialog(BuildContext context, int i) async {

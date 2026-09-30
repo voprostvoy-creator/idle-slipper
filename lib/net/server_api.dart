@@ -14,6 +14,7 @@ class BoardEntry {
     required this.rating,
     required this.slipper,
     this.bot = false,
+    this.ranked = true,
   });
 
   final int place;
@@ -22,12 +23,16 @@ class BoardEntry {
   final Slipper slipper;
   final bool bot;
 
+  /// Стоит в таблице: бот или провёл хотя бы один бой на арене.
+  final bool ranked;
+
   factory BoardEntry.fromJson(Map<String, dynamic> j) => BoardEntry(
         place: (j['place'] as num?)?.toInt() ?? 0,
         id: j['id'] as String,
         rating: (j['rating'] as num).toInt(),
         slipper: Slipper.fromJson((j['slipper'] as Map).cast<String, dynamic>()),
         bot: j['bot'] as bool? ?? false,
+        ranked: j['ranked'] as bool? ?? true,
       );
 }
 

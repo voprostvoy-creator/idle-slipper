@@ -4,6 +4,7 @@ import '../../game/game_state.dart';
 import '../../net/server_api.dart';
 import '../slipper_sprite.dart';
 import '../theme.dart';
+import '../toast.dart';
 import '../widgets/game_widgets.dart';
 import 'battle_hub_screen.dart';
 import 'battle_screen.dart';
@@ -74,12 +75,15 @@ class _ArenaScreenState extends State<ArenaScreen> {
                         child: _BigStat(
                           icon: Icons.military_tech_rounded,
                           color: GameColors.gold,
-                          value: game.arenaPlace == null
+                          // До первого боя игрока нет в таблице.
+                          value: game.arenaPlace == null || !game.arenaBoard!.me.ranked
                               ? '—'
                               : '#${game.arenaPlace}',
                           label: game.arenaBoard == null
                               ? (game.arenaLoading ? 'Загрузка…' : 'Место')
-                              : 'Место из ${game.arenaBoard!.total}',
+                              : game.arenaBoard!.me.ranked
+                              ? 'Место из ${game.arenaBoard!.total}'
+                              : 'Проведи бой, чтобы попасть в рейтинг',
                         ),
                       ),
                     ],
@@ -182,13 +186,7 @@ class _ArenaScreenState extends State<ArenaScreen> {
       outcome = await game.fightArena();
     } on ServerException catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          SnackBar(
-            content: Text('${e.message}. Арена работает только онлайн.'),
-          ),
-        );
+      showToast(context, '${e.message}. Арена работает только онлайн.', kind: ToastKind.warn);
       return;
     } finally {
       if (mounted) setState(() => _searching = false);

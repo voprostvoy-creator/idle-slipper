@@ -31,7 +31,7 @@ class LeaderboardScreen extends StatelessWidget {
       if (board != null)
         for (final e in board.top)
           (e.place, e.slipper, e.rating, e.id == board.me.id),
-      if (board != null && !board.top.any((e) => e.id == board.me.id))
+      if (board != null && board.me.ranked && !board.top.any((e) => e.id == board.me.id))
         (board.me.place, game.slipper, board.me.rating, true),
     ];
     final myIndex = rows.indexWhere((r) => r.$4);

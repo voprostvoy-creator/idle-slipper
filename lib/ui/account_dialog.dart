@@ -9,6 +9,7 @@ import 'package:gal/gal.dart';
 import '../game/game_state.dart';
 import '../net/server_api.dart';
 import 'theme.dart';
+import 'toast.dart';
 import 'widgets/game_widgets.dart';
 
 /// Окно «Твой аккаунт»: логин и пароль, сохранить картинкой в галерею
@@ -16,9 +17,7 @@ import 'widgets/game_widgets.dart';
 Future<void> showAccountDialog(BuildContext context, GameState game, {bool firstTime = false}) {
   final creds = game.server.credentials;
   if (creds == null) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Аккаунт ещё не создан — нужна связь с сервером')),
-    );
+    showToast(context, 'Аккаунт ещё не создан — нужна связь с сервером', kind: ToastKind.warn);
     return Future.value();
   }
   return showDialog<void>(

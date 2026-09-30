@@ -5,6 +5,7 @@ import '../../game/slipper_kind.dart';
 import '../../game/story/chapters.dart';
 import '../slipper_sprite.dart';
 import '../theme.dart';
+import '../toast.dart';
 import '../widgets/game_widgets.dart';
 import 'battle_hub_screen.dart';
 import 'battle_screen.dart';
@@ -111,11 +112,11 @@ class _StoryScreenState extends State<StoryScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 6),
       onPressed: open
           ? () => setState(() => chapter = c)
-          : () => ScaffoldMessenger.of(context)
-            ..hideCurrentSnackBar()
-            ..showSnackBar(SnackBar(
-              content: Text('Глава ${c.number} откроется, когда пройдёшь главу ${c.number - 1}'),
-            )),
+          : () => showToast(
+                context,
+                'Глава ${c.number} откроется, когда пройдёшь главу ${c.number - 1}',
+                kind: ToastKind.warn,
+              ),
       child: FittedBox(
         fit: BoxFit.scaleDown,
         child: Row(
@@ -143,11 +144,7 @@ class _StoryScreenState extends State<StoryScreen> {
     final me = game.slipper;
     final outcome = game.fightStage(chapter, index);
     if (outcome == null) {
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(const SnackBar(
-          content: Text('Повторы на сегодня кончились — завтра будут новые'),
-        ));
+      showToast(context, 'Повторы на сегодня кончились — завтра будут новые', kind: ToastKind.warn);
       return;
     }
     Navigator.of(context).push(

@@ -6,6 +6,7 @@ import '../../net/server_api.dart';
 import '../account_dialog.dart';
 import '../slipper_sprite.dart';
 import '../theme.dart';
+import '../toast.dart';
 import '../widgets/game_widgets.dart';
 
 /// Профиль: тапок, статистика, аккаунт.
@@ -325,9 +326,7 @@ class RatingScreen extends StatelessWidget {
       }
     } on ServerException catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(e.message)));
+      showToast(context, e.message, kind: ToastKind.warn);
     }
   }
 
