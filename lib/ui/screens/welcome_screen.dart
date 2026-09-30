@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../../game/game_state.dart';
 import '../../net/server_api.dart';
 import '../account_dialog.dart';
-import '../slipper_sprite.dart';
 import '../theme.dart';
 import '../widgets/game_widgets.dart';
 
@@ -60,11 +59,13 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
             child: Column(
               children: [
                 const Spacer(),
-                const StrokeText('Битва тапков', size: 40, color: GameColors.gold),
-                const SizedBox(height: 2),
-                const StrokeText('Жуки наступают', size: 20, color: GameColors.orange),
-                const SizedBox(height: 16),
-                SlipperSprite(fighter: widget.game.slipper, width: 240, showSize: false),
+                // Логотип игры: название, тапки и арена.
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(28),
+                  child: Image.asset('assets/ui/logo.webp', width: 280, height: 280),
+                ),
+                const SizedBox(height: 10),
+                const StrokeText('Жуки наступают', size: 24, color: GameColors.orange),
                 const SizedBox(height: 16),
                 Text(
                   'Качай тапок, гоняй насекомых\nи поднимайся в рейтинге',
