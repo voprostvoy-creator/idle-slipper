@@ -61,6 +61,12 @@ void main() {
       'эпики': ['carbon_sport', 'purple_neon', 'blue_slide'],
       'легенда+эпики': ['red_spike', 'carbon_sport', 'purple_neon'],
       'мифики': ['rainbow', 'yin_yang', 'red_spike'],
+      'только слайд': ['blue_slide'],
+      'только карбон': ['carbon_sport'],
+      'только неон': ['purple_neon'],
+      'только адский': ['red_spike'],
+      'только радужный': ['rainbow'],
+      'только инь-ян': ['yin_yang'],
     };
     for (final e in sets.entries) {
       for (final stars in [0, 3]) {

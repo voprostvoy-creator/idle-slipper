@@ -63,37 +63,42 @@ class DefenseScreen extends StatelessWidget {
                   const SizedBox(height: 14),
                   SizedBox(
                     width: double.infinity,
-                    child: GameButton(
-                      color: attempts > 0
-                          ? GameColors.red
-                          : GameColors.panelDark,
-                      height: 56,
-                      onPressed: attempts > 0 ? () => _play(context) : null,
-                      child: const Text(
-                        'Защищать кухню',
-                        style: TextStyle(fontSize: 20),
-                      ),
-                    ),
+                    child: attempts == 0 && game.defenseAdAvailable
+                        // Первая попытка потрачена — вместо неё реклама,
+                        // после просмотра игра запускается сразу.
+                        ? GameButton(
+                            color: GameColors.green,
+                            height: 56,
+                            onPressed: () {
+                              game.takeDefenseAdAttempt();
+                              _play(context);
+                            },
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.play_circle_fill_rounded, size: 24),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Ещё попытка за рекламу',
+                                  style: TextStyle(fontSize: 18),
+                                ),
+                              ],
+                            ),
+                          )
+                        : GameButton(
+                            color: attempts > 0
+                                ? GameColors.red
+                                : GameColors.panelDark,
+                            height: 56,
+                            onPressed: attempts > 0
+                                ? () => _play(context)
+                                : null,
+                            child: const Text(
+                              'Защищать кухню',
+                              style: TextStyle(fontSize: 20),
+                            ),
+                          ),
                   ),
-                  if (game.defenseAdAvailable) ...[
-                    const SizedBox(height: 10),
-                    SizedBox(
-                      width: double.infinity,
-                      child: GameButton(
-                        color: GameColors.green,
-                        height: 46,
-                        onPressed: game.takeDefenseAdAttempt,
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.play_circle_fill_rounded, size: 20),
-                            SizedBox(width: 6),
-                            Text('+1 попытка за рекламу'),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
                   if (attempts == 0 && !game.defenseAdAvailable) ...[
                     const SizedBox(height: 8),
                     Text(
@@ -398,92 +403,97 @@ class _DefenseGameScreenState extends State<DefenseGameScreen>
         borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
         side: BorderSide(color: GameColors.outline, width: 3),
       ),
-      builder: (context) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              StrokeText(
-                '${SlipperCatalog.byId(t.kindId).name} · ур. ${t.level}',
-                size: 20,
-              ),
-              const SizedBox(height: 2),
-              Text(t.spec.label, style: Theme.of(context).textTheme.bodySmall),
-              const SizedBox(height: 10),
-              _StatLine(
-                label: 'Урон',
-                now: t.damage.round().toString(),
-                next: t.level < Tower.maxLevel
-                    ? t.damageAt(t.level + 1).round().toString()
-                    : null,
-              ),
-              const SizedBox(height: 6),
-              _StatLine(
-                label: 'Дальность',
-                now: t.range.toStringAsFixed(1),
-                next: t.level < Tower.maxLevel
-                    ? t.rangeAt(t.level + 1).toStringAsFixed(1)
-                    : null,
-              ),
-              const SizedBox(height: 10),
-              _AbilityBox(tower: t),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: GameButton(
-                      color: GameColors.panelLight,
-                      height: 46,
-                      onPressed: () {
-                        setState(() {
-                          _d.sell(t);
-                          _selected = null;
-                        });
-                        Navigator.pop(context);
-                      },
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Text(
-                            'Продать ',
-                            style: TextStyle(color: GameColors.text),
-                          ),
-                          _Crumbs(t.sellPrice, enough: true, plus: true),
-                        ],
+      builder: (context) => StatefulBuilder(
+        builder: (context, setSheet) => SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                StrokeText(
+                  '${SlipperCatalog.byId(t.kindId).name} · ур. ${t.level}',
+                  size: 20,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  t.spec.label,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                const SizedBox(height: 10),
+                _StatLine(
+                  label: 'Урон',
+                  now: t.damage.round().toString(),
+                  next: t.level < Tower.maxLevel
+                      ? t.damageAt(t.level + 1).round().toString()
+                      : null,
+                ),
+                const SizedBox(height: 6),
+                _StatLine(
+                  label: 'Дальность',
+                  now: t.range.toStringAsFixed(1),
+                  next: t.level < Tower.maxLevel
+                      ? t.rangeAt(t.level + 1).toStringAsFixed(1)
+                      : null,
+                ),
+                const SizedBox(height: 10),
+                _AbilityBox(tower: t),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: GameButton(
+                        color: GameColors.panelLight,
+                        height: 46,
+                        onPressed: () {
+                          setState(() {
+                            _d.sell(t);
+                            _selected = null;
+                          });
+                          Navigator.pop(context);
+                        },
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text(
+                              'Продать ',
+                              style: TextStyle(color: GameColors.text),
+                            ),
+                            _Crumbs(t.sellPrice, enough: true, plus: true),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: t.level >= Tower.maxLevel
-                        ? const Center(child: Text('Максимум'))
-                        : GameButton(
-                            color: _d.crumbs >= t.upgradePrice
-                                ? GameColors.gold
-                                : GameColors.panelDark,
-                            height: 46,
-                            onPressed: _d.crumbs >= t.upgradePrice
-                                ? () {
-                                    setState(() => _d.upgrade(t));
-                                    Navigator.pop(context);
-                                  }
-                                : null,
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Text('Улучшить '),
-                                _Crumbs(
-                                  t.upgradePrice,
-                                  enough: _d.crumbs >= t.upgradePrice,
-                                ),
-                              ],
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: t.level >= Tower.maxLevel
+                          ? const Center(child: Text('Максимум'))
+                          : GameButton(
+                              color: _d.crumbs >= t.upgradePrice
+                                  ? GameColors.gold
+                                  : GameColors.panelDark,
+                              height: 46,
+                              onPressed: _d.crumbs >= t.upgradePrice
+                                  ? () {
+                                      setState(() => _d.upgrade(t));
+                                      setSheet(() {});
+                                    }
+                                  : null,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Text('Улучшить '),
+                                  _Crumbs(
+                                    t.upgradePrice,
+                                    enough: _d.crumbs >= t.upgradePrice,
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                  ),
-                ],
-              ),
-            ],
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -644,7 +654,11 @@ class _DefenseGameScreenState extends State<DefenseGameScreen>
           Positioned.fill(
             child: IgnorePointer(
               child: CustomPaint(
-                painter: _ShotsPainter(cell: cell, shots: _d.shots),
+                painter: _ShotsPainter(
+                  cell: cell,
+                  shots: _d.shots,
+                  missiles: _d.missiles,
+                ),
               ),
             ),
           ),
@@ -665,10 +679,10 @@ class _DefenseGameScreenState extends State<DefenseGameScreen>
       gaplessPlayback: true,
     );
     if (dir < 0) img = Transform.flip(flipX: true, child: img);
-    if (b.poisonLeft > 0) {
+    if (b.slowLeft > 0) {
       img = ColorFiltered(
         colorFilter: const ColorFilter.mode(
-          Color(0x6650FF60),
+          Color(0x667FDBFF),
           BlendMode.srcATop,
         ),
         child: img,
@@ -836,43 +850,321 @@ class _BoardPainter extends CustomPainter {
       old.selected != selected || old.cell != cell;
 }
 
-/// Выстрелы тапков: вспышки-линии цвета роли.
+/// Удары и снаряды тапков: пинок, холод, молния, огонь, когти, лазер, волна.
 class _ShotsPainter extends CustomPainter {
-  _ShotsPainter({required this.cell, required this.shots});
+  _ShotsPainter({
+    required this.cell,
+    required this.shots,
+    required this.missiles,
+  });
   final double cell;
   final List<Shot> shots;
+  final List<Missile> missiles;
 
-  static Color _color(TowerRole r) => switch (r) {
-    TowerRole.strike => Colors.white,
-    TowerRole.slow => const Color(0xFF7FDBFF),
-    TowerRole.splash => const Color(0xFFFF9F43),
-    TowerRole.chain => const Color(0xFFC77DFF),
-    TowerRole.poison => const Color(0xFF7CE35A),
-    TowerRole.beam => const Color(0xFFFFE28A),
-    TowerRole.stunner => Colors.white,
-  };
+  static const _rainbow = [
+    Color(0xFFFF4D6D),
+    Color(0xFFFFB03A),
+    Color(0xFFFFF35C),
+    Color(0xFF5CFF8F),
+    Color(0xFF4FD8FF),
+    Color(0xFFB06BFF),
+  ];
+
+  Offset _o((double, double) p) => Offset(p.$1 * cell, p.$2 * cell);
 
   @override
   void paint(Canvas c, Size size) {
     for (final s in shots) {
-      final k = 1 - s.age / Shot.life;
-      final from = Offset(s.from.$1 * cell, s.from.$2 * cell);
-      final to = Offset(s.to.$1 * cell, s.to.$2 * cell);
-      final color = _color(s.role).withValues(alpha: k.clamp(0.0, 1.0));
-      c.drawLine(
-        from,
-        to,
-        Paint()
-          ..color = color
-          ..strokeWidth = s.role == TowerRole.beam ? 5 : 3
-          ..strokeCap = StrokeCap.round,
-      );
+      final t = (s.age / s.life).clamp(0.0, 1.0);
+      final from = _o(s.from);
+      final to = _o(s.to);
+      switch (s.fx) {
+        case ShotFx.kick:
+          _kick(c, to, t);
+        case ShotFx.frost:
+          _frost(c, from, to, t);
+        case ShotFx.lightning:
+          _lightning(c, from, to, t, s.seed);
+        case ShotFx.explosion:
+          _explosion(c, to, s.radius * cell, t);
+        case ShotFx.nova:
+          _nova(c, from, s.radius * cell, t);
+        case ShotFx.slash:
+          _slash(c, from, to, t, s.seed);
+        case ShotFx.laser:
+          _laser(c, from, to, t, 1);
+        case ShotFx.laserLong:
+          _laser(c, from, to, t, 1.6);
+      }
+    }
+    for (final m in missiles) {
+      switch (m.kind) {
+        case MissileKind.fireball:
+          _fireball(c, m);
+        case MissileKind.wave:
+          _wave(c, m);
+      }
+    }
+  }
+
+  /// Пинок: белая вспышка-звезда у цели, без линии.
+  void _kick(Canvas c, Offset at, double t) {
+    final a = (1 - t);
+    final r = cell * (0.12 + 0.3 * Curves.easeOut.transform(t));
+    c.drawCircle(
+      at,
+      r,
+      Paint()..color = Colors.white.withValues(alpha: 0.35 * a),
+    );
+    final ray = Paint()
+      ..color = Colors.white.withValues(alpha: a)
+      ..strokeWidth = cell * 0.06
+      ..strokeCap = StrokeCap.round;
+    for (var i = 0; i < 6; i++) {
+      final ang = i * pi / 3 + 0.3;
+      final d = Offset(cos(ang), sin(ang));
+      c.drawLine(at + d * r * 0.6, at + d * r * 1.2, ray);
+    }
+  }
+
+  /// Холод: голубое облачко летит от тапка к цели, у цели — снежинка.
+  void _frost(Canvas c, Offset from, Offset to, double t) {
+    final a = sin(pi * t).clamp(0.0, 1.0);
+    final dir = to - from;
+    final len = dir.distance;
+    if (len == 0) return;
+    final n = dir / len;
+    final side = Offset(-n.dy, n.dx);
+    // Мягкий конус холода.
+    final cone = Path()
+      ..moveTo(from.dx, from.dy)
+      ..lineTo((to + side * cell * 0.32).dx, (to + side * cell * 0.32).dy)
+      ..lineTo((to - side * cell * 0.32).dx, (to - side * cell * 0.32).dy)
+      ..close();
+    c.drawPath(
+      cone,
+      Paint()..color = const Color(0xFFBFEFFF).withValues(alpha: 0.28 * a),
+    );
+    // Летящие хлопья.
+    final rnd = Random(7);
+    for (var i = 0; i < 9; i++) {
+      final k = ((i / 9) + t * 0.8) % 1.0;
+      final spread = (rnd.nextDouble() - 0.5) * cell * 0.55 * k;
+      final p = from + n * len * k + side * spread;
       c.drawCircle(
-        to,
-        cell * (s.role == TowerRole.splash ? 0.5 : 0.18) * (1.2 - k),
-        Paint()..color = color,
+        p,
+        cell * (0.035 + 0.04 * k),
+        Paint()..color = Colors.white.withValues(alpha: 0.85 * a),
       );
     }
+    // Снежинка на цели.
+    final flake = Paint()
+      ..color = const Color(0xFF7FDBFF).withValues(alpha: a)
+      ..strokeWidth = cell * 0.045
+      ..strokeCap = StrokeCap.round;
+    final r = cell * 0.22 * (0.6 + 0.4 * t);
+    for (var i = 0; i < 3; i++) {
+      final ang = i * pi / 3 + t;
+      final d = Offset(cos(ang), sin(ang)) * r;
+      c.drawLine(to - d, to + d, flake);
+    }
+  }
+
+  /// Молния: ломаная линия с фиолетовым свечением, мерцает.
+  void _lightning(Canvas c, Offset from, Offset to, double t, int seed) {
+    final flicker = (t * 12).floor().isEven ? 1.0 : 0.6;
+    final a = (1 - t) * flicker;
+    final rnd = Random(seed);
+    final dir = to - from;
+    final len = dir.distance;
+    if (len == 0) return;
+    final side = Offset(-dir.dy, dir.dx) / len;
+    final path = Path()..moveTo(from.dx, from.dy);
+    const segs = 7;
+    for (var i = 1; i < segs; i++) {
+      final p =
+          from +
+          dir * (i / segs) +
+          side * (rnd.nextDouble() - 0.5) * cell * 0.35;
+      path.lineTo(p.dx, p.dy);
+    }
+    path.lineTo(to.dx, to.dy);
+    c.drawPath(
+      path,
+      Paint()
+        ..color = const Color(0xFFC77DFF).withValues(alpha: 0.55 * a)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = cell * 0.16
+        ..strokeJoin = StrokeJoin.round,
+    );
+    c.drawPath(
+      path,
+      Paint()
+        ..color = Colors.white.withValues(alpha: a)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = cell * 0.045
+        ..strokeJoin = StrokeJoin.round,
+    );
+    c.drawCircle(
+      to,
+      cell * 0.14 * (1 - t),
+      Paint()..color = const Color(0xFFFFF59D).withValues(alpha: a),
+    );
+  }
+
+  /// Взрыв огненного шара.
+  void _explosion(Canvas c, Offset at, double radius, double t) {
+    final a = 1 - t;
+    final r = radius * Curves.easeOut.transform(t).clamp(0.25, 1.0);
+    c.drawCircle(
+      at,
+      r,
+      Paint()
+        ..shader = RadialGradient(
+          colors: [
+            const Color(0xFFFFF3B0).withValues(alpha: a),
+            const Color(0xFFFF9F43).withValues(alpha: 0.8 * a),
+            const Color(0xFFE8452C).withValues(alpha: 0.0),
+          ],
+          stops: const [0, 0.45, 1],
+        ).createShader(Rect.fromCircle(center: at, radius: r)),
+    );
+  }
+
+  /// Ударная волна Карбона: огненное кольцо от тапка.
+  void _nova(Canvas c, Offset at, double radius, double t) {
+    final a = 1 - t;
+    final r = radius * Curves.easeOutCubic.transform(t);
+    c.drawCircle(
+      at,
+      r,
+      Paint()..color = const Color(0xFFFF9F43).withValues(alpha: 0.18 * a),
+    );
+    c.drawCircle(
+      at,
+      r,
+      Paint()
+        ..color = const Color(0xFFFFC56B).withValues(alpha: a)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = cell * 0.14 * a + 1,
+    );
+  }
+
+  /// Когти Адского: три красных росчерка поперёк цели.
+  void _slash(Canvas c, Offset from, Offset to, double t, int streak) {
+    final a = 1 - t;
+    final grow = Curves.easeOut.transform((t / 0.4).clamp(0.0, 1.0));
+    final dir = to - from;
+    final len = dir.distance;
+    final n = len == 0 ? const Offset(1, 0) : dir / len;
+    // Росчерк идёт по диагонали к направлению удара.
+    final cut = Offset(n.dx * 0.6 - n.dy * 0.8, n.dy * 0.6 + n.dx * 0.8);
+    final side = Offset(-cut.dy, cut.dx);
+    // Чем дольше режет одну цель, тем ярче.
+    final hot = Color.lerp(
+      const Color(0xFFFF4D4D),
+      const Color(0xFFFFD84D),
+      streak / 5,
+    )!;
+    for (var i = -1; i <= 1; i++) {
+      final start = to - cut * cell * 0.35 + side * cell * 0.13 * i.toDouble();
+      final end = start + cut * cell * 0.7 * grow;
+      c.drawLine(
+        start,
+        end,
+        Paint()
+          ..color = hot.withValues(alpha: 0.7 * a)
+          ..strokeWidth = cell * 0.1
+          ..strokeCap = StrokeCap.round,
+      );
+      c.drawLine(
+        start,
+        end,
+        Paint()
+          ..color = Colors.white.withValues(alpha: a)
+          ..strokeWidth = cell * 0.03
+          ..strokeCap = StrokeCap.round,
+      );
+    }
+  }
+
+  /// Радужный лазер, как в основной игре: свечение-радуга и белое ядро.
+  void _laser(Canvas c, Offset from, Offset to, double t, double width) {
+    final a = sin(pi * t).clamp(0.0, 1.0);
+    final len = Curves.easeOutQuart.transform((t / 0.35).clamp(0.0, 1.0));
+    final end = Offset.lerp(from, to, len)!;
+    final shader = LinearGradient(
+      colors: _rainbow,
+    ).createShader(Rect.fromPoints(from, to));
+    c.drawLine(
+      from,
+      end,
+      Paint()
+        ..shader = shader
+        ..strokeCap = StrokeCap.round
+        ..strokeWidth = cell * 0.3 * width * a,
+    );
+    c.drawLine(
+      from,
+      end,
+      Paint()
+        ..color = Colors.white.withValues(alpha: a)
+        ..strokeCap = StrokeCap.round
+        ..strokeWidth = cell * 0.08 * width * a,
+    );
+    c.drawCircle(
+      from,
+      cell * 0.12 * a,
+      Paint()..color = Colors.white.withValues(alpha: a),
+    );
+  }
+
+  /// Огненный шар с хвостом.
+  void _fireball(Canvas c, Missile m) {
+    final at = _o(m.pos);
+    final back = Offset(m.dir.$1, m.dir.$2) * -cell;
+    for (var i = 3; i >= 1; i--) {
+      c.drawCircle(
+        at + back * 0.12 * i.toDouble(),
+        cell * (0.15 - 0.03 * i),
+        Paint()
+          ..color = const Color(0xFFFF6B2C).withValues(alpha: 0.5 - 0.12 * i),
+      );
+    }
+    c.drawCircle(at, cell * 0.17, Paint()..color = const Color(0xFFFF7A2C));
+    c.drawCircle(at, cell * 0.09, Paint()..color = const Color(0xFFFFF3B0));
+  }
+
+  /// Воздушная волна Инь-Яна: дуги поперёк полёта шириной 1.5 клетки.
+  void _wave(Canvas c, Missile m) {
+    final total = m.tower.range + 0.4;
+    final k = (1 - m.travel / total).clamp(0.0, 1.0);
+    final a = k < 0.15 ? k / 0.15 : (1 - k).clamp(0.0, 1.0) / 0.85;
+    final at = _o(m.pos);
+    c.save();
+    c.translate(at.dx, at.dy);
+    c.rotate(atan2(m.dir.$2, m.dir.$1));
+    final h = Missile.waveHalfWidth * cell;
+    for (var i = 0; i < 3; i++) {
+      final rect = Rect.fromCenter(
+        center: Offset(-cell * (0.18 * i + 0.25), 0),
+        width: cell * 0.5,
+        height: h * 2 * (1 - 0.15 * i),
+      );
+      c.drawArc(
+        rect,
+        -pi / 2,
+        pi,
+        false,
+        Paint()
+          ..color = (i == 0 ? Colors.white : const Color(0xFFD9F2FF))
+              .withValues(alpha: a * (0.9 - 0.25 * i))
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = cell * (0.1 - 0.025 * i)
+          ..strokeCap = StrokeCap.round,
+      );
+    }
+    c.restore();
   }
 
   @override
@@ -965,7 +1257,7 @@ class _AbilityBox extends StatelessWidget {
                     if (!open) ...[
                       const SizedBox(width: 6),
                       Text(
-                        '★${TowerSpec.abilityStar}',
+                        '★${Tower.abilityLevel}',
                         style: theme.textTheme.labelSmall?.copyWith(
                           color: GameColors.gold,
                         ),
@@ -976,7 +1268,7 @@ class _AbilityBox extends StatelessWidget {
                 Text(tower.spec.abilityText, style: theme.textTheme.bodySmall),
                 if (!open)
                   Text(
-                    'Откроется на ★${TowerSpec.abilityStar} тапка в коллекции',
+                    'Откроется на ★${Tower.abilityLevel} — улучши тапок здесь',
                     style: theme.textTheme.labelSmall?.copyWith(
                       color: GameColors.gold,
                     ),
@@ -990,66 +1282,115 @@ class _AbilityBox extends StatelessWidget {
   }
 }
 
-/// Тапок-защитник: смотрит на цель и бьёт своей анимацией.
+/// Тапок-защитник: смотрит на цель и бьёт своей анимацией. Удар случается
+/// в начале анимации — в тот же миг, когда появляется эффект.
 class _TowerSprite extends StatelessWidget {
   const _TowerSprite({required this.tower, required this.cell});
   final Tower tower;
   final double cell;
 
-  static const _anim = 0.32;
-
   @override
   Widget build(BuildContext context) {
     final t = tower;
-    final p = (t.sinceShot / _anim).clamp(0.0, 1.0);
-    final active = t.sinceShot < _anim;
-    final e = active ? sin(pi * p) : 0.0;
+    final role = t.spec.role;
+    // Адский режет сериями — его взмах короче.
+    final anim = role == TowerRole.slash ? 0.2 : 0.36;
+    final active = t.sinceShot < anim;
+    final p = active ? t.sinceShot / anim : 1.0;
     final dx = cos(t.aim);
     final dy = sin(t.aim);
+    final dir = Offset(dx, dy);
     // Носок на цель: справа — как есть, слева — зеркально, чтобы не висеть
     // вверх ногами.
     final flip = dx < 0;
+    // Знак поворота «носком вверх» с учётом зеркала.
+    final up = flip ? 1.0 : -1.0;
     var angle = flip ? t.aim - pi : t.aim;
     var offset = Offset.zero;
     var scaleX = 1.0;
     var scaleY = 1.0;
-    switch (t.spec.role) {
+    Color? glow;
+    var glowSize = 0.0;
+
+    // Быстрый выброс к пику на [peak] и плавный возврат.
+    double snap(double peak) => !active
+        ? 0
+        : p < peak
+        ? Curves.easeOut.transform(p / peak)
+        : 1 - Curves.easeInOut.transform((p - peak) / (1 - peak));
+
+    switch (role) {
       case TowerRole.strike:
-        // Выпад к цели.
-        offset = Offset(dx, dy) * cell * 0.28 * e;
-      case TowerRole.slow:
-        // Скольжение: длинный низкий рывок и вытягивание.
-        offset = Offset(dx, dy) * cell * 0.38 * e;
-        scaleX = 1 + 0.18 * e;
-        scaleY = 1 - 0.12 * e;
-      case TowerRole.splash:
-        // Прыжок и удар об пол: вверх, затем сплющивание.
-        offset = Offset(0, -cell * 0.35 * sin(pi * min(1.0, p * 1.4)));
-        if (p > 0.7 && active) {
-          scaleY = 1 - 0.25 * (1 - p) / 0.3;
-          scaleX = 1 + 0.2 * (1 - p) / 0.3;
+        // Пыр: резкий тычок носком к цели.
+        final k = snap(0.2);
+        offset = dir * cell * 0.34 * k;
+        angle += up * -0.15 * k;
+      case TowerRole.frost:
+        // Выдох холода: тапок раздувается и подаётся вперёд, вокруг иней.
+        final k = snap(0.25);
+        offset = dir * cell * 0.1 * k;
+        scaleX = 1 + 0.12 * k;
+        scaleY = 1 + 0.08 * k;
+        glow = const Color(0xFF9FE6FF);
+        glowSize = k;
+      case TowerRole.fireball:
+        // Запуск шара: отдача назад, носок вверх, огонь у носка.
+        final k = snap(0.18);
+        offset = -dir * cell * 0.18 * k;
+        angle += up * 0.35 * k;
+        glow = const Color(0xFFFF8A3D);
+        glowSize = k;
+        if (t.special && active) {
+          // Ударная волна: подпрыгивает и бьёт о пол.
+          offset = Offset(0, -cell * 0.25 * snap(0.3));
+          scaleY = 1 - 0.2 * snap(0.3);
+          scaleX = 1 + 0.15 * snap(0.3);
         }
-      case TowerRole.chain:
-        // Разряд: дрожь и пульс.
-        offset = Offset(sin(p * 40) * cell * 0.05 * e, 0);
-        scaleX = scaleY = 1 + 0.15 * e;
-      case TowerRole.poison:
-        // Топот: два коротких подскока.
-        offset =
-            Offset(dx, dy) * cell * 0.12 * e +
-            Offset(
-              0,
-              -cell * 0.18 * (sin(2 * pi * p)).abs() * (active ? 1 : 0),
-            );
-      case TowerRole.beam:
-        // Отдача от луча: назад и носок вверх.
-        offset = -Offset(dx, dy) * cell * 0.22 * e;
-        angle += (flip ? 0.25 : -0.25) * e;
-      case TowerRole.stunner:
-        // Вращение на ударе.
-        angle += active
-            ? 2 * pi * Curves.easeOut.transform(p) * (flip ? -1 : 1)
-            : 0;
+      case TowerRole.lightning:
+        // Разряд: дрожь и электрическая вспышка.
+        final k = snap(0.15);
+        offset = Offset(
+          sin(p * 50) * cell * 0.06 * k,
+          cos(p * 37) * cell * 0.03 * k,
+        );
+        scaleX = scaleY = 1 + 0.12 * k;
+        glow = (p * 10).floor().isEven
+            ? const Color(0xFFC77DFF)
+            : const Color(0xFFFFF59D);
+        glowSize = k;
+      case TowerRole.slash:
+        // Резанье: взмах по диагонали сверху вниз с подшагом к цели.
+        if (active) {
+          final k = Curves.easeOutCubic.transform(p);
+          angle += up * (0.7 - 1.4 * k) * (1 - p * 0.5);
+          offset = dir * cell * 0.15 * sin(pi * p);
+        }
+        if (t.special && active) {
+          glow = const Color(0xFFFF4D4D);
+          glowSize = 0.7;
+        }
+      case TowerRole.laser:
+        // Луч: заряд у носка, отдача назад и носок вверх.
+        final k = snap(0.15);
+        offset = -dir * cell * 0.2 * k;
+        angle += up * 0.25 * k;
+        glow = Colors.white;
+        glowSize = k * (t.special ? 1.3 : 0.8);
+      case TowerRole.wave:
+        // Взмах веером: замах назад и широкая отмашка вперёд.
+        if (active) {
+          final double swing;
+          if (p < 0.12) {
+            swing = -0.6 * Curves.easeOut.transform(p / 0.12);
+          } else if (p < 0.4) {
+            swing =
+                -0.6 + 1.2 * Curves.easeOutBack.transform((p - 0.12) / 0.28);
+          } else {
+            swing = 0.6 * (1 - Curves.easeInOut.transform((p - 0.4) / 0.6));
+          }
+          angle += up * -swing;
+          offset = dir * cell * 0.1 * sin(pi * p);
+        }
     }
     Widget sprite = SlipperSprite(
       fighter: Slipper(name: t.kindId, kindId: t.kindId),
@@ -1058,21 +1399,28 @@ class _TowerSprite extends StatelessWidget {
       showSize: false,
     );
     if (flip) sprite = Transform.flip(flipX: true, child: sprite);
-    // Разряд Неона — вспышка позади.
-    final glow = t.spec.role == TowerRole.chain && active;
     return Transform.translate(
       offset: offset,
       child: Stack(
         alignment: Alignment.center,
         clipBehavior: Clip.none,
         children: [
-          if (glow)
-            Container(
-              width: cell * (0.8 + 0.6 * e),
-              height: cell * (0.8 + 0.6 * e),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: const Color(0xFFC77DFF).withValues(alpha: 0.35 * e),
+          if (glow != null && glowSize > 0)
+            Transform.translate(
+              // Свечение у носка: со стороны цели.
+              offset: dir * cell * 0.3,
+              child: Container(
+                width: cell * 0.9 * glowSize,
+                height: cell * 0.9 * glowSize,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      glow.withValues(alpha: 0.8 * glowSize.clamp(0.0, 1.0)),
+                      glow.withValues(alpha: 0),
+                    ],
+                  ),
+                ),
               ),
             ),
           Transform.rotate(

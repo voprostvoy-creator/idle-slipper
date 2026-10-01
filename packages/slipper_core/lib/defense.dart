@@ -89,7 +89,28 @@ class DefenseMap {
 }
 
 /// Чем тапок бьёт в обороне.
-enum TowerRole { strike, slow, splash, chain, poison, beam, stunner }
+enum TowerRole {
+  /// Пинок носком по одной цели.
+  strike,
+
+  /// Холодное дыхание: урон и замедление.
+  frost,
+
+  /// Огненный шар: летит к цели и взрывается.
+  fireball,
+
+  /// Молния, скачущая по жукам.
+  lightning,
+
+  /// Резанье: каждый удар по той же цели сильнее.
+  slash,
+
+  /// Лазерный луч.
+  laser,
+
+  /// Воздушная волна, проходящая насквозь.
+  wave,
+}
 
 /// Характеристики тапка-защитника по виду.
 class TowerSpec {
@@ -117,47 +138,44 @@ class TowerSpec {
   /// Что делает — для подсказки.
   final String label;
 
-  /// Способность, которая открывается на ★3 тапка в коллекции.
+  /// Способность, которая открывается на 3-м уровне тапка в обороне.
   final String ability;
   final String abilityText;
 
-  /// На какой звезде открывается способность.
-  static const abilityStar = 3;
-
   static TowerSpec of(String kindId) => switch (kindId) {
         'blue_slide' => const TowerSpec(
-            role: TowerRole.slow, damage: 10, range: 1.8, cooldown: 0.9,
-            label: 'Замедляет жуков на 40%',
+            role: TowerRole.frost, damage: 10, range: 1.8, cooldown: 0.9,
+            label: 'Обдаёт холодом: замедляет на 40%',
             ability: 'Скользкий пол',
             abilityText: 'Замедление 60% вместо 40% и держится вдвое дольше.'),
         'carbon_sport' => const TowerSpec(
-            role: TowerRole.splash, damage: 14, range: 1.6, cooldown: 1.4,
-            label: 'Бьёт по площади',
+            role: TowerRole.fireball, damage: 14, range: 1.8, cooldown: 1.4,
+            label: 'Огненный шар бьёт по площади',
             ability: 'Ударная волна',
-            abilityText: 'Площадь удара шире, 20% шанс оглушить всех задетых.'),
+            abilityText: 'Каждый третий удар бьёт по площади вокруг себя и оглушает всех на 0.5 с.'),
         'purple_neon' => const TowerSpec(
-            role: TowerRole.chain, damage: 10, range: 2.0, cooldown: 1.1,
+            role: TowerRole.lightning, damage: 10, range: 2.0, cooldown: 1.1,
             label: 'Молния по трём целям',
             ability: 'Перегрузка',
-            abilityText: 'Молния перескакивает на 5 целей вместо 3.'),
+            abilityText: 'Каждая третья молния скачет по всем жукам на карте с полным уроном.'),
         'red_spike' => const TowerSpec(
-            role: TowerRole.poison, damage: 9, range: 1.8, cooldown: 1.0,
-            label: 'Отравляет: урон 3 секунды',
-            ability: 'Адский яд',
-            abilityText: 'Яд вдвое сильнее и задевает соседних жуков.'),
+            role: TowerRole.slash, damage: 9, range: 1.7, cooldown: 0.9,
+            label: 'Режет: каждый удар по той же цели +20% урона (до +100%)',
+            ability: 'Ярость',
+            abilityText: 'Каждый третий удар ускоряется — три быстрых взмаха подряд.'),
         'rainbow' => const TowerSpec(
-            role: TowerRole.beam, damage: 26, range: 3.2, cooldown: 1.3,
-            label: 'Луч дальнего боя',
+            role: TowerRole.laser, damage: 26, range: 3.2, cooldown: 1.3,
+            label: 'Лазерный луч дальнего боя',
             ability: 'Призма',
-            abilityText: 'Каждый третий луч бьёт втрое сильнее.'),
+            abilityText: 'Каждый третий луч пробивает всю карту насквозь с двойным уроном.'),
         'yin_yang' => const TowerSpec(
-            role: TowerRole.stunner, damage: 22, range: 2.0, cooldown: 1.0,
-            label: 'Мощный удар, каждый третий оглушает',
+            role: TowerRole.wave, damage: 18, range: 2.2, cooldown: 1.1,
+            label: 'Воздушная волна в 1.5 клетки — бьёт всех на пути',
             ability: 'Равновесие',
-            abilityText: 'Оглушает каждым вторым ударом, даже боссов.'),
+            abilityText: 'Каждый удар отбрасывает жуков на полклетки назад.'),
         _ => const TowerSpec(
             role: TowerRole.strike, damage: 11, range: 1.7, cooldown: 0.8,
-            label: 'Обычный удар',
+            label: 'Пинок по жуку',
             ability: 'Бабушкина подмога',
             abilityText: 'После каждой отбитой волны сахарнице +1 жизнь.'),
       };
@@ -173,16 +191,29 @@ class Tower {
   double _cooldown = 0;
   int _shots = 0;
 
+  /// Сколько быстрых взмахов Адского ещё осталось в серии.
+  int _burstLeft = 0;
+
+  /// Адский: по кому бил в прошлый раз и сколько раз подряд.
+  Bug? _lastTarget;
+  int _streak = 0;
+
   /// Куда смотрит тапок: угол на последнюю цель (0 — вправо).
   double aim = 0;
 
   /// Сколько секунд назад был удар — для анимации; большое — давно.
   double sinceShot = 99;
 
-  /// Открыта способность ★3.
-  bool get hasAbility => stars >= TowerSpec.abilityStar;
+  /// Удар усиленный: способность сработала — экран может подсветить.
+  bool special = false;
 
   static const maxLevel = 3;
+
+  /// На каком уровне в обороне открывается способность.
+  static const abilityLevel = 3;
+
+  /// Открыта способность — тапок улучшен до 3-го уровня.
+  bool get hasAbility => level >= abilityLevel;
 
   TowerSpec get spec => TowerSpec.of(kindId);
   Rarity get rarity => SlipperCatalog.byId(kindId).rarity;
@@ -230,21 +261,102 @@ class Bug {
   double slowLeft = 0;
   double slowPower = 0.4;
   double stunLeft = 0;
-  double poisonLeft = 0;
-  double poisonDps = 0;
 
   bool get alive => hp > 0;
   (double, double) get pos => DefenseMap.pointAt(max(0, dist));
 }
 
-/// Вспышка выстрела для экрана: от тапка к цели.
+/// Что нарисовать на месте удара.
+enum ShotFx {
+  /// Вспышка пинка у цели.
+  kick,
+
+  /// Холодное облако от тапка к цели.
+  frost,
+
+  /// Ломаная молния.
+  lightning,
+
+  /// Взрыв огненного шара.
+  explosion,
+
+  /// Ударная волна вокруг тапка.
+  nova,
+
+  /// Росчерк когтя на цели.
+  slash,
+
+  /// Лазер до цели.
+  laser,
+
+  /// Лазер насквозь через всю карту.
+  laserLong,
+}
+
+/// Вспышка удара для экрана.
 class Shot {
-  Shot({required this.from, required this.to, required this.role});
+  Shot({required this.from, required this.to, required this.fx, this.radius = 0, this.seed = 0});
   final (double, double) from;
   final (double, double) to;
-  final TowerRole role;
+  final ShotFx fx;
+
+  /// Радиус взрыва или волны в клетках.
+  final double radius;
+
+  /// Для молнии — чтобы излом не дрожал каждый кадр.
+  final int seed;
   double age = 0;
-  static const life = 0.18;
+
+  double get life => switch (fx) {
+        ShotFx.kick => 0.22,
+        ShotFx.frost => 0.4,
+        ShotFx.lightning => 0.25,
+        ShotFx.explosion => 0.35,
+        ShotFx.nova => 0.45,
+        ShotFx.slash => 0.22,
+        ShotFx.laser => 0.3,
+        ShotFx.laserLong => 0.4,
+      };
+}
+
+enum MissileKind { fireball, wave }
+
+/// Летящий снаряд: огненный шар Карбона или воздушная волна Инь-Яна.
+class Missile {
+  Missile({
+    required this.kind,
+    required this.tower,
+    required this.pos,
+    required this.dir,
+    required this.damage,
+    this.target,
+    this.travel = 0,
+  })  : start = pos,
+        aimPoint = target?.pos ?? pos;
+
+  final MissileKind kind;
+  final Tower tower;
+  final (double, double) start;
+  (double, double) pos;
+
+  /// Единичное направление полёта.
+  (double, double) dir;
+  final double damage;
+
+  /// Огненный шар летит за целью; если она умерла — в последнюю точку.
+  Bug? target;
+  (double, double) aimPoint;
+
+  /// Сколько клеток ещё пролетит волна.
+  double travel;
+  final hit = <Bug>{};
+  bool done = false;
+
+  static const fireballSpeed = 6.0;
+  static const waveSpeed = 5.0;
+
+  /// Полуширина волны: вся волна — 1.5 клетки.
+  static const waveHalfWidth = 0.75;
 }
 
 /// Описание волны: кто и сколько.
@@ -264,6 +376,7 @@ class DefenseGame {
   final towers = <Tower>[];
   final bugs = <Bug>[];
   final shots = <Shot>[];
+  final missiles = <Missile>[];
   int lives = startLives;
   int crumbs = startCrumbs;
 
@@ -324,6 +437,7 @@ class DefenseGame {
   void sell(Tower t) {
     crumbs += t.sellPrice;
     towers.remove(t);
+    missiles.removeWhere((m) => m.tower == t);
   }
 
   /// Запустить следующую волну.
@@ -358,8 +472,11 @@ class DefenseGame {
     for (final s in shots) {
       s.age += dt;
     }
-    shots.removeWhere((s) => s.age > Shot.life);
-    if (!waveActive) return;
+    shots.removeWhere((s) => s.age > s.life);
+    if (!waveActive) {
+      missiles.clear();
+      return;
+    }
 
     // Выпуск жуков по очереди.
     _spawnTimer -= dt;
@@ -368,12 +485,8 @@ class DefenseGame {
       _spawnTimer = 1.1;
     }
 
-    // Движение, яд, оглушение.
+    // Движение и оглушение.
     for (final b in bugs) {
-      if (b.poisonLeft > 0) {
-        b.hp -= b.poisonDps * dt;
-        b.poisonLeft -= dt;
-      }
       if (b.stunLeft > 0) {
         b.stunLeft -= dt;
         continue;
@@ -398,13 +511,28 @@ class DefenseGame {
       if (t._cooldown > 0) continue;
       final target = _target(t);
       if (target == null) continue;
-      t._cooldown = t.spec.cooldown;
-      t._shots++;
+      if (t._burstLeft > 0) {
+        // Серия быстрых взмахов Адского.
+        t._burstLeft--;
+        t._cooldown = 0.13;
+        t.special = true;
+      } else {
+        t._shots++;
+        t._cooldown = t.spec.cooldown;
+        t.special = t.hasAbility && t._shots % 3 == 0 && t.spec.role != TowerRole.strike &&
+            t.spec.role != TowerRole.frost && t.spec.role != TowerRole.wave;
+        if (t.special && t.spec.role == TowerRole.slash) {
+          t._burstLeft = 2;
+          t._cooldown = 0.13;
+        }
+      }
       t.sinceShot = 0;
       final (tx, ty) = target.pos;
       t.aim = atan2(ty - t.center.$2, tx - t.center.$1);
       _hit(t, target);
     }
+
+    _moveMissiles(dt);
 
     // Убитые дают крошки.
     for (final b in [...bugs]) {
@@ -420,10 +548,11 @@ class DefenseGame {
     }
     if (_queue.isEmpty && bugs.isEmpty) {
       waveActive = false;
+      missiles.clear();
       cleared++;
       // Премия за отбитую волну.
       crumbs += 20 + cleared * 5;
-      // Бабушкина подмога: клетчатый с ★3 подлечивает сахарницу.
+      // Бабушкина подмога: клетчатый 3-го уровня подлечивает сахарницу.
       if (towers.any((t) => t.kindId == 'basic' && t.hasAbility)) {
         lives = min(startLives, lives + 1);
       }
@@ -434,6 +563,13 @@ class DefenseGame {
     final dx = a.$1 - b.$1;
     final dy = a.$2 - b.$2;
     return sqrt(dx * dx + dy * dy);
+  }
+
+  (double, double) _unit((double, double) from, (double, double) to) {
+    final dx = to.$1 - from.$1;
+    final dy = to.$2 - from.$2;
+    final l = sqrt(dx * dx + dy * dy);
+    return l == 0 ? (1, 0) : (dx / l, dy / l);
   }
 
   /// Цель — тот, кто дальше всех прошёл по тропе в радиусе.
@@ -447,62 +583,157 @@ class DefenseGame {
     return best;
   }
 
+  /// Точка, где луч из [from] по [dir] выходит за край поля.
+  (double, double) _edge((double, double) from, (double, double) dir) {
+    var k = double.infinity;
+    final (x, y) = from;
+    final (dx, dy) = dir;
+    if (dx > 0) k = min(k, (DefenseMap.cols - x) / dx);
+    if (dx < 0) k = min(k, -x / dx);
+    if (dy > 0) k = min(k, (DefenseMap.rows - y) / dy);
+    if (dy < 0) k = min(k, -y / dy);
+    return (x + dx * k, y + dy * k);
+  }
+
   void _hit(Tower t, Bug target) {
-    var dmg = t.damage;
-    final ab = t.hasAbility;
-    // Призма: каждый третий луч втрое сильнее.
-    if (ab && t.spec.role == TowerRole.beam && t._shots % 3 == 0) dmg *= 3;
-    shots.add(Shot(from: t.center, to: target.pos, role: t.spec.role));
+    final dmg = t.damage;
+    final ab = t.special;
     switch (t.spec.role) {
       case TowerRole.strike:
-      case TowerRole.beam:
         target.hp -= dmg;
-      case TowerRole.slow:
+        shots.add(Shot(from: t.center, to: target.pos, fx: ShotFx.kick));
+      case TowerRole.frost:
         target.hp -= dmg;
-        target.slowLeft = ab ? 3 : 1.5;
-        target.slowPower = ab ? 0.6 : 0.4;
-      case TowerRole.splash:
-        final radius = ab ? 1.3 : 0.9;
-        final stun = ab && _rng.nextDouble() < 0.2;
-        for (final b in bugs) {
-          if (_distTo(b.pos, target.pos) <= radius) {
-            b.hp -= dmg * (b == target ? 1 : 0.6);
-            if (stun && !b.boss) b.stunLeft = 0.5;
+        final strong = t.hasAbility;
+        target.slowLeft = strong ? 3 : 1.5;
+        target.slowPower = strong ? 0.6 : 0.4;
+        shots.add(Shot(from: t.center, to: target.pos, fx: ShotFx.frost));
+      case TowerRole.fireball:
+        if (ab) {
+          // Ударная волна: всех вокруг себя бьёт и оглушает.
+          for (final b in bugs) {
+            if (b.dist >= 0 && _distTo(b.pos, t.center) <= t.range) {
+              b.hp -= dmg;
+              b.stunLeft = max(b.stunLeft, 0.5);
+            }
           }
+          shots.add(Shot(from: t.center, to: t.center, fx: ShotFx.nova, radius: t.range));
+        } else {
+          missiles.add(Missile(
+            kind: MissileKind.fireball,
+            tower: t,
+            pos: t.center,
+            dir: _unit(t.center, target.pos),
+            damage: dmg,
+            target: target,
+          ));
         }
-      case TowerRole.chain:
+      case TowerRole.lightning:
         target.hp -= dmg;
+        shots.add(Shot(from: t.center, to: target.pos, fx: ShotFx.lightning, seed: _rng.nextInt(1 << 20)));
         var from = target;
         final hit = {target};
-        for (var i = 0; i < (ab ? 4 : 2); i++) {
+        // Обычно — ещё две цели рядом; с перегрузкой — все жуки на карте.
+        final jumps = ab ? bugs.length : 2;
+        for (var i = 0; i < jumps; i++) {
           Bug? next;
           for (final b in bugs) {
-            if (hit.contains(b) || !b.alive) continue;
-            if (_distTo(b.pos, from.pos) <= 1.4 && (next == null || b.dist > next.dist)) next = b;
+            if (hit.contains(b) || !b.alive || b.dist < 0) continue;
+            final d = _distTo(b.pos, from.pos);
+            if (!ab && d > 1.4) continue;
+            if (next == null || d < _distTo(next.pos, from.pos)) next = b;
           }
           if (next == null) break;
-          next.hp -= dmg * 0.7;
-          shots.add(Shot(from: from.pos, to: next.pos, role: TowerRole.chain));
+          next.hp -= ab ? dmg : dmg * 0.7;
+          shots.add(Shot(from: from.pos, to: next.pos, fx: ShotFx.lightning, seed: _rng.nextInt(1 << 20)));
           hit.add(next);
           from = next;
         }
-      case TowerRole.poison:
-        target.hp -= dmg * 0.5;
-        final dps = dmg * (ab ? 1.0 : 0.5);
-        for (final b in bugs) {
-          if (b == target || (ab && _distTo(b.pos, target.pos) <= 0.8)) {
-            b.poisonLeft = 3;
-            b.poisonDps = max(b.poisonDps, b == target ? dps : dps * 0.6);
+      case TowerRole.slash:
+        // Каждый следующий удар по той же цели +20%.
+        if (t._lastTarget == target) {
+          t._streak = min(t._streak + 1, 5);
+        } else {
+          t._lastTarget = target;
+          t._streak = 0;
+        }
+        target.hp -= dmg * (1 + 0.2 * t._streak);
+        shots.add(Shot(from: t.center, to: target.pos, fx: ShotFx.slash, seed: t._streak));
+      case TowerRole.laser:
+        if (ab) {
+          // Призма: луч насквозь до края карты, двойной урон всем на линии.
+          final dir = _unit(t.center, target.pos);
+          for (final b in bugs) {
+            if (b.dist < 0) continue;
+            final rx = b.pos.$1 - t.center.$1;
+            final ry = b.pos.$2 - t.center.$2;
+            final along = rx * dir.$1 + ry * dir.$2;
+            final perp = (rx * dir.$2 - ry * dir.$1).abs();
+            if (along > 0 && perp <= 0.45) b.hp -= dmg * 2;
           }
+          shots.add(Shot(from: t.center, to: _edge(t.center, dir), fx: ShotFx.laserLong));
+        } else {
+          target.hp -= dmg;
+          shots.add(Shot(from: t.center, to: target.pos, fx: ShotFx.laser));
         }
-      case TowerRole.stunner:
-        target.hp -= dmg;
-        if (ab && t._shots.isEven) {
-          target.stunLeft = target.boss ? 0.35 : 0.6;
-        } else if (!ab && t._shots % 3 == 0 && !target.boss) {
-          target.stunLeft = 0.6;
-        }
+      case TowerRole.wave:
+        missiles.add(Missile(
+          kind: MissileKind.wave,
+          tower: t,
+          pos: t.center,
+          dir: _unit(t.center, target.pos),
+          damage: dmg,
+          travel: t.range + 0.4,
+        ));
     }
+  }
+
+  void _moveMissiles(double dt) {
+    for (final m in missiles) {
+      switch (m.kind) {
+        case MissileKind.fireball:
+          // Летит за целью; умерла — долетает до точки, где она была.
+          if (m.target != null && m.target!.alive) m.aimPoint = m.target!.pos;
+          final goal = m.aimPoint;
+          m.dir = _unit(m.pos, goal);
+          final stepLen = Missile.fireballSpeed * dt;
+          if (_distTo(m.pos, goal) <= stepLen) {
+            m.pos = goal;
+            _explode(m);
+          } else {
+            m.pos = (m.pos.$1 + m.dir.$1 * stepLen, m.pos.$2 + m.dir.$2 * stepLen);
+          }
+        case MissileKind.wave:
+          final stepLen = Missile.waveSpeed * dt;
+          m.pos = (m.pos.$1 + m.dir.$1 * stepLen, m.pos.$2 + m.dir.$2 * stepLen);
+          m.travel -= stepLen;
+          for (final b in bugs) {
+            if (!b.alive || b.dist < 0 || m.hit.contains(b)) continue;
+            final rx = b.pos.$1 - m.pos.$1;
+            final ry = b.pos.$2 - m.pos.$2;
+            final along = rx * m.dir.$1 + ry * m.dir.$2;
+            final perp = (rx * m.dir.$2 - ry * m.dir.$1).abs();
+            if (along.abs() <= 0.35 && perp <= Missile.waveHalfWidth) {
+              m.hit.add(b);
+              b.hp -= m.damage;
+              // Равновесие: отбрасывает на полклетки назад.
+              if (m.tower.hasAbility) b.dist = max(0, b.dist - 0.5);
+            }
+          }
+          if (m.travel <= 0) m.done = true;
+      }
+    }
+    missiles.removeWhere((m) => m.done);
+  }
+
+  void _explode(Missile m) {
+    m.done = true;
+    for (final b in bugs) {
+      if (b.dist >= 0 && _distTo(b.pos, m.pos) <= 0.9) {
+        b.hp -= m.damage * (b == m.target ? 1 : 0.6);
+      }
+    }
+    shots.add(Shot(from: m.pos, to: m.pos, fx: ShotFx.explosion, radius: 0.9));
   }
 }
 
