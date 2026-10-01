@@ -8,11 +8,12 @@ import '../../game/story/enemies.dart';
 import '../theme.dart';
 import '../widgets/game_widgets.dart';
 import 'arena_screen.dart';
+import 'defense_screen.dart';
 import 'dig_screen.dart';
 import 'story_screen.dart';
 
 /// Режимы боя, доступные из кнопки «В бой».
-enum BattleMode { story, arena, dig }
+enum BattleMode { story, arena, dig, defense }
 
 /// Вкладка «В бой»: сначала выбор режима, затем сам режим внутри той же
 /// вкладки — шапка с валютами и меню остаются на месте.
@@ -36,6 +37,7 @@ class BattleHubScreen extends StatelessWidget {
       BattleMode.arena => ArenaScreen(game: game, onBack: () => onMode(null)),
       BattleMode.story => StoryScreen(game: game, onBack: () => onMode(null)),
       BattleMode.dig => DigScreen(game: game, onBack: () => onMode(null)),
+      BattleMode.defense => DefenseScreen(game: game, onBack: () => onMode(null)),
       null => ListenableBuilder(
           listenable: game,
           builder: (_, _) => _ModePicker(onMode: onMode, digReady: game.digTasksReady),
@@ -139,6 +141,43 @@ class _ModePicker extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       'Раскопки в пыли: гемы, нитки и монеты. Новое поле каждый день.',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        GamePanel(
+          padding: const EdgeInsets.all(12),
+          onTap: () => onMode(BattleMode.defense),
+          child: Row(
+            children: [
+              Container(
+                width: 84,
+                height: 84,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: GameColors.outline, width: 3),
+                  gradient: const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [Color(0xFFFF8A6B), Color(0xFFB73E5C)],
+                  ),
+                ),
+                child: const Icon(Icons.shield_rounded, size: 46, color: GameColors.outline),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const StrokeText('Оборона кухни', size: 24),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Расставь тапки и отбей 10 волн жуков. Попытка в день.',
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                   ],

@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:idle_slipper/game/case_box.dart';
 import 'package:idle_slipper/game/daily.dart';
+import 'package:idle_slipper/game/defense.dart';
 import 'package:idle_slipper/game/game_state.dart';
 import 'package:idle_slipper/game/slipper.dart';
 import 'package:idle_slipper/game/slipper_kind.dart';
@@ -65,6 +66,25 @@ void main() {
       expect(game.chapterOpen(c2), isTrue);
       expect(game.currentChapter, c2);
       expect(game.fightStage(c2, 0), isNotNull);
+    });
+
+        test('оборона: попытка в день и одна за рекламу, награда растёт с волнами', () {
+      expect(game.defenseAttempts, 1);
+      expect(game.startDefense(), isTrue);
+      expect(game.startDefense(), isFalse);
+      game.takeDefenseAdAttempt();
+      expect(game.defenseAttempts, 1);
+      expect(game.startDefense(), isTrue);
+      expect(game.defenseAttempts, 0);
+      final threads = game.threads;
+      final gems = game.gems.length;
+      final res = game.finishDefense(10);
+      expect(game.threads, threads + res.reward.threads);
+      expect(game.gems.length, gems + 1);
+      expect(game.defenseBest, 10);
+      expect(DefenseReward.forWaves(3).threads, lessThan(DefenseReward.forWaves(8).threads));
+      now = now.add(const Duration(days: 1));
+      expect(game.defenseAttempts, 1);
     });
 
         test('ежедневный кейс — раз в день', () {

@@ -10,6 +10,7 @@ import 'economy.dart';
 import '../net/server_api.dart';
 import 'case_box.dart';
 import 'daily.dart';
+import 'defense.dart';
 import 'dig.dart';
 import 'gems.dart';
 import 'rating.dart';
@@ -85,6 +86,13 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
 
   /// Полученные сегодня награды за задания «Под диваном».
   Set<String> digTasksClaimed = {};
+
+  /// «Оборона кухни»: день, сыграно попыток, взята ли попытка за рекламу,
+  /// лучший результат.
+  String defenseDay = '';
+  int defensePlays = 0;
+  bool defenseAdUsed = false;
+  int defenseBest = 0;
 
   /// Лавка за монеты: день и купленные в этот день виды.
   String shopDay = '';
@@ -366,6 +374,10 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
     'digTasks': digTasksClaimed.toList(),
     'shopDay': shopDay,
     'shopBought': shopBought.toList(),
+    'defenseDay': defenseDay,
+    'defensePlays': defensePlays,
+    'defenseAd': defenseAdUsed,
+    'defenseBest': defenseBest,
     'chestSince': chestSince.toIso8601String(),
     'storyReplays': storyReplaysUsed,
   };
@@ -456,6 +468,10 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
       digTasksClaimed = {...?(json['digTasks'] as List?)?.cast<String>()};
       shopDay = json['shopDay'] as String? ?? '';
       shopBought = {...?(json['shopBought'] as List?)?.cast<String>()};
+      defenseDay = json['defenseDay'] as String? ?? '';
+      defensePlays = (json['defensePlays'] as num?)?.toInt() ?? 0;
+      defenseAdUsed = json['defenseAd'] as bool? ?? false;
+      defenseBest = (json['defenseBest'] as num?)?.toInt() ?? 0;
       _rollDay();
       final story = json['story'] as Map?;
       if (story != null) {
@@ -823,6 +839,57 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
     _progress(QuestKind.chest);
     _save();
     notifyListeners();
+  }
+
+  // --- Оборона кухни ---------------------------------------------------------
+
+  void _rollDefense() {
+    final today = dayKey(clock());
+    if (defenseDay == today) return;
+    defenseDay = today;
+    defensePlays = 0;
+    defenseAdUsed = false;
+  }
+
+  /// Попыток в день: одна бесплатная и одна за рекламу.
+  int get defenseAttempts {
+    _rollDefense();
+    return max(0, 1 + (defenseAdUsed ? 1 : 0) - defensePlays);
+  }
+
+  bool get defenseAdAvailable {
+    _rollDefense();
+    return !defenseAdUsed;
+  }
+
+  /// Взять попытку за рекламу (пока без рекламы — сразу).
+  void takeDefenseAdAttempt() {
+    _rollDefense();
+    if (defenseAdUsed) return;
+    defenseAdUsed = true;
+    _save();
+    notifyListeners();
+  }
+
+  /// Начать оборону: тратит попытку. Без попыток — false.
+  bool startDefense() {
+    if (defenseAttempts == 0) return false;
+    defensePlays++;
+    _save();
+    notifyListeners();
+    return true;
+  }
+
+  /// Оборона закончена с [waves] отбитыми волнами — выдать награду.
+  ({DefenseReward reward, Gem? gem}) finishDefense(int waves) {
+    final reward = DefenseReward.forWaves(waves);
+    threads += reward.threads;
+    coins += reward.coins;
+    final gem = reward.gem == null ? null : _giveGem(reward.gem!);
+    defenseBest = max(defenseBest, waves);
+    _save();
+    notifyListeners();
+    return (reward: reward, gem: gem);
   }
 
   // --- Лавка за монеты ------------------------------------------------------
