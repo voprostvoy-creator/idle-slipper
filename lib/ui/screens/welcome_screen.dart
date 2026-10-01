@@ -59,11 +59,8 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
             child: Column(
               children: [
                 const Spacer(),
-                // Логотип игры: название, тапки и арена.
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(28),
-                  child: Image.asset('assets/ui/logo.webp', width: 280, height: 280),
-                ),
+                // Надпись-логотип «Битва тапков».
+                Image.asset('assets/ui/title_logo.webp', width: 320, fit: BoxFit.contain),
                 const SizedBox(height: 10),
                 const StrokeText('Жуки наступают', size: 24, color: GameColors.orange),
                 const SizedBox(height: 16),
