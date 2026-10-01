@@ -172,7 +172,7 @@ class TowerSpec {
             role: TowerRole.wave, damage: 18, range: 2.2, cooldown: 1.1,
             label: 'Воздушная волна в 1.5 клетки — бьёт всех на пути',
             ability: 'Равновесие',
-            abilityText: 'Каждый удар отбрасывает жуков на полклетки назад.'),
+            abilityText: 'Каждый удар отбрасывает жуков на полклетки назад (жука — не чаще раза в 2 с).'),
         _ => const TowerSpec(
             role: TowerRole.strike, damage: 11, range: 1.7, cooldown: 0.8,
             label: 'Пинок по жуку',
@@ -261,6 +261,11 @@ class Bug {
   double slowLeft = 0;
   double slowPower = 0.4;
   double stunLeft = 0;
+
+  /// Отбрасывание Инь-Яна снова сработает через столько секунд — так
+  /// несколько Инь-Янов не откидывают жука дважды.
+  double knockCd = 0;
+  static const knockCooldown = 2.0;
 
   bool get alive => hp > 0;
   (double, double) get pos => DefenseMap.pointAt(max(0, dist));
@@ -487,6 +492,7 @@ class DefenseGame {
 
     // Движение и оглушение.
     for (final b in bugs) {
+      if (b.knockCd > 0) b.knockCd -= dt;
       if (b.stunLeft > 0) {
         b.stunLeft -= dt;
         continue;
@@ -716,8 +722,11 @@ class DefenseGame {
             if (along.abs() <= 0.35 && perp <= Missile.waveHalfWidth) {
               m.hit.add(b);
               b.hp -= m.damage;
-              // Равновесие: отбрасывает на полклетки назад.
-              if (m.tower.hasAbility) b.dist = max(0, b.dist - 0.5);
+              // Равновесие: отбрасывает на полклетки назад, не чаще раза в 2 с.
+              if (m.tower.hasAbility && b.knockCd <= 0) {
+                b.dist = max(0, b.dist - 0.5);
+                b.knockCd = Bug.knockCooldown;
+              }
             }
           }
           if (m.travel <= 0) m.done = true;

@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
@@ -627,6 +628,13 @@ class _DefenseGameScreenState extends State<DefenseGameScreen>
               painter: _BoardPainter(cell: cell, selected: _selected),
             ),
           ),
+          Positioned.fill(
+            child: IgnorePointer(
+              child: CustomPaint(
+                painter: _ShadowPainter(cell: cell, game: _d),
+              ),
+            ),
+          ),
           for (final t in _d.towers)
             Positioned(
               left: t.cell.col * cell - cell * 0.1,
@@ -753,54 +761,262 @@ class _Crumbs extends StatelessWidget {
   );
 }
 
-/// Пол кухни, тропа и сахарница; у выбранного тапка — круг дальности.
+/// Поле: лужайка с цветами, каменная тропа, кусты по краям и сахарница;
+/// у выбранного тапка — круг дальности.
 class _BoardPainter extends CustomPainter {
   _BoardPainter({required this.cell, required this.selected});
   final double cell;
   final Tower? selected;
 
+  // Картинка поля без выбранного тапка — рисуется один раз на размер клетки.
+  static ui.Picture? _cache;
+  static double _cacheCell = 0;
+
+  static const _grass = Color(0xFF6DBE45);
+  static const _grassLight = Color(0xFF86D35A);
+  static const _grassDark = Color(0xFF5AAA3A);
+  static const _stoneEdge = Color(0xFF7F7B70);
+  static const _stoneBed = Color(0xFFB9B3A3);
+  static const _stone = Color(0xFFDAD5C7);
+  static const _stoneLine = Color(0xFF9C9686);
+
   @override
   void paint(Canvas c, Size size) {
-    // Плитка пола в шахматку.
-    for (var r = 0; r < DefenseMap.rows; r++) {
-      for (var col = 0; col < DefenseMap.cols; col++) {
-        final rect = Rect.fromLTWH(col * cell, r * cell, cell, cell);
-        final isPath = DefenseMap.path.contains((col: col, row: r));
-        final light = (r + col).isEven;
-        c.drawRect(
-          rect,
-          Paint()
-            ..color = isPath
-                ? (light ? const Color(0xFF8C6A4A) : const Color(0xFF7C5C3E))
-                : (light ? const Color(0xFF4E3A6E) : const Color(0xFF45325F)),
+    if (_cache == null || _cacheCell != cell) {
+      final rec = ui.PictureRecorder();
+      _paintField(Canvas(rec), size);
+      _cache = rec.endRecording();
+      _cacheCell = cell;
+    }
+    c.drawPicture(_cache!);
+
+    // Дальность выбранного тапка.
+    final t = selected;
+    if (t != null) {
+      final (x, y) = t.center;
+      final o = Offset(x * cell, y * cell);
+      c.drawCircle(o, t.range * cell, Paint()..color = const Color(0x33FFFFFF));
+      c.drawCircle(
+        o,
+        t.range * cell,
+        Paint()
+          ..color = const Color(0xCCFFFFFF)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2,
+      );
+    }
+  }
+
+  void _paintField(Canvas c, Size size) {
+    final rnd = Random(42);
+    final frame = RRect.fromRectAndRadius(
+      Offset.zero & size,
+      Radius.circular(cell * 0.35),
+    );
+    c.save();
+    c.clipRRect(frame);
+
+    // Трава: основа, светлые и тёмные пятна.
+    c.drawRect(Offset.zero & size, Paint()..color = _grass);
+    for (var i = 0; i < 40; i++) {
+      final o = Offset(
+        rnd.nextDouble() * size.width,
+        rnd.nextDouble() * size.height,
+      );
+      final r = cell * (0.5 + rnd.nextDouble() * 1.1);
+      final color = rnd.nextBool() ? _grassLight : _grassDark;
+      c.drawCircle(
+        o,
+        r,
+        Paint()
+          ..shader = RadialGradient(
+            colors: [color.withValues(alpha: 0.55), color.withValues(alpha: 0)],
+          ).createShader(Rect.fromCircle(center: o, radius: r)),
+      );
+    }
+    // Еле заметная сетка, чтобы было видно, куда встанет тапок.
+    final grid = Paint()
+      ..color = const Color(0x14000000)
+      ..strokeWidth = 1;
+    for (var col = 1; col < DefenseMap.cols; col++) {
+      c.drawLine(Offset(col * cell, 0), Offset(col * cell, size.height), grid);
+    }
+    for (var r = 1; r < DefenseMap.rows; r++) {
+      c.drawLine(Offset(0, r * cell), Offset(size.width, r * cell), grid);
+    }
+    // Травинки.
+    final tuft = Paint()
+      ..color = const Color(0xFF4E9A32)
+      ..strokeWidth = cell * 0.035
+      ..strokeCap = StrokeCap.round;
+    for (var i = 0; i < 70; i++) {
+      final o = Offset(
+        rnd.nextDouble() * size.width,
+        rnd.nextDouble() * size.height,
+      );
+      final h = cell * (0.08 + rnd.nextDouble() * 0.06);
+      c.drawLine(o, o + Offset(-h * 0.5, -h), tuft);
+      c.drawLine(o, o + Offset(0, -h * 1.2), tuft);
+      c.drawLine(o, o + Offset(h * 0.5, -h), tuft);
+    }
+    // Цветы: белые и жёлтые.
+    for (var i = 0; i < 55; i++) {
+      final o = Offset(
+        rnd.nextDouble() * size.width,
+        rnd.nextDouble() * size.height,
+      );
+      final r = cell * (0.035 + rnd.nextDouble() * 0.02);
+      final petal = rnd.nextDouble() < 0.75
+          ? Colors.white
+          : const Color(0xFFFFE066);
+      for (var k = 0; k < 5; k++) {
+        final a = k * 2 * pi / 5;
+        c.drawCircle(
+          o + Offset(cos(a), sin(a)) * r,
+          r * 0.8,
+          Paint()..color = petal,
         );
       }
+      c.drawCircle(o, r * 0.6, Paint()..color = const Color(0xFFFFB82E));
     }
-    // Края тропы.
-    final edge = Paint()
-      ..color = const Color(0x55000000)
+
+    // Тропа: тёмный край, подложка и камни.
+    final path = Path();
+    for (var i = 0; i < DefenseMap.waypoints.length; i++) {
+      final (x, y) = DefenseMap.waypoints[i];
+      final p = Offset((x + 0.5) * cell, (y + 0.5) * cell);
+      i == 0 ? path.moveTo(p.dx, p.dy) : path.lineTo(p.dx, p.dy);
+    }
+    Paint road(Color color, double w) => Paint()
+      ..color = color
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 2;
-    for (final p in DefenseMap.path) {
-      c.drawRect(Rect.fromLTWH(p.col * cell, p.row * cell, cell, cell), edge);
+      ..strokeWidth = cell * w
+      ..strokeJoin = StrokeJoin.round
+      ..strokeCap = StrokeCap.round;
+    c.drawPath(
+      path.shift(Offset(0, cell * 0.06)),
+      road(const Color(0x33000000), 0.92),
+    );
+    c.drawPath(path, road(_stoneEdge, 0.92));
+    c.drawPath(path, road(_stoneBed, 0.8));
+    _stones(c, rnd);
+
+    // Кусты по углам и краям.
+    for (final (bx, by, br) in const [
+      (0.0, 0.0, 1.1),
+      (7.0, 0.2, 0.9),
+      (0.1, 11.0, 1.0),
+      (7.0, 6.0, 0.7),
+      (0.0, 5.5, 0.6),
+      (3.2, 11.1, 0.7),
+    ]) {
+      _bush(c, Offset(bx * cell, by * cell), br * cell, rnd);
     }
-    // Сахарница.
+
+    _sugar(c);
+    c.restore();
+
+    // Рамка поля.
+    c.drawRRect(
+      frame.deflate(2),
+      Paint()
+        ..color = const Color(0xFF3B6E25)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 4,
+    );
+  }
+
+  /// Булыжники вдоль тропы.
+  void _stones(Canvas c, Random rnd) {
+    final pts = DefenseMap.waypoints;
+    for (var i = 0; i < pts.length - 1; i++) {
+      final a = Offset(pts[i].$1 + 0.5, pts[i].$2 + 0.5) * cell;
+      final b = Offset(pts[i + 1].$1 + 0.5, pts[i + 1].$2 + 0.5) * cell;
+      final len = (b - a).distance;
+      final n = (b - a) / len;
+      final side = Offset(-n.dy, n.dx);
+      final step = cell * 0.27;
+      for (var d = 0.0; d <= len; d += step) {
+        for (final s in const [-0.21, 0.0, 0.21]) {
+          if (rnd.nextDouble() < 0.12) continue;
+          final o =
+              a +
+              n * (d + (rnd.nextDouble() - 0.5) * cell * 0.06) +
+              side * cell * (s + (rnd.nextDouble() - 0.5) * 0.05);
+          final w = cell * (0.19 + rnd.nextDouble() * 0.06);
+          final h = cell * (0.15 + rnd.nextDouble() * 0.05);
+          c.save();
+          c.translate(o.dx, o.dy);
+          c.rotate(atan2(n.dy, n.dx) + (rnd.nextDouble() - 0.5) * 0.5);
+          final r = RRect.fromRectAndRadius(
+            Rect.fromCenter(center: Offset.zero, width: w, height: h),
+            Radius.circular(h * 0.45),
+          );
+          c.drawRRect(r, Paint()..color = _stone);
+          c.drawRRect(
+            r,
+            Paint()
+              ..color = _stoneLine
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 1.2,
+          );
+          // Блик сверху.
+          c.drawLine(
+            Offset(-w * 0.25, -h * 0.22),
+            Offset(w * 0.15, -h * 0.22),
+            Paint()
+              ..color = Colors.white.withValues(alpha: 0.6)
+              ..strokeWidth = 1.2
+              ..strokeCap = StrokeCap.round,
+          );
+          c.restore();
+        }
+      }
+    }
+  }
+
+  /// Куст: несколько кругов листвы с бликами.
+  void _bush(Canvas c, Offset o, double r, Random rnd) {
+    c.drawCircle(
+      o + Offset(r * 0.1, r * 0.15),
+      r,
+      Paint()..color = const Color(0x33000000),
+    );
+    for (var i = 0; i < 7; i++) {
+      final a = rnd.nextDouble() * 2 * pi;
+      final d = r * 0.5 * rnd.nextDouble();
+      final p = o + Offset(cos(a), sin(a)) * d;
+      final rr = r * (0.45 + rnd.nextDouble() * 0.3);
+      c.drawCircle(p, rr, Paint()..color = const Color(0xFF3E8E2E));
+      c.drawCircle(
+        p + Offset(-rr * 0.2, -rr * 0.2),
+        rr * 0.7,
+        Paint()..color = const Color(0xFF52A83A),
+      );
+      c.drawCircle(
+        p + Offset(-rr * 0.35, -rr * 0.35),
+        rr * 0.3,
+        Paint()..color = const Color(0xFF6CC24A),
+      );
+    }
+  }
+
+  /// Сахарница в конце тропы.
+  void _sugar(Canvas c) {
     final s = DefenseMap.sugar;
     final center = Offset((s.col + 0.5) * cell, (s.row + 0.5) * cell);
-    c.drawOval(
-      Rect.fromCenter(
-        center: center + Offset(0, cell * 0.12),
-        width: cell * 0.9,
-        height: cell * 0.55,
-      ),
-      Paint()..color = Colors.white,
+    final bowl = Rect.fromCenter(
+      center: center + Offset(0, cell * 0.12),
+      width: cell * 0.9,
+      height: cell * 0.55,
     );
     c.drawOval(
-      Rect.fromCenter(
-        center: center + Offset(0, cell * 0.12),
-        width: cell * 0.9,
-        height: cell * 0.55,
-      ),
+      bowl.shift(Offset(cell * 0.04, cell * 0.1)),
+      Paint()..color = const Color(0x40000000),
+    );
+    c.drawOval(bowl, Paint()..color = Colors.white);
+    c.drawOval(
+      bowl,
       Paint()
         ..color = GameColors.outline
         ..style = PaintingStyle.stroke
@@ -825,29 +1041,52 @@ class _BoardPainter extends CustomPainter {
           ..strokeWidth = 1.5,
       );
     }
-    // Дальность выбранного тапка.
-    final t = selected;
-    if (t != null) {
-      final (x, y) = t.center;
-      c.drawCircle(
-        Offset(x * cell, y * cell),
-        t.range * cell,
-        Paint()..color = const Color(0x2266D9FF),
-      );
-      c.drawCircle(
-        Offset(x * cell, y * cell),
-        t.range * cell,
-        Paint()
-          ..color = const Color(0x9966D9FF)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 2,
-      );
-    }
   }
 
   @override
   bool shouldRepaint(_BoardPainter old) =>
       old.selected != selected || old.cell != cell;
+}
+
+/// Мягкие тени под тапками и жуками — рисуются на траве, под спрайтами.
+class _ShadowPainter extends CustomPainter {
+  _ShadowPainter({required this.cell, required this.game});
+  final double cell;
+  final DefenseGame game;
+
+  @override
+  void paint(Canvas c, Size size) {
+    final paint = Paint()
+      ..color = const Color(0x40000000)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.5);
+    for (final t in game.towers) {
+      final (x, y) = t.center;
+      c.drawOval(
+        Rect.fromCenter(
+          center: Offset(x * cell, (y + 0.32) * cell),
+          width: cell * 0.85,
+          height: cell * 0.26,
+        ),
+        paint,
+      );
+    }
+    for (final b in game.bugs) {
+      if (b.dist < 0) continue;
+      final (x, y) = b.pos;
+      final w = cell * (b.boss ? 1.3 : 0.75);
+      c.drawOval(
+        Rect.fromCenter(
+          center: Offset(x * cell, y * cell + cell * (b.boss ? 0.26 : 0.18)),
+          width: w,
+          height: w * 0.3,
+        ),
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_ShadowPainter old) => true;
 }
 
 /// Удары и снаряды тапков: пинок, холод, молния, огонь, когти, лазер, волна.
