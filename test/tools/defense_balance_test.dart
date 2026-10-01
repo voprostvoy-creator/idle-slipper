@@ -32,9 +32,9 @@ int _play(List<String> kinds, int stars, int seed) {
     var spent = true;
     while (spent) {
       spent = false;
-      final free = spots.where(g.canPlace).toList();
+      final free = spots.where((c) => g.canPlace(c.col + 0.5, c.row + 0.5)).toList();
       final kind = kinds[k % kinds.length];
-      if (free.isNotEmpty && g.towers.length < 8 && g.place(kind, free.first, stars: stars)) {
+      if (free.isNotEmpty && g.towers.length < 8 && g.place(kind, free.first.col + 0.5, free.first.row + 0.5, stars: stars)) {
         k++;
         spent = true;
         continue;

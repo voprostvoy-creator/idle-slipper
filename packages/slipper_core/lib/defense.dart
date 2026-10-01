@@ -44,6 +44,25 @@ class DefenseMap {
     return cells;
   }();
 
+  /// Расстояние от точки до оси тропы, в клетках.
+  static double distToPath(double x, double y) {
+    var best = double.infinity;
+    for (var i = 0; i < waypoints.length - 1; i++) {
+      final ax = waypoints[i].$1 + 0.5;
+      final ay = waypoints[i].$2 + 0.5;
+      final bx = waypoints[i + 1].$1 + 0.5;
+      final by = waypoints[i + 1].$2 + 0.5;
+      final vx = bx - ax;
+      final vy = by - ay;
+      final l2 = vx * vx + vy * vy;
+      final t = l2 == 0 ? 0.0 : (((x - ax) * vx + (y - ay) * vy) / l2).clamp(0.0, 1.0);
+      final dx = x - (ax + vx * t);
+      final dy = y - (ay + vy * t);
+      best = min(best, sqrt(dx * dx + dy * dy));
+    }
+    return best;
+  }
+
   /// Сахарница — конец тропы.
   static const Cell sugar = (col: 5, row: 10);
 
@@ -182,10 +201,13 @@ class TowerSpec {
 }
 
 class Tower {
-  Tower({required this.kindId, required this.cell, required this.stars});
+  Tower({required this.kindId, required this.x, required this.y, required this.stars});
 
   final String kindId;
-  final Cell cell;
+
+  /// Где стоит — в клетках, центр тапка; ставится в любое место поля.
+  final double x;
+  final double y;
   final int stars;
   int level = 1;
   double _cooldown = 0;
@@ -227,7 +249,7 @@ class Tower {
 
   double rangeAt(int lv) => spec.range + (lv - 1) * 0.25;
 
-  (double, double) get center => (cell.col + 0.5, cell.row + 0.5);
+  (double, double) get center => (x, y);
 
   /// Цена постановки одна для всех: редкий тапок сильнее сам по себе.
   static int priceOf(String kindId) => 50;
@@ -414,21 +436,44 @@ class DefenseGame {
   static double hpOf(EnemyKind k, int wave, bool boss) =>
       48 * k.hp * pow(1.34, wave - 1) * (boss ? 12 : 1);
 
-  bool canPlace(Cell c) =>
-      c.col >= 0 &&
-      c.col < DefenseMap.cols &&
-      c.row >= 0 &&
-      c.row < DefenseMap.rows &&
-      !DefenseMap.path.contains(c) &&
-      towers.every((t) => t.cell != c);
+  /// Верх и низ поля в клетках: экран бывает выше карты — сверху и снизу
+  /// тоже можно ставить тапки.
+  double minY = 0;
+  double maxY = DefenseMap.rows.toDouble();
 
-  Tower? towerAt(Cell c) => towers.where((t) => t.cell == c).firstOrNull;
+  /// Ближе к оси тропы ставить нельзя.
+  static const pathClearance = 0.72;
 
-  bool place(String kindId, Cell c, {int stars = 0}) {
+  /// Ближе к другому тапку ставить нельзя.
+  static const towerGap = 0.75;
+
+  bool canPlace(double x, double y) =>
+      x >= 0.3 &&
+      x <= DefenseMap.cols - 0.3 &&
+      y >= minY + 0.3 &&
+      y <= maxY - 0.3 &&
+      DefenseMap.distToPath(x, y) >= pathClearance &&
+      towers.every((t) => _distTo(t.center, (x, y)) >= towerGap);
+
+  /// Тапок под пальцем: ближайший в радиусе полклетки.
+  Tower? towerNear(double x, double y) {
+    Tower? best;
+    var bestD = 0.55;
+    for (final t in towers) {
+      final d = _distTo(t.center, (x, y));
+      if (d < bestD) {
+        best = t;
+        bestD = d;
+      }
+    }
+    return best;
+  }
+
+  bool place(String kindId, double x, double y, {int stars = 0}) {
     final price = Tower.priceOf(kindId);
-    if (!canPlace(c) || crumbs < price) return false;
+    if (!canPlace(x, y) || crumbs < price) return false;
     crumbs -= price;
-    towers.add(Tower(kindId: kindId, cell: c, stars: stars));
+    towers.add(Tower(kindId: kindId, x: x, y: y, stars: stars));
     return true;
   }
 
@@ -596,8 +641,8 @@ class DefenseGame {
     final (dx, dy) = dir;
     if (dx > 0) k = min(k, (DefenseMap.cols - x) / dx);
     if (dx < 0) k = min(k, -x / dx);
-    if (dy > 0) k = min(k, (DefenseMap.rows - y) / dy);
-    if (dy < 0) k = min(k, -y / dy);
+    if (dy > 0) k = min(k, (maxY - y) / dy);
+    if (dy < 0) k = min(k, (minY - y) / dy);
     return (x + dx * k, y + dy * k);
   }
 

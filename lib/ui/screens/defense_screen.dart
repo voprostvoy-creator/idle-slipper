@@ -13,6 +13,7 @@ import '../format.dart';
 import '../gem_icon.dart';
 import '../slipper_sprite.dart';
 import '../theme.dart';
+import '../toast.dart';
 import '../widgets/game_widgets.dart';
 import 'battle_hub_screen.dart';
 
@@ -201,6 +202,15 @@ class _DefenseGameScreenState extends State<DefenseGameScreen>
   Tower? _selected;
   bool _finished = false;
 
+  /// Размер клетки и сдвиг карты на экране (в клетках) — с последней раскладки.
+  double _cell = 40;
+  double _ox = 0;
+  double _oy = 0;
+  final _fieldKey = GlobalKey();
+
+  /// Тапок, который сейчас тащат из панели, и куда он встанет.
+  ({String kind, double x, double y})? _drag;
+
   GameState get game => widget.game;
 
   @override
@@ -310,91 +320,41 @@ class _DefenseGameScreenState extends State<DefenseGameScreen>
     if (ok == true) _finish();
   }
 
-  void _tapCell(Cell c) {
-    final t = _d.towerAt(c);
-    if (t != null) {
-      setState(() => _selected = t);
-      _towerSheet(t);
+  /// Перевод точки на экране поля в клетки карты.
+  (double, double) _toMap(Offset local) =>
+      (local.dx / _cell - _ox, local.dy / _cell - _oy);
+
+  void _tapField(Offset local) {
+    final (x, y) = _toMap(local);
+    final t = _d.towerNear(x, y);
+    if (t == null) {
+      setState(() => _selected = null);
       return;
     }
-    setState(() => _selected = null);
-    if (DefenseMap.path.contains(c)) return;
-    _buildSheet(c);
+    setState(() => _selected = t);
+    _towerSheet(t);
   }
 
-  void _buildSheet(Cell c) {
-    final owned = [
-      for (final k in SlipperCatalog.all)
-        if (game.count(k.id) > 0) k,
-    ];
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: GameColors.panel,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
-        side: BorderSide(color: GameColors.outline, width: 3),
-      ),
-      builder: (context) => SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(14),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Center(child: StrokeText('Поставить тапок', size: 22)),
-              const SizedBox(height: 8),
-              for (final k in owned)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: GamePanel(
-                    padding: const EdgeInsets.all(8),
-                    onTap: _d.crumbs >= Tower.priceOf(k.id)
-                        ? () {
-                            setState(
-                              () =>
-                                  _d.place(k.id, c, stars: game.starsOf(k.id)),
-                            );
-                            Navigator.pop(context);
-                          }
-                        : null,
-                    child: Row(
-                      children: [
-                        SlipperSprite(
-                          fighter: Slipper(name: k.name, kindId: k.id),
-                          width: 64,
-                          animate: false,
-                          showSize: false,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                k.name,
-                                style: Theme.of(context).textTheme.titleSmall,
-                              ),
-                              Text(
-                                TowerSpec.of(k.id).label,
-                                style: Theme.of(context).textTheme.bodySmall,
-                              ),
-                            ],
-                          ),
-                        ),
-                        _Crumbs(
-                          Tower.priceOf(k.id),
-                          enough: _d.crumbs >= Tower.priceOf(k.id),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
+  /// Куда встанет тапок, который тащат: палец + подъём, чтобы его было видно.
+  void _dragTo(String kindId, Offset global) {
+    final box = _fieldKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null) return;
+    final local = box.globalToLocal(global) + Offset(0, -_lift * _cell);
+    final (x, y) = _toMap(local);
+    setState(() => _drag = (kind: kindId, x: x, y: y));
   }
+
+  void _drop() {
+    final d = _drag;
+    if (d == null) return;
+    setState(() {
+      _d.place(d.kind, d.x, d.y, stars: game.starsOf(d.kind));
+      _drag = null;
+    });
+  }
+
+  /// Насколько выше пальца ставится тапок, в клетках.
+  static const _lift = 0.9;
 
   void _towerSheet(Tower t) {
     showModalBottomSheet<void>(
@@ -505,7 +465,6 @@ class _DefenseGameScreenState extends State<DefenseGameScreen>
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return PopScope(
       canPop: _finished,
       onPopInvokedWithResult: (didPop, _) {
@@ -513,164 +472,293 @@ class _DefenseGameScreenState extends State<DefenseGameScreen>
       },
       child: Scaffold(
         body: GameBackground(
-          child: SafeArea(
-            child: Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 6),
-                  child: Row(
-                    children: [
-                      GameButton(
-                        onPressed: _confirmExit,
-                        color: GameColors.panelLight,
-                        height: 36,
-                        padding: const EdgeInsets.symmetric(horizontal: 10),
-                        child: const Icon(
-                          Icons.flag_rounded,
-                          color: GameColors.text,
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      const Icon(
-                        Icons.favorite,
-                        color: GameColors.red,
-                        size: 22,
-                      ),
-                      const SizedBox(width: 3),
-                      StrokeText('${_d.lives}', size: 20),
-                      const SizedBox(width: 12),
-                      _Crumbs(_d.crumbs, enough: true, big: true),
-                      const Spacer(),
-                      StrokeText(
-                        'Волна ${min(_d.nextWave, DefenseGame.waves)}/${DefenseGame.waves}',
-                        size: 18,
-                      ),
-                      const SizedBox(width: 8),
-                      GameButton(
-                        onPressed: () =>
-                            setState(() => _speed = _speed == 1 ? 2 : 1),
-                        color: _speed == 2
-                            ? GameColors.gold
-                            : GameColors.panelLight,
-                        height: 36,
-                        padding: const EdgeInsets.symmetric(horizontal: 8),
-                        child: Text(
-                          '×$_speed',
-                          style: TextStyle(
-                            color: _speed == 2
-                                ? GameColors.outline
-                                : GameColors.text,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+          child: Column(
+            children: [
+              SafeArea(bottom: false, child: _hud()),
+              Expanded(
+                child: LayoutBuilder(
+                  builder: (context, box) =>
+                      _field(box.maxWidth, box.maxHeight),
                 ),
-                Expanded(
-                  child: Center(
-                    child: AspectRatio(
-                      aspectRatio: DefenseMap.cols / DefenseMap.rows,
-                      child: LayoutBuilder(
-                        builder: (context, box) =>
-                            _field(box.maxWidth / DefenseMap.cols),
-                      ),
-                    ),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 6, 16, 12),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: _d.waveActive
-                        ? GamePanel(
-                            color: GameColors.panelDark,
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            child: Text(
-                              'Жуки идут! Осталось: ${_d.bugs.length}',
-                              textAlign: TextAlign.center,
-                              style: theme.textTheme.titleSmall,
-                            ),
-                          )
-                        : GameButton(
-                            color: GameColors.red,
-                            height: 52,
-                            onPressed: _d.over
-                                ? null
-                                : () => setState(_d.startWave),
-                            child: Text(
-                              _d.towers.isEmpty
-                                  ? 'Поставь тапок и начни волну ${_d.nextWave}'
-                                  : 'Начать волну ${_d.nextWave}',
-                              style: const TextStyle(fontSize: 17),
-                            ),
-                          ),
-                  ),
-                ),
-              ],
-            ),
+              ),
+              _panel(),
+            ],
           ),
         ),
       ),
     );
   }
 
-  Widget _field(double cell) {
-    return GestureDetector(
-      onTapUp: (d) => _tapCell((
-        col: (d.localPosition.dx / cell).floor(),
-        row: (d.localPosition.dy / cell).floor(),
-      )),
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Positioned.fill(
-            child: CustomPaint(
-              painter: _BoardPainter(cell: cell, selected: _selected),
-            ),
+  Widget _hud() => Padding(
+    padding: const EdgeInsets.fromLTRB(12, 8, 12, 6),
+    child: Row(
+      children: [
+        GameButton(
+          onPressed: _confirmExit,
+          color: GameColors.panelLight,
+          height: 36,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          child: const Icon(Icons.flag_rounded, color: GameColors.text),
+        ),
+        const SizedBox(width: 10),
+        const Icon(Icons.favorite, color: GameColors.red, size: 22),
+        const SizedBox(width: 3),
+        StrokeText('${_d.lives}', size: 20),
+        const SizedBox(width: 12),
+        _Crumbs(_d.crumbs, enough: true, big: true),
+        const Spacer(),
+        StrokeText(
+          'Волна ${min(_d.nextWave, DefenseGame.waves)}/${DefenseGame.waves}',
+          size: 18,
+        ),
+      ],
+    ),
+  );
+
+  /// Панель тапков внизу: тащи на поле.
+  Widget _panel() {
+    final owned = [
+      for (final k in SlipperCatalog.all)
+        if (game.count(k.id) > 0) k,
+    ];
+    return Container(
+      decoration: const BoxDecoration(
+        color: GameColors.panel,
+        border: Border(top: BorderSide(color: GameColors.outline, width: 3)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: SizedBox(
+          height: 92,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
+            children: [
+              for (final k in owned)
+                Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: _card(k),
+                ),
+            ],
           ),
-          Positioned.fill(
-            child: IgnorePointer(
-              child: CustomPaint(
-                painter: _ShadowPainter(cell: cell, game: _d),
+        ),
+      ),
+    );
+  }
+
+  Widget _card(SlipperKind k) {
+    final price = Tower.priceOf(k.id);
+    final enough = _d.crumbs >= price;
+    final card = GamePanel(
+      color: enough ? GameColors.panelLight : GameColors.panelDark,
+      padding: const EdgeInsets.fromLTRB(6, 4, 6, 4),
+      child: SizedBox(
+        width: 66,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Opacity(
+              opacity: enough ? 1 : 0.45,
+              child: SlipperSprite(
+                fighter: Slipper(name: k.name, kindId: k.id),
+                width: 58,
+                animate: false,
+                showSize: false,
               ),
             ),
+            const SizedBox(height: 4),
+            _Crumbs(price, enough: enough),
+          ],
+        ),
+      ),
+    );
+    return Draggable<String>(
+      data: k.id,
+      maxSimultaneousDrags: enough ? 1 : 0,
+      dragAnchorStrategy: pointerDragAnchorStrategy,
+      // Тапок висит над пальцем — там же, где встанет.
+      feedback: Transform.translate(
+        offset: Offset(-0.6 * _cell, -(0.3 + _lift) * _cell),
+        child: IgnorePointer(
+          child: SlipperSprite(
+            fighter: Slipper(name: k.name, kindId: k.id),
+            width: _cell * 1.2,
+            animate: false,
+            showSize: false,
           ),
-          for (final t in _d.towers)
+        ),
+      ),
+      childWhenDragging: Opacity(opacity: 0.5, child: card),
+      onDragUpdate: (d) => _dragTo(k.id, d.globalPosition),
+      onDraggableCanceled: (_, _) => setState(() => _drag = null),
+      onDragEnd: (_) {
+        if (_drag != null) setState(() => _drag = null);
+      },
+      child: GestureDetector(
+        onTap: () => showToast(
+          context,
+          'Перетащи тапок на поле',
+          icon: const Icon(Icons.touch_app_rounded, size: 20),
+        ),
+        child: card,
+      ),
+    );
+  }
+
+  Widget _field(double w, double h) {
+    // Поле во всю ширину; карта по центру, лишнее — тоже лужайка.
+    final cell = min(w / DefenseMap.cols, h / DefenseMap.rows);
+    _cell = cell;
+    _ox = (w / cell - DefenseMap.cols) / 2;
+    _oy = (h / cell - DefenseMap.rows) / 2;
+    _d.minY = -_oy;
+    _d.maxY = DefenseMap.rows + _oy;
+    final drag = _drag;
+    final towers = [..._d.towers]..sort((a, b) => a.y.compareTo(b.y));
+    return DragTarget<String>(
+      onWillAcceptWithDetails: (_) => true,
+      onLeave: (_) => setState(() => _drag = null),
+      onAcceptWithDetails: (_) => _drop(),
+      builder: (context, _, _) => GestureDetector(
+        key: _fieldKey,
+        behavior: HitTestBehavior.opaque,
+        onTapUp: (d) => _tapField(d.localPosition),
+        child: Stack(
+          clipBehavior: Clip.hardEdge,
+          children: [
+            Positioned.fill(
+              child: CustomPaint(
+                painter: _BoardPainter(
+                  cell: cell,
+                  ox: _ox,
+                  oy: _oy,
+                  selected: _selected,
+                ),
+              ),
+            ),
             Positioned(
-              left: t.cell.col * cell - cell * 0.1,
-              top: t.cell.row * cell + cell * 0.2,
-              width: cell * 1.2,
-              child: Column(
+              left: _ox * cell,
+              top: _oy * cell,
+              width: DefenseMap.cols * cell,
+              height: DefenseMap.rows * cell,
+              child: Stack(
+                clipBehavior: Clip.none,
                 children: [
-                  _TowerSprite(tower: t, cell: cell),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      for (var i = 0; i < t.level; i++)
-                        Icon(
-                          Icons.star_rounded,
-                          size: cell * 0.22,
-                          color: GameColors.gold,
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      child: CustomPaint(
+                        painter: _ShadowPainter(cell: cell, game: _d),
+                      ),
+                    ),
+                  ),
+                  if (drag != null)
+                    Positioned.fill(
+                      child: IgnorePointer(
+                        child: CustomPaint(
+                          painter: _GhostPainter(
+                            cell: cell,
+                            x: drag.x,
+                            y: drag.y,
+                            range: TowerSpec.of(drag.kind).range,
+                            ok: _d.canPlace(drag.x, drag.y),
+                          ),
                         ),
-                    ],
+                      ),
+                    ),
+                  for (final t in towers)
+                    Positioned(
+                      left: t.x * cell - cell * 0.6,
+                      top: t.y * cell - cell * 0.3,
+                      width: cell * 1.2,
+                      child: IgnorePointer(
+                        child: Column(
+                          children: [
+                            _TowerSprite(tower: t, cell: cell),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                for (var i = 0; i < t.level; i++)
+                                  Icon(
+                                    Icons.star_rounded,
+                                    size: cell * 0.22,
+                                    color: GameColors.gold,
+                                  ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  for (final b in _d.bugs)
+                    if (b.dist >= 0) _bug(b, cell),
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      child: CustomPaint(
+                        painter: _ShotsPainter(
+                          cell: cell,
+                          shots: _d.shots,
+                          missiles: _d.missiles,
+                        ),
+                      ),
+                    ),
                   ),
                 ],
               ),
             ),
-          for (final b in _d.bugs)
-            if (b.dist >= 0) _bug(b, cell),
-          Positioned.fill(
-            child: IgnorePointer(
-              child: CustomPaint(
-                painter: _ShotsPainter(
-                  cell: cell,
-                  shots: _d.shots,
-                  missiles: _d.missiles,
+            if (_d.towers.isEmpty && !_d.waveActive && drag == null)
+              const Positioned(
+                left: 0,
+                right: 0,
+                top: 10,
+                child: IgnorePointer(
+                  child: Center(
+                    child: StrokeText('Перетащи тапок на поле', size: 18),
+                  ),
                 ),
               ),
-            ),
-          ),
-        ],
+            Positioned(right: 12, bottom: 12, child: _waveButton()),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Круглая кнопка в углу: между волнами — начать волну, во время — скорость.
+  Widget _waveButton() {
+    final active = _d.waveActive;
+    final fast = _speed == 2;
+    final color = !active
+        ? GameColors.green
+        : fast
+        ? GameColors.gold
+        : GameColors.panelLight;
+    return GestureDetector(
+      onTap: () {
+        if (_d.over) return;
+        setState(() {
+          if (active) {
+            _speed = fast ? 1 : 2;
+          } else {
+            _d.startWave();
+          }
+        });
+      },
+      child: Container(
+        width: 62,
+        height: 62,
+        decoration: BoxDecoration(
+          color: color,
+          shape: BoxShape.circle,
+          border: Border.all(color: GameColors.outline, width: 3.5),
+          boxShadow: const [
+            BoxShadow(color: GameColors.outline, offset: Offset(0, 4)),
+          ],
+        ),
+        child: Icon(
+          active ? Icons.fast_forward_rounded : Icons.play_arrow_rounded,
+          size: 38,
+          color: active && !fast ? GameColors.text : GameColors.outline,
+        ),
       ),
     );
   }
@@ -764,13 +852,22 @@ class _Crumbs extends StatelessWidget {
 /// Поле: лужайка с цветами, каменная тропа, кусты по краям и сахарница;
 /// у выбранного тапка — круг дальности.
 class _BoardPainter extends CustomPainter {
-  _BoardPainter({required this.cell, required this.selected});
+  _BoardPainter({
+    required this.cell,
+    required this.ox,
+    required this.oy,
+    required this.selected,
+  });
   final double cell;
+
+  /// Сдвиг карты внутри экрана поля, в клетках.
+  final double ox;
+  final double oy;
   final Tower? selected;
 
-  // Картинка поля без выбранного тапка — рисуется один раз на размер клетки.
+  // Картинка поля без выбранного тапка — рисуется один раз на размер.
   static ui.Picture? _cache;
-  static double _cacheCell = 0;
+  static String _cacheKey = '';
 
   static const _grass = Color(0xFF6DBE45);
   static const _grassLight = Color(0xFF86D35A);
@@ -782,11 +879,12 @@ class _BoardPainter extends CustomPainter {
 
   @override
   void paint(Canvas c, Size size) {
-    if (_cache == null || _cacheCell != cell) {
+    final key = '$size $cell';
+    if (_cache == null || _cacheKey != key) {
       final rec = ui.PictureRecorder();
       _paintField(Canvas(rec), size);
       _cache = rec.endRecording();
-      _cacheCell = cell;
+      _cacheKey = key;
     }
     c.drawPicture(_cache!);
 
@@ -794,7 +892,7 @@ class _BoardPainter extends CustomPainter {
     final t = selected;
     if (t != null) {
       final (x, y) = t.center;
-      final o = Offset(x * cell, y * cell);
+      final o = Offset((x + ox) * cell, (y + oy) * cell);
       c.drawCircle(o, t.range * cell, Paint()..color = const Color(0x33FFFFFF));
       c.drawCircle(
         o,
@@ -809,12 +907,8 @@ class _BoardPainter extends CustomPainter {
 
   void _paintField(Canvas c, Size size) {
     final rnd = Random(42);
-    final frame = RRect.fromRectAndRadius(
-      Offset.zero & size,
-      Radius.circular(cell * 0.35),
-    );
     c.save();
-    c.clipRRect(frame);
+    c.clipRect(Offset.zero & size);
 
     // Трава: основа, светлые и тёмные пятна.
     c.drawRect(Offset.zero & size, Paint()..color = _grass);
@@ -833,16 +927,6 @@ class _BoardPainter extends CustomPainter {
             colors: [color.withValues(alpha: 0.55), color.withValues(alpha: 0)],
           ).createShader(Rect.fromCircle(center: o, radius: r)),
       );
-    }
-    // Еле заметная сетка, чтобы было видно, куда встанет тапок.
-    final grid = Paint()
-      ..color = const Color(0x14000000)
-      ..strokeWidth = 1;
-    for (var col = 1; col < DefenseMap.cols; col++) {
-      c.drawLine(Offset(col * cell, 0), Offset(col * cell, size.height), grid);
-    }
-    for (var r = 1; r < DefenseMap.rows; r++) {
-      c.drawLine(Offset(0, r * cell), Offset(size.width, r * cell), grid);
     }
     // Травинки.
     final tuft = Paint()
@@ -880,7 +964,9 @@ class _BoardPainter extends CustomPainter {
       c.drawCircle(o, r * 0.6, Paint()..color = const Color(0xFFFFB82E));
     }
 
-    // Тропа: тёмный край, подложка и камни.
+    // Тропа: тёмный край, подложка и камни — в координатах карты.
+    c.save();
+    c.translate(ox * cell, oy * cell);
     final path = Path();
     for (var i = 0; i < DefenseMap.waypoints.length; i++) {
       final (x, y) = DefenseMap.waypoints[i];
@@ -900,30 +986,22 @@ class _BoardPainter extends CustomPainter {
     c.drawPath(path, road(_stoneEdge, 0.92));
     c.drawPath(path, road(_stoneBed, 0.8));
     _stones(c, rnd);
-
-    // Кусты по углам и краям.
-    for (final (bx, by, br) in const [
-      (0.0, 0.0, 1.1),
-      (7.0, 0.2, 0.9),
-      (0.1, 11.0, 1.0),
-      (7.0, 6.0, 0.7),
-      (0.0, 5.5, 0.6),
-      (3.2, 11.1, 0.7),
-    ]) {
-      _bush(c, Offset(bx * cell, by * cell), br * cell, rnd);
-    }
-
     _sugar(c);
     c.restore();
 
-    // Рамка поля.
-    c.drawRRect(
-      frame.deflate(2),
-      Paint()
-        ..color = const Color(0xFF3B6E25)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 4,
-    );
+    // Кусты по углам и краям.
+    // Доли ширины и высоты поля.
+    for (final (bx, by, br) in const [
+      (0.0, 0.0, 1.1),
+      (1.0, 0.02, 0.9),
+      (0.0, 1.0, 1.0),
+      (1.0, 0.55, 0.7),
+      (0.0, 0.5, 0.6),
+      (0.45, 1.0, 0.7),
+    ]) {
+      _bush(c, Offset(bx * size.width, by * size.height), br * cell, rnd);
+    }
+    c.restore();
   }
 
   /// Булыжники вдоль тропы.
@@ -1048,7 +1126,7 @@ class _BoardPainter extends CustomPainter {
       old.selected != selected || old.cell != cell;
 }
 
-/// Мягкие тени под тапками и жуками — рисуются на траве, под спрайтами.
+/// Мягкие тени под жуками — рисуются на траве, под спрайтами.
 class _ShadowPainter extends CustomPainter {
   _ShadowPainter({required this.cell, required this.game});
   final double cell;
@@ -1059,17 +1137,6 @@ class _ShadowPainter extends CustomPainter {
     final paint = Paint()
       ..color = const Color(0x40000000)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.5);
-    for (final t in game.towers) {
-      final (x, y) = t.center;
-      c.drawOval(
-        Rect.fromCenter(
-          center: Offset(x * cell, (y + 0.32) * cell),
-          width: cell * 0.85,
-          height: cell * 0.26,
-        ),
-        paint,
-      );
-    }
     for (final b in game.bugs) {
       if (b.dist < 0) continue;
       final (x, y) = b.pos;
@@ -1087,6 +1154,51 @@ class _ShadowPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_ShadowPainter old) => true;
+}
+
+/// Где встанет перетаскиваемый тапок: круг дальности, красный — нельзя.
+class _GhostPainter extends CustomPainter {
+  _GhostPainter({
+    required this.cell,
+    required this.x,
+    required this.y,
+    required this.range,
+    required this.ok,
+  });
+  final double cell;
+  final double x;
+  final double y;
+  final double range;
+  final bool ok;
+
+  @override
+  void paint(Canvas c, Size size) {
+    final o = Offset(x * cell, y * cell);
+    final color = ok ? Colors.white : const Color(0xFFFF4D4D);
+    c.drawCircle(
+      o,
+      range * cell,
+      Paint()..color = color.withValues(alpha: 0.2),
+    );
+    c.drawCircle(
+      o,
+      range * cell,
+      Paint()
+        ..color = color.withValues(alpha: 0.8)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2,
+    );
+    // Пятно под тапком: сколько места он занимает.
+    c.drawCircle(
+      o,
+      DefenseGame.towerGap / 2 * cell,
+      Paint()..color = color.withValues(alpha: 0.35),
+    );
+  }
+
+  @override
+  bool shouldRepaint(_GhostPainter old) =>
+      old.x != x || old.y != y || old.ok != ok;
 }
 
 /// Удары и снаряды тапков: пинок, холод, молния, огонь, когти, лазер, волна.
