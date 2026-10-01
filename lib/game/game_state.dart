@@ -541,6 +541,7 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
     questBonusClaimed = false;
     storyReplaysUsed = 0;
     _rollDig();
+    _rollDefense();
   }
 
   // --- Гемы ----------------------------------------------------------------
@@ -982,6 +983,8 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
   /// Для отладки: как будто наступил новый день.
   void cheatNewDay() {
     digDay = '';
+    defenseDay = '';
+    _rollDefense();
     chestSince = clock().subtract(Economy.chestFillTime);
     dailyCaseDay = '';
     questDay = '';

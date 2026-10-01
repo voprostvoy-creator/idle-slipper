@@ -85,6 +85,12 @@ void main() {
       expect(DefenseReward.forWaves(3).threads, lessThan(DefenseReward.forWaves(8).threads));
       now = now.add(const Duration(days: 1));
       expect(game.defenseAttempts, 1);
+      expect(game.defenseAdAvailable, isTrue);
+      // Кнопка «Новый день» в отладке тоже возвращает попытки.
+      game.startDefense();
+      expect(game.defenseAttempts, 0);
+      game.cheatNewDay();
+      expect(game.defenseAttempts, 1);
     });
 
         test('ежедневный кейс — раз в день', () {
