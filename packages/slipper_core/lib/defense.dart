@@ -99,6 +99,8 @@ class TowerSpec {
     required this.range,
     required this.cooldown,
     required this.label,
+    required this.ability,
+    required this.abilityText,
   });
 
   final TowerRole role;
@@ -115,28 +117,49 @@ class TowerSpec {
   /// Что делает — для подсказки.
   final String label;
 
+  /// Способность, которая открывается на ★3 тапка в коллекции.
+  final String ability;
+  final String abilityText;
+
+  /// На какой звезде открывается способность.
+  static const abilityStar = 3;
+
   static TowerSpec of(String kindId) => switch (kindId) {
         'blue_slide' => const TowerSpec(
             role: TowerRole.slow, damage: 10, range: 1.8, cooldown: 0.9,
-            label: 'Замедляет жуков на 40%'),
+            label: 'Замедляет жуков на 40%',
+            ability: 'Скользкий пол',
+            abilityText: 'Замедление 60% вместо 40% и держится вдвое дольше.'),
         'carbon_sport' => const TowerSpec(
             role: TowerRole.splash, damage: 14, range: 1.6, cooldown: 1.4,
-            label: 'Бьёт по площади'),
+            label: 'Бьёт по площади',
+            ability: 'Ударная волна',
+            abilityText: 'Площадь удара шире, 20% шанс оглушить всех задетых.'),
         'purple_neon' => const TowerSpec(
             role: TowerRole.chain, damage: 10, range: 2.0, cooldown: 1.1,
-            label: 'Молния по трём целям'),
+            label: 'Молния по трём целям',
+            ability: 'Перегрузка',
+            abilityText: 'Молния перескакивает на 5 целей вместо 3.'),
         'red_spike' => const TowerSpec(
             role: TowerRole.poison, damage: 9, range: 1.8, cooldown: 1.0,
-            label: 'Отравляет: урон 3 секунды'),
+            label: 'Отравляет: урон 3 секунды',
+            ability: 'Адский яд',
+            abilityText: 'Яд вдвое сильнее и задевает соседних жуков.'),
         'rainbow' => const TowerSpec(
             role: TowerRole.beam, damage: 26, range: 3.2, cooldown: 1.3,
-            label: 'Луч дальнего боя'),
+            label: 'Луч дальнего боя',
+            ability: 'Призма',
+            abilityText: 'Каждый третий луч бьёт втрое сильнее.'),
         'yin_yang' => const TowerSpec(
             role: TowerRole.stunner, damage: 22, range: 2.0, cooldown: 1.0,
-            label: 'Мощный удар, каждый третий оглушает'),
+            label: 'Мощный удар, каждый третий оглушает',
+            ability: 'Равновесие',
+            abilityText: 'Оглушает каждым вторым ударом, даже боссов.'),
         _ => const TowerSpec(
             role: TowerRole.strike, damage: 11, range: 1.7, cooldown: 0.8,
-            label: 'Обычный удар'),
+            label: 'Обычный удар',
+            ability: 'Бабушкина подмога',
+            abilityText: 'После каждой отбитой волны сахарнице +1 жизнь.'),
       };
 }
 
@@ -150,15 +173,28 @@ class Tower {
   double _cooldown = 0;
   int _shots = 0;
 
+  /// Куда смотрит тапок: угол на последнюю цель (0 — вправо).
+  double aim = 0;
+
+  /// Сколько секунд назад был удар — для анимации; большое — давно.
+  double sinceShot = 99;
+
+  /// Открыта способность ★3.
+  bool get hasAbility => stars >= TowerSpec.abilityStar;
+
   static const maxLevel = 3;
 
   TowerSpec get spec => TowerSpec.of(kindId);
   Rarity get rarity => SlipperCatalog.byId(kindId).rarity;
 
-  double get damage =>
-      spec.damage * rarity.statMul * Stars.multiplier(stars) * const [1.0, 1.7, 2.6][level - 1];
+  double get damage => damageAt(level);
+  double get range => rangeAt(level);
 
-  double get range => spec.range + (level - 1) * 0.25;
+  /// Урон и дальность на уровне [lv] — чтобы показать, что даст улучшение.
+  double damageAt(int lv) =>
+      spec.damage * rarity.statMul * Stars.multiplier(stars) * const [1.0, 1.7, 2.6][lv - 1];
+
+  double rangeAt(int lv) => spec.range + (lv - 1) * 0.25;
 
   (double, double) get center => (cell.col + 0.5, cell.row + 0.5);
 
@@ -192,6 +228,7 @@ class Bug {
   /// Пройдено клеток тропы; отрицательное — ещё не вышел.
   double dist = 0;
   double slowLeft = 0;
+  double slowPower = 0.4;
   double stunLeft = 0;
   double poisonLeft = 0;
   double poisonDps = 0;
@@ -341,7 +378,7 @@ class DefenseGame {
         b.stunLeft -= dt;
         continue;
       }
-      final slow = b.slowLeft > 0 ? 0.6 : 1.0;
+      final slow = b.slowLeft > 0 ? 1 - b.slowPower : 1.0;
       if (b.slowLeft > 0) b.slowLeft -= dt;
       b.dist += b.speed * slow * dt;
     }
@@ -357,11 +394,15 @@ class DefenseGame {
     // Тапки бьют.
     for (final t in towers) {
       t._cooldown -= dt;
+      t.sinceShot += dt;
       if (t._cooldown > 0) continue;
       final target = _target(t);
       if (target == null) continue;
       t._cooldown = t.spec.cooldown;
       t._shots++;
+      t.sinceShot = 0;
+      final (tx, ty) = target.pos;
+      t.aim = atan2(ty - t.center.$2, tx - t.center.$1);
       _hit(t, target);
     }
 
@@ -382,6 +423,10 @@ class DefenseGame {
       cleared++;
       // Премия за отбитую волну.
       crumbs += 20 + cleared * 5;
+      // Бабушкина подмога: клетчатый с ★3 подлечивает сахарницу.
+      if (towers.any((t) => t.kindId == 'basic' && t.hasAbility)) {
+        lives = min(startLives, lives + 1);
+      }
     }
   }
 
@@ -403,7 +448,10 @@ class DefenseGame {
   }
 
   void _hit(Tower t, Bug target) {
-    final dmg = t.damage;
+    var dmg = t.damage;
+    final ab = t.hasAbility;
+    // Призма: каждый третий луч втрое сильнее.
+    if (ab && t.spec.role == TowerRole.beam && t._shots % 3 == 0) dmg *= 3;
     shots.add(Shot(from: t.center, to: target.pos, role: t.spec.role));
     switch (t.spec.role) {
       case TowerRole.strike:
@@ -411,16 +459,22 @@ class DefenseGame {
         target.hp -= dmg;
       case TowerRole.slow:
         target.hp -= dmg;
-        target.slowLeft = 1.5;
+        target.slowLeft = ab ? 3 : 1.5;
+        target.slowPower = ab ? 0.6 : 0.4;
       case TowerRole.splash:
+        final radius = ab ? 1.3 : 0.9;
+        final stun = ab && _rng.nextDouble() < 0.2;
         for (final b in bugs) {
-          if (_distTo(b.pos, target.pos) <= 0.9) b.hp -= dmg * (b == target ? 1 : 0.6);
+          if (_distTo(b.pos, target.pos) <= radius) {
+            b.hp -= dmg * (b == target ? 1 : 0.6);
+            if (stun && !b.boss) b.stunLeft = 0.5;
+          }
         }
       case TowerRole.chain:
         target.hp -= dmg;
         var from = target;
         final hit = {target};
-        for (var i = 0; i < 2; i++) {
+        for (var i = 0; i < (ab ? 4 : 2); i++) {
           Bug? next;
           for (final b in bugs) {
             if (hit.contains(b) || !b.alive) continue;
@@ -434,11 +488,20 @@ class DefenseGame {
         }
       case TowerRole.poison:
         target.hp -= dmg * 0.5;
-        target.poisonLeft = 3;
-        target.poisonDps = max(target.poisonDps, dmg * 0.5);
+        final dps = dmg * (ab ? 1.0 : 0.5);
+        for (final b in bugs) {
+          if (b == target || (ab && _distTo(b.pos, target.pos) <= 0.8)) {
+            b.poisonLeft = 3;
+            b.poisonDps = max(b.poisonDps, b == target ? dps : dps * 0.6);
+          }
+        }
       case TowerRole.stunner:
         target.hp -= dmg;
-        if (t._shots % 3 == 0 && !target.boss) target.stunLeft = 0.6;
+        if (ab && t._shots.isEven) {
+          target.stunLeft = target.boss ? 0.35 : 0.6;
+        } else if (!ab && t._shots % 3 == 0 && !target.boss) {
+          target.stunLeft = 0.6;
+        }
     }
   }
 }

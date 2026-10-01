@@ -408,12 +408,26 @@ class _DefenseGameScreenState extends State<DefenseGameScreen>
                 '${SlipperCatalog.byId(t.kindId).name} · ур. ${t.level}',
                 size: 20,
               ),
-              const SizedBox(height: 4),
-              Text(
-                '${t.spec.label}. Урон ${t.damage.round()}, дальность ${t.range.toStringAsFixed(1)}',
-                textAlign: TextAlign.center,
-                style: Theme.of(context).textTheme.bodySmall,
+              const SizedBox(height: 2),
+              Text(t.spec.label, style: Theme.of(context).textTheme.bodySmall),
+              const SizedBox(height: 10),
+              _StatLine(
+                label: 'Урон',
+                now: t.damage.round().toString(),
+                next: t.level < Tower.maxLevel
+                    ? t.damageAt(t.level + 1).round().toString()
+                    : null,
               ),
+              const SizedBox(height: 6),
+              _StatLine(
+                label: 'Дальность',
+                now: t.range.toStringAsFixed(1),
+                next: t.level < Tower.maxLevel
+                    ? t.rangeAt(t.level + 1).toStringAsFixed(1)
+                    : null,
+              ),
+              const SizedBox(height: 10),
+              _AbilityBox(tower: t),
               const SizedBox(height: 12),
               Row(
                 children: [
@@ -610,12 +624,7 @@ class _DefenseGameScreenState extends State<DefenseGameScreen>
               width: cell * 1.2,
               child: Column(
                 children: [
-                  SlipperSprite(
-                    fighter: Slipper(name: t.kindId, kindId: t.kindId),
-                    width: cell * 1.2,
-                    animate: false,
-                    showSize: false,
-                  ),
+                  _TowerSprite(tower: t, cell: cell),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -868,4 +877,214 @@ class _ShotsPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_ShotsPainter old) => true;
+}
+
+/// Строка характеристики: сейчас → после улучшения.
+class _StatLine extends StatelessWidget {
+  const _StatLine({required this.label, required this.now, this.next});
+  final String label;
+  final String now;
+  final String? next;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return GamePanel(
+      color: GameColors.panelDark,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: Row(
+        children: [
+          Text(label, style: theme.textTheme.bodyMedium),
+          const Spacer(),
+          Text(now, style: theme.textTheme.titleSmall),
+          if (next != null) ...[
+            const SizedBox(width: 6),
+            const Icon(
+              Icons.arrow_forward_rounded,
+              size: 16,
+              color: GameColors.textDim,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              next!,
+              style: theme.textTheme.titleSmall?.copyWith(
+                color: GameColors.green,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Способность ★3: описание; закрыта — с замком и звездой.
+class _AbilityBox extends StatelessWidget {
+  const _AbilityBox({required this.tower});
+  final Tower tower;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final open = tower.hasAbility;
+    return GamePanel(
+      color: open ? GameColors.panelLight : GameColors.panelDark,
+      padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+      child: Row(
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: open ? GameColors.gold : GameColors.panel,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: GameColors.outline, width: 2.5),
+            ),
+            child: Icon(
+              open ? Icons.auto_awesome_rounded : Icons.lock_rounded,
+              size: 18,
+              color: open ? GameColors.outline : GameColors.textDim,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        tower.spec.ability,
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          color: open ? GameColors.text : GameColors.textDim,
+                        ),
+                      ),
+                    ),
+                    if (!open) ...[
+                      const SizedBox(width: 6),
+                      Text(
+                        '★${TowerSpec.abilityStar}',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: GameColors.gold,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                Text(tower.spec.abilityText, style: theme.textTheme.bodySmall),
+                if (!open)
+                  Text(
+                    'Откроется на ★${TowerSpec.abilityStar} тапка в коллекции',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: GameColors.gold,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Тапок-защитник: смотрит на цель и бьёт своей анимацией.
+class _TowerSprite extends StatelessWidget {
+  const _TowerSprite({required this.tower, required this.cell});
+  final Tower tower;
+  final double cell;
+
+  static const _anim = 0.32;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = tower;
+    final p = (t.sinceShot / _anim).clamp(0.0, 1.0);
+    final active = t.sinceShot < _anim;
+    final e = active ? sin(pi * p) : 0.0;
+    final dx = cos(t.aim);
+    final dy = sin(t.aim);
+    // Носок на цель: справа — как есть, слева — зеркально, чтобы не висеть
+    // вверх ногами.
+    final flip = dx < 0;
+    var angle = flip ? t.aim - pi : t.aim;
+    var offset = Offset.zero;
+    var scaleX = 1.0;
+    var scaleY = 1.0;
+    switch (t.spec.role) {
+      case TowerRole.strike:
+        // Выпад к цели.
+        offset = Offset(dx, dy) * cell * 0.28 * e;
+      case TowerRole.slow:
+        // Скольжение: длинный низкий рывок и вытягивание.
+        offset = Offset(dx, dy) * cell * 0.38 * e;
+        scaleX = 1 + 0.18 * e;
+        scaleY = 1 - 0.12 * e;
+      case TowerRole.splash:
+        // Прыжок и удар об пол: вверх, затем сплющивание.
+        offset = Offset(0, -cell * 0.35 * sin(pi * min(1.0, p * 1.4)));
+        if (p > 0.7 && active) {
+          scaleY = 1 - 0.25 * (1 - p) / 0.3;
+          scaleX = 1 + 0.2 * (1 - p) / 0.3;
+        }
+      case TowerRole.chain:
+        // Разряд: дрожь и пульс.
+        offset = Offset(sin(p * 40) * cell * 0.05 * e, 0);
+        scaleX = scaleY = 1 + 0.15 * e;
+      case TowerRole.poison:
+        // Топот: два коротких подскока.
+        offset =
+            Offset(dx, dy) * cell * 0.12 * e +
+            Offset(
+              0,
+              -cell * 0.18 * (sin(2 * pi * p)).abs() * (active ? 1 : 0),
+            );
+      case TowerRole.beam:
+        // Отдача от луча: назад и носок вверх.
+        offset = -Offset(dx, dy) * cell * 0.22 * e;
+        angle += (flip ? 0.25 : -0.25) * e;
+      case TowerRole.stunner:
+        // Вращение на ударе.
+        angle += active
+            ? 2 * pi * Curves.easeOut.transform(p) * (flip ? -1 : 1)
+            : 0;
+    }
+    Widget sprite = SlipperSprite(
+      fighter: Slipper(name: t.kindId, kindId: t.kindId),
+      width: cell * 1.2,
+      animate: false,
+      showSize: false,
+    );
+    if (flip) sprite = Transform.flip(flipX: true, child: sprite);
+    // Разряд Неона — вспышка позади.
+    final glow = t.spec.role == TowerRole.chain && active;
+    return Transform.translate(
+      offset: offset,
+      child: Stack(
+        alignment: Alignment.center,
+        clipBehavior: Clip.none,
+        children: [
+          if (glow)
+            Container(
+              width: cell * (0.8 + 0.6 * e),
+              height: cell * (0.8 + 0.6 * e),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFFC77DFF).withValues(alpha: 0.35 * e),
+              ),
+            ),
+          Transform.rotate(
+            angle: angle,
+            child: Transform.scale(
+              scaleX: scaleX,
+              scaleY: scaleY,
+              child: sprite,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
