@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../audio/music.dart';
 import '../../game/game_state.dart';
 import '../../game/slipper.dart';
 import '../../net/server_api.dart';
@@ -85,6 +86,34 @@ class RatingScreen extends StatelessWidget {
                   ),
                 ],
               ),
+            ),
+            const SizedBox(height: 14),
+            // Громкость музыки: 0 — выключена.
+            ListenableBuilder(
+              listenable: Music.instance,
+              builder: (context, _) {
+                final v = Music.instance.volume;
+                return GamePanel(
+                  padding: const EdgeInsets.fromLTRB(14, 8, 8, 8),
+                  child: Row(
+                    children: [
+                      Icon(
+                        v == 0 ? Icons.music_off_rounded : Icons.music_note_rounded,
+                        color: GameColors.gold,
+                      ),
+                      const SizedBox(width: 8),
+                      Text('Музыка', style: theme.textTheme.titleMedium),
+                      Expanded(
+                        child: Slider(
+                          value: v,
+                          onChanged: Music.instance.setVolume,
+                          activeColor: GameColors.gold,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
             ),
             const SizedBox(height: 14),
             GamePanel(

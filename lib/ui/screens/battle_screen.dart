@@ -3,6 +3,8 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 
+import '../../audio/music.dart';
+
 import '../../game/battle/battle_sim.dart';
 import '../../game/battle/combatant.dart';
 import '../../game/battle/skills.dart';
@@ -212,6 +214,7 @@ class _BattleScreenState extends State<BattleScreen>
   @override
   void initState() {
     super.initState();
+    Music.instance.enterBattle();
     if (widget.intro != null) {
       _introShown = true;
       _introTimer = Timer(_introDuration, _endIntro);
@@ -241,6 +244,7 @@ class _BattleScreenState extends State<BattleScreen>
 
   @override
   void dispose() {
+    Music.instance.leaveBattle();
     _timer?.cancel();
     _introTimer?.cancel();
     _lunge.dispose();

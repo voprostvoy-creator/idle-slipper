@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 
+import 'audio/music.dart';
 import 'game/game_state.dart';
 import 'ui/screens/welcome_screen.dart';
 import 'ui/screens/battle_hub_screen.dart';
@@ -17,6 +18,7 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final game = await GameState.load();
   runApp(SlipperApp(game: game));
+  Music.instance.start();
 }
 
 class SlipperApp extends StatefulWidget {
@@ -36,6 +38,11 @@ class _SlipperAppState extends State<SlipperApp> {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Битва тапков',
+      // В браузере звук включается только после касания — пробуем снова.
+      builder: (context, child) => Listener(
+        onPointerDown: (_) => Music.instance.start(),
+        child: child,
+      ),
       debugShowCheckedModeBanner: false,
       theme: buildGameTheme(),
       home: _welcome

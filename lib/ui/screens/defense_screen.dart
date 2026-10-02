@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 
+import '../../audio/music.dart';
 import '../../game/defense.dart';
 import '../../game/game_state.dart';
 import '../../game/gems.dart';
@@ -217,10 +218,12 @@ class _DefenseGameScreenState extends State<DefenseGameScreen>
   void initState() {
     super.initState();
     _ticker = createTicker(_onTick)..start();
+    Music.instance.enterBattle();
   }
 
   @override
   void dispose() {
+    Music.instance.leaveBattle();
     _ticker.dispose();
     super.dispose();
   }
