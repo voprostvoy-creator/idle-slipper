@@ -101,6 +101,15 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
   /// День, когда забран ежедневный кейс.
   String dailyCaseDay = '';
 
+  /// Кейс за рекламу: день, сколько открыто за него и когда был последний.
+  String adCaseDay = '';
+  int adCasePlays = 0;
+  DateTime? adCaseLast;
+
+  /// Кейсов за рекламу в день и пауза между ними.
+  static const adCasesPerDay = 5;
+  static const adCaseCooldown = Duration(minutes: 10);
+
   /// Задания: день, прогресс по видам, полученные награды.
   String questDay = '';
   Map<String, int> questProgress = {};
@@ -263,8 +272,10 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   /// Последняя открытая глава — с неё начинается экран сюжета.
-  Chapter get currentChapter =>
-      StoryCatalog.chapters.lastWhere(chapterOpen, orElse: () => StoryCatalog.chapter1);
+  Chapter get currentChapter => StoryCatalog.chapters.lastWhere(
+    chapterOpen,
+    orElse: () => StoryCatalog.chapter1,
+  );
 
   /// Доступны пройденные бои и первый непройденный.
   bool stageOpen(Chapter chapter, int index) => index <= cleared(chapter);
@@ -360,6 +371,9 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
     'story': storyCleared,
     'stars': stars,
     'dailyCaseDay': dailyCaseDay,
+    'adCaseDay': adCaseDay,
+    'adCasePlays': adCasePlays,
+    'adCaseLast': adCaseLast?.toIso8601String(),
     'questDay': questDay,
     'questProgress': questProgress,
     'questClaimed': questClaimed.toList(),
@@ -446,6 +460,9 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
       }
       _syncSlipper();
       dailyCaseDay = json['dailyCaseDay'] as String? ?? '';
+      adCaseDay = json['adCaseDay'] as String? ?? '';
+      adCasePlays = (json['adCasePlays'] as num?)?.toInt() ?? 0;
+      adCaseLast = DateTime.tryParse(json['adCaseLast'] as String? ?? '');
       questDay = json['questDay'] as String? ?? '';
       final qp = json['questProgress'] as Map?;
       if (qp != null) {
@@ -491,8 +508,26 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
 
   // --- Кейсы ------------------------------------------------------------
 
-  bool canOpen(CaseType type) =>
-      type.daily ? dailyCaseAvailable : threads >= type.price;
+  bool canOpen(CaseType type) => type.daily
+      ? dailyCaseAvailable
+      : type.isFree
+      ? adCaseAvailable
+      : threads >= type.price;
+
+  /// Сколько кейсов за рекламу осталось сегодня.
+  int get adCasesLeft => adCaseDay == dayKey(clock())
+      ? max(0, adCasesPerDay - adCasePlays)
+      : adCasesPerDay;
+
+  /// Сколько ждать до следующего кейса за рекламу; ноль — можно сейчас.
+  Duration get adCaseWait {
+    final last = adCaseLast;
+    if (last == null) return Duration.zero;
+    final left = adCaseCooldown - clock().difference(last);
+    return left.isNegative ? Duration.zero : left;
+  }
+
+  bool get adCaseAvailable => adCasesLeft > 0 && adCaseWait == Duration.zero;
 
   /// Открывает кейс: списывает нитки, роллит вид и сразу кладёт его в
   /// инвентарь. Продать выпавшее можно потом — так дроп не теряется,
@@ -501,6 +536,15 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
     if (!canOpen(type)) return null;
     threads -= type.price;
     if (type.daily) dailyCaseDay = dayKey(clock());
+    if (type.isFree && !type.daily) {
+      final today = dayKey(clock());
+      if (adCaseDay != today) {
+        adCaseDay = today;
+        adCasePlays = 0;
+      }
+      adCasePlays++;
+      adCaseLast = clock();
+    }
     _progress(QuestKind.openCases);
     final kind = type.roll(Random());
     inventory[kind.id] = (inventory[kind.id] ?? 0) + 1;
@@ -653,15 +697,16 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
 
   /// Взмахи за задания мини-игры (свои, не задания дня).
   int get digSwingsEarned => [
-        for (final t in DigTasks.all)
-          if (digTasksClaimed.contains(t.kind.name)) t.swings,
-      ].fold(0, (a, b) => a + b);
+    for (final t in DigTasks.all)
+      if (digTasksClaimed.contains(t.kind.name)) t.swings,
+  ].fold(0, (a, b) => a + b);
 
   int digTaskValue(DigTask t) => min(t.target, questProgress[t.kind.name] ?? 0);
 
   bool digTaskClaimed(DigTask t) => digTasksClaimed.contains(t.kind.name);
 
-  bool canClaimDigTask(DigTask t) => !digTaskClaimed(t) && digTaskValue(t) >= t.target;
+  bool canClaimDigTask(DigTask t) =>
+      !digTaskClaimed(t) && digTaskValue(t) >= t.target;
 
   /// Есть выполненное задание «Под диваном» — красная точка.
   bool get digTasksReady => DigTasks.all.any(canClaimDigTask);
@@ -897,9 +942,11 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
 
   List<SlipperKind> get shopOffers => CoinShop.forDay(dayNumber(clock()));
 
-  bool shopSold(SlipperKind k) => shopDay == dayKey(clock()) && shopBought.contains(k.id);
+  bool shopSold(SlipperKind k) =>
+      shopDay == dayKey(clock()) && shopBought.contains(k.id);
 
-  bool canBuy(SlipperKind k) => !shopSold(k) && coins >= CoinShop.priceOf(k.rarity);
+  bool canBuy(SlipperKind k) =>
+      !shopSold(k) && coins >= CoinShop.priceOf(k.rarity);
 
   void buyFromShop(SlipperKind k) {
     if (!canBuy(k) || !shopOffers.contains(k)) return;
@@ -987,6 +1034,8 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
     _rollDefense();
     chestSince = clock().subtract(Economy.chestFillTime);
     dailyCaseDay = '';
+    adCaseDay = '';
+    adCaseLast = null;
     questDay = '';
     _rollDay();
     _save();
@@ -1024,6 +1073,8 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
     digDay = '';
     chestSince = clock();
     dailyCaseDay = '';
+    adCaseDay = '';
+    adCaseLast = null;
     questDay = '';
     _rollDay();
   }

@@ -103,6 +103,22 @@ void main() {
       expect(game.canOpen(daily), isTrue);
     });
 
+    test('кейс за рекламу: 5 в день, пауза 10 минут', () {
+      const ad = CaseCatalog.ad;
+      for (var i = 0; i < GameState.adCasesPerDay; i++) {
+        expect(game.openCase(ad), isNotNull, reason: 'кейс ${i + 1}');
+        expect(game.canOpen(ad), isFalse, reason: 'пауза после ${i + 1}');
+        now = now.add(const Duration(minutes: 9));
+        expect(game.canOpen(ad), isFalse);
+        now = now.add(const Duration(minutes: 1));
+      }
+      expect(game.adCasesLeft, 0);
+      expect(game.canOpen(ad), isFalse);
+      now = DateTime(2026, 9, 28, 0, 1);
+      expect(game.adCasesLeft, GameState.adCasesPerDay);
+      expect(game.canOpen(ad), isTrue);
+    });
+
     test('задание выполняется, награда забирается один раз, с новым днём сброс', () {
       final quest = game.quests.first;
       // Счётчики растут внутри действий игры; здесь выставляем напрямую.

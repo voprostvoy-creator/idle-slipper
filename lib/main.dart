@@ -135,10 +135,10 @@ class _RootShellState extends State<RootShell> {
         builder: (context, _) => _GameNavBar(
           tab: _tab,
           onChanged: _select,
-          // Точка — есть что забрать: задание, полный сундук, ежедневный кейс.
+          // Точка — есть что забрать: задание, полный сундук, бесплатный кейс.
           dots: {
             if (game.questsReady || game.chestFull) _Tab.home,
-            if (game.dailyCaseAvailable) _Tab.shop,
+            if (game.dailyCaseAvailable || game.adCaseAvailable) _Tab.shop,
             if (game.digTasksReady) _Tab.battle,
           },
         ),

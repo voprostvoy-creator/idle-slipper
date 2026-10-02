@@ -127,14 +127,7 @@ class _CaseCard extends StatelessWidget {
                           : 'Новый через ${fmtClock(untilMidnight(game.clock()))}',
                     )
                   : type.isFree
-                  ? const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.play_circle_fill_rounded, size: 20),
-                        SizedBox(width: 6),
-                        Text('Открыть бесплатно'),
-                      ],
-                    )
+                  ? _adLabel()
                   : Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -152,6 +145,26 @@ class _CaseCard extends StatelessWidget {
           ],
         ],
       ),
+    );
+  }
+
+  /// Надпись на кнопке кейса за рекламу: сколько осталось, пауза или завтра.
+  Widget _adLabel() {
+    final left = game.adCasesLeft;
+    if (left == 0) {
+      return Text('Новые через ${fmtClock(untilMidnight(game.clock()))}');
+    }
+    final wait = game.adCaseWait;
+    if (wait > Duration.zero) {
+      return Text('Следующий через ${fmtClock(wait)}');
+    }
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Icon(Icons.play_circle_fill_rounded, size: 20),
+        const SizedBox(width: 6),
+        Text('Открыть бесплатно ($left/${GameState.adCasesPerDay})'),
+      ],
     );
   }
 

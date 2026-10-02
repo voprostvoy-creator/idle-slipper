@@ -310,7 +310,13 @@ class _CaseOpenScreenState extends State<CaseOpenScreen>
                   child: widget.type.daily
                       ? const Text('Завтра ещё')
                       : widget.type.isFree
-                      ? const Text('Ещё раз')
+                      ? Text(
+                          canOpenAgain
+                              ? 'Ещё раз'
+                              : widget.game.adCasesLeft == 0
+                              ? 'Завтра ещё'
+                              : 'Ещё через ${GameState.adCaseCooldown.inMinutes} мин',
+                        )
                       : Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
