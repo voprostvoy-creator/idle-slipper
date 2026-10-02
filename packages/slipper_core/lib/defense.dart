@@ -419,6 +419,9 @@ class DefenseGame {
   /// Сколько волн уже отбито полностью.
   int cleared = 0;
 
+  /// Сколько жуков убито за игру — экран по нему играет звук.
+  int kills = 0;
+
   /// Идёт волна (а не пауза на стройку).
   bool waveActive = false;
   final _queue = <Bug>[];
@@ -599,6 +602,7 @@ class DefenseGame {
       if (!b.alive) {
         bugs.remove(b);
         crumbs += b.reward;
+        kills++;
       }
     }
 

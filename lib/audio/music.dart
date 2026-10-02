@@ -4,7 +4,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Фоновая музыка: спокойная в меню, бодрая в бою. Треки сменяются плавно,
+/// Фоновая музыка: весёлая в меню, тихая и спокойная в бою. Треки сменяются плавно,
 /// когда игра свёрнута — музыка на паузе. Громкость хранится на телефоне.
 class Music extends ChangeNotifier with WidgetsBindingObserver {
   Music._();
@@ -15,7 +15,8 @@ class Music extends ChangeNotifier with WidgetsBindingObserver {
   static const _fadeStep = Duration(milliseconds: 50);
 
   late final _menu = _Track('music/menu.mp3', restart: false);
-  late final _battle = _Track('music/battle.mp3', restart: true);
+  // Боевая — тише, чтобы не мешала слышать удары.
+  late final _battle = _Track('music/battle.ogg', restart: true, gain: 0.7);
 
   bool _started = false;
   bool _starting = false;
@@ -45,7 +46,9 @@ class Music extends ChangeNotifier with WidgetsBindingObserver {
       // Два плеера (меню и бой) не должны выключать друг друга
       // и музыку других приложений: звучат вместе.
       await AudioPlayer.global.setAudioContext(
-        AudioContextConfig(focus: AudioContextConfigFocus.mixWithOthers).build(),
+        AudioContextConfig(
+          focus: AudioContextConfigFocus.mixWithOthers,
+        ).build(),
       );
       await _menu.init();
       await _battle.init();
@@ -110,9 +113,12 @@ class Music extends ChangeNotifier with WidgetsBindingObserver {
 
 /// Один зацикленный трек со своим плеером и плавной громкостью.
 class _Track {
-  _Track(this.asset, {required this.restart});
+  _Track(this.asset, {required this.restart, this.gain = 1});
 
   final String asset;
+
+  /// Своя громкость трека относительно общей.
+  final double gain;
 
   /// Начинать заново при каждом включении (бой) или продолжать (меню).
   final bool restart;
@@ -130,8 +136,8 @@ class _Track {
 
   void setNow(double v) {
     _timer?.cancel();
-    _vol = v;
-    _player.setVolume(v);
+    _vol = v * gain;
+    _player.setVolume(_vol);
   }
 
   void pauseNow() {
@@ -141,8 +147,9 @@ class _Track {
   }
 
   /// Плавно к громкости [to]; со [stop] — в конце пауза (или стоп).
-  void fadeTo(double to, {bool stop = false}) {
+  void fadeTo(double level, {bool stop = false}) {
     _timer?.cancel();
+    final to = level * gain;
     if (to > 0 && !playing) {
       playing = true;
       _player.resume().catchError((Object e) {

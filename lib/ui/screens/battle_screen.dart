@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 
 import '../../audio/music.dart';
+import '../../audio/sfx.dart';
 
 import '../../game/battle/battle_sim.dart';
 import '../../game/battle/combatant.dart';
@@ -323,6 +324,7 @@ class _BattleScreenState extends State<BattleScreen>
               land();
               _addPopup(_Popup(side: target, text: crit ? '$damage!' : '$damage', crit: crit));
               _impactVfx(attacker, crit: crit);
+              Sfx.instance.hit(crit: crit);
             });
           }
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../game/game_state.dart';
 import '../format.dart';
+import '../settings_dialog.dart';
 import '../theme.dart';
 import 'game_widgets.dart';
 
@@ -20,7 +21,11 @@ class ResourceHeader extends StatelessWidget {
           children: [
             const ThreadIcon(size: 30),
             const SizedBox(width: 6),
-            StrokeText(fmtNum(game.threads.floor()), size: 20, color: GameColors.thread),
+            StrokeText(
+              fmtNum(game.threads.floor()),
+              size: 20,
+              color: GameColors.thread,
+            ),
             const SizedBox(width: 12),
             const CoinIcon(size: 30),
             const SizedBox(width: 6),
@@ -29,6 +34,16 @@ class ResourceHeader extends StatelessWidget {
             const PowerIcon(size: 22),
             const SizedBox(width: 4),
             StrokeText('${game.slipper.power}', size: 20),
+            const SizedBox(width: 10),
+            // Настройки звука.
+            GestureDetector(
+              onTap: () => showSettingsDialog(context),
+              child: const Icon(
+                Icons.settings_rounded,
+                size: 26,
+                color: GameColors.textDim,
+              ),
+            ),
           ],
         ),
       ),

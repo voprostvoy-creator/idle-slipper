@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 
 import 'audio/music.dart';
+import 'audio/sfx.dart';
 import 'game/game_state.dart';
 import 'ui/screens/welcome_screen.dart';
 import 'ui/screens/battle_hub_screen.dart';
@@ -19,6 +20,7 @@ Future<void> main() async {
   final game = await GameState.load();
   runApp(SlipperApp(game: game));
   Music.instance.start();
+  Sfx.instance.start();
 }
 
 class SlipperApp extends StatefulWidget {

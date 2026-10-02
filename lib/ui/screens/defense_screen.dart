@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 
 import '../../audio/music.dart';
+import '../../audio/sfx.dart';
 import '../../game/defense.dart';
 import '../../game/game_state.dart';
 import '../../game/gems.dart';
@@ -203,6 +204,9 @@ class _DefenseGameScreenState extends State<DefenseGameScreen>
   Tower? _selected;
   bool _finished = false;
 
+  /// Сколько убийств уже озвучено.
+  int _kills = 0;
+
   /// Размер клетки и сдвиг карты на экране (в клетках) — с последней раскладки.
   double _cell = 40;
   double _ox = 0;
@@ -238,6 +242,10 @@ class _DefenseGameScreenState extends State<DefenseGameScreen>
       final step = min(left, 1 / 30);
       _d.step(step);
       left -= step;
+    }
+    if (_d.kills > _kills) {
+      _kills = _d.kills;
+      Sfx.instance.kill();
     }
     setState(() {});
     if (_d.over) _finish();
