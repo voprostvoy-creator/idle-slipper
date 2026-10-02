@@ -5,7 +5,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Звуки в бою: шлепок тапка по сопернику, хруст при убийстве жука.
+/// Звуки в бою: шлепок тапка по сопернику и по жуку при его гибели.
 /// У каждого звука свой пул плееров — одновременные удары не обрывают
 /// друг друга. Громкость хранится на телефоне.
 class Sfx extends ChangeNotifier {
@@ -13,9 +13,8 @@ class Sfx extends ChangeNotifier {
   static final instance = Sfx._();
 
   static const _volumeKey = 'sfx_volume';
-  // Свои короткие звуки: сухой шлепок и хруст панциря.
+  // Свои короткие звуки — сухой шлепок; им же озвучено убийство жука.
   static const _hits = ['sfx/hit1.wav', 'sfx/hit2.wav', 'sfx/hit3.wav'];
-  static const _kills = ['sfx/kill1.wav', 'sfx/kill2.wav', 'sfx/kill3.wav'];
 
   final _pools = <String, AudioPool>{};
   final _rng = Random();
@@ -32,7 +31,7 @@ class Sfx extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       _volume = prefs.getDouble(_volumeKey) ?? _volume;
-      for (final a in [..._hits, ..._kills]) {
+      for (final a in _hits) {
         _pools[a] = await AudioPool.create(
           source: AssetSource(a),
           minPlayers: 1,
@@ -65,7 +64,7 @@ class Sfx extends ChangeNotifier {
       _play('hit', _hits, crit ? 0.75 : 0.5, gap: 40);
 
   /// Жук убит. Если гибнут пачкой — не чаще раза в 70 мс.
-  void kill() => _play('kill', _kills, 0.55, gap: 70);
+  void kill() => _play('kill', _hits, 0.55, gap: 70);
 
   void _play(
     String group,

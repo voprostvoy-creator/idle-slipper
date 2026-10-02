@@ -20,11 +20,15 @@ class CaseOpenScreen extends StatefulWidget {
     required this.game,
     required this.type,
     required this.prize,
+    this.isNew = false,
   });
 
   final GameState game;
   final CaseType type;
   final SlipperKind prize;
+
+  /// Такого тапка раньше не было — после прокрутки поздравим.
+  final bool isNew;
 
   @override
   State<CaseOpenScreen> createState() => _CaseOpenScreenState();
@@ -38,6 +42,10 @@ class _CaseOpenScreenState extends State<CaseOpenScreen>
   static const _winnerIndex = 42;
 
   late SlipperKind _prize = widget.prize;
+  late bool _isNew = widget.isNew;
+
+  /// Попап «Новый тапок!» сейчас на экране.
+  bool _congrats = false;
   late List<SlipperKind> _reel;
   late double _jitter;
   late final AnimationController _spin = AnimationController(
@@ -66,17 +74,32 @@ class _CaseOpenScreenState extends State<CaseOpenScreen>
     _jitter = (rng.nextDouble() - 0.5) * _itemW * 0.5;
     _done = false;
     _sold = false;
+    _congrats = false;
     _spin.forward(from: 0).whenComplete(() {
-      if (mounted) setState(() => _done = true);
+      if (!mounted) return;
+      setState(() {
+        _done = true;
+        _congrats = _isNew;
+      });
+      if (_isNew) {
+        Future.delayed(const Duration(milliseconds: 2400), () {
+          if (mounted) setState(() => _congrats = false);
+        });
+      }
     });
   }
 
   /// Крутит ещё раз, не выходя в магазин.
   void _again() {
+    final hadIt = {
+      for (final k in SlipperCatalog.all)
+        if (widget.game.count(k.id) > 0) k.id,
+    };
     final next = widget.game.openCase(widget.type);
     if (next == null) return;
     setState(() {
       _prize = next;
+      _isNew = !hadIt.contains(next.id);
       _startSpin();
     });
   }
@@ -114,27 +137,46 @@ class _CaseOpenScreenState extends State<CaseOpenScreen>
                         color: GameColors.text,
                       ),
                     ),
-                    const Spacer(),
-                    Flexible(
+                    const SizedBox(width: 8),
+                    Expanded(
                       // FittedBox снимает перенос: длинное название ужимается.
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: StrokeText(widget.type.name, size: 22),
+                      child: Center(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: StrokeText(widget.type.name, size: 22),
+                        ),
                       ),
                     ),
-                    const Spacer(),
-                    const SizedBox(width: 44),
+                    const SizedBox(width: 52),
                   ],
                 ),
               ),
               const Spacer(flex: 3),
-              _Reel(
-                reel: _reel,
-                itemW: _itemW,
-                itemH: _itemH,
-                winnerIndex: _winnerIndex,
-                jitter: _jitter,
-                progress: _curve,
+              Stack(
+                clipBehavior: Clip.none,
+                alignment: Alignment.center,
+                children: [
+                  _Reel(
+                    reel: _reel,
+                    itemW: _itemW,
+                    itemH: _itemH,
+                    winnerIndex: _winnerIndex,
+                    jitter: _jitter,
+                    progress: _curve,
+                  ),
+                  // Поздравление над лентой.
+                  Positioned(
+                    top: -64,
+                    child: IgnorePointer(
+                      child: AnimatedScale(
+                        scale: _congrats ? 1 : 0,
+                        duration: const Duration(milliseconds: 380),
+                        curve: _congrats ? Curves.elasticOut : Curves.easeIn,
+                        child: const _NewBadge(),
+                      ),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 24),
               AnimatedOpacity(
@@ -426,13 +468,28 @@ class _ReelItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final c = kind.rarity.color;
+    final glow =
+        kind.rarity == Rarity.legendary || kind.rarity == Rarity.mythic;
     return Container(
       width: width - 8,
       height: height,
       margin: const EdgeInsets.symmetric(horizontal: 4),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: GameColors.outline, width: 2.5),
+        border: Border.all(
+          color: glow ? Color.lerp(c, Colors.white, 0.3)! : GameColors.outline,
+          width: 2.5,
+        ),
+        // Редкие сияют цветом своей редкости.
+        boxShadow: glow
+            ? [
+                BoxShadow(
+                  color: c.withValues(alpha: 0.85),
+                  blurRadius: 14,
+                  spreadRadius: 1,
+                ),
+              ]
+            : null,
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
@@ -459,6 +516,22 @@ class _ReelItem extends StatelessWidget {
               ),
             ),
           ),
+          if (glow)
+            // Сияние за тапком.
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(10),
+                  gradient: RadialGradient(
+                    colors: [
+                      Color.lerp(c, Colors.white, 0.4)!.withValues(alpha: 0.75),
+                      c.withValues(alpha: 0),
+                    ],
+                    radius: 0.75,
+                  ),
+                ),
+              ),
+            ),
           Center(
             child: SlipperSprite(
               fighter: Slipper(name: kind.id, kindId: kind.id),
@@ -467,6 +540,44 @@ class _ReelItem extends StatelessWidget {
               showSize: false,
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Попап «Новый тапок!» — золотая плашка со звёздочками.
+class _NewBadge extends StatelessWidget {
+  const _NewBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFFFFE27A), GameColors.gold],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: GameColors.outline, width: 3),
+        boxShadow: [
+          BoxShadow(
+            color: GameColors.gold.withValues(alpha: 0.6),
+            blurRadius: 18,
+          ),
+          const BoxShadow(color: GameColors.outline, offset: Offset(0, 4)),
+        ],
+      ),
+      child: const Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.auto_awesome_rounded, color: GameColors.outline, size: 22),
+          SizedBox(width: 8),
+          StrokeText('Новый тапок!', size: 22),
+          SizedBox(width: 8),
+          Icon(Icons.auto_awesome_rounded, color: GameColors.outline, size: 22),
         ],
       ),
     );

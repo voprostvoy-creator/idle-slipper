@@ -23,7 +23,7 @@ class Music extends ChangeNotifier with WidgetsBindingObserver {
   /// Сколько боёв открыто сейчас: бой поверх боя не сбивает трек.
   int _battles = 0;
 
-  double _volume = 0.6;
+  double _volume = 0.5;
   double get volume => _volume;
 
   bool get _inBattle => _battles > 0;

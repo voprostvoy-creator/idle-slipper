@@ -95,12 +95,17 @@ class _CaseCard extends StatelessWidget {
                     Container(
                       width: 8,
                       height: 8,
-                      decoration: BoxDecoration(color: e.key.color, shape: BoxShape.circle),
+                      decoration: BoxDecoration(
+                        color: e.key.color,
+                        shape: BoxShape.circle,
+                      ),
                     ),
                     const SizedBox(width: 4),
                     Text(
                       '${(e.value * 100).toStringAsFixed(e.value < 0.1 ? 1 : 0)}%',
-                      style: theme.textTheme.labelSmall?.copyWith(color: e.key.color),
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: e.key.color,
+                      ),
                     ),
                   ],
                 ),
@@ -116,9 +121,11 @@ class _CaseCard extends StatelessWidget {
               height: 50,
               onPressed: canOpen ? () => _open(context) : null,
               child: type.daily
-                  ? Text(canOpen
-                      ? 'Забрать бесплатно'
-                      : 'Новый через ${fmtClock(untilMidnight(game.clock()))}')
+                  ? Text(
+                      canOpen
+                          ? 'Забрать бесплатно'
+                          : 'Новый через ${fmtClock(untilMidnight(game.clock()))}',
+                    )
                   : type.isFree
                   ? const Row(
                       mainAxisSize: MainAxisSize.min,
@@ -149,11 +156,20 @@ class _CaseCard extends StatelessWidget {
   }
 
   void _open(BuildContext context) {
+    final owned = {
+      for (final k in SlipperCatalog.all)
+        if (game.count(k.id) > 0) k.id,
+    };
     final kind = game.openCase(type);
     if (kind == null) return;
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => CaseOpenScreen(game: game, type: type, prize: kind),
+        builder: (_) => CaseOpenScreen(
+          game: game,
+          type: type,
+          prize: kind,
+          isNew: !owned.contains(kind.id),
+        ),
       ),
     );
   }
@@ -192,7 +208,9 @@ class _CoinShop extends StatelessWidget {
             children: [
               for (final (i, k) in game.shopOffers.indexed) ...[
                 if (i > 0) const SizedBox(width: 8),
-                Expanded(child: _Offer(game: game, kind: k)),
+                Expanded(
+                  child: _Offer(game: game, kind: k),
+                ),
               ],
             ],
           ),
@@ -241,7 +259,9 @@ class _Offer extends StatelessWidget {
           ),
           Text(
             kind.rarity.label,
-            style: theme.textTheme.labelSmall?.copyWith(color: kind.rarity.color),
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: kind.rarity.color,
+            ),
           ),
           const SizedBox(height: 6),
           SizedBox(
@@ -262,7 +282,10 @@ class _Offer extends StatelessWidget {
                         children: [
                           const CoinIcon(size: 14),
                           const SizedBox(width: 3),
-                          Text(fmtNum(price), style: const TextStyle(fontSize: 13)),
+                          Text(
+                            fmtNum(price),
+                            style: const TextStyle(fontSize: 13),
+                          ),
                         ],
                       ),
               ),
@@ -282,8 +305,10 @@ class CaseIcon extends StatelessWidget {
   final bool free;
 
   @override
-  Widget build(BuildContext context) =>
-      CustomPaint(size: Size.square(size), painter: _ChestPainter(free: free));
+  Widget build(BuildContext context) => CustomPaint(
+    size: Size.square(size),
+    painter: _ChestPainter(free: free),
+  );
 }
 
 class _ChestPainter extends CustomPainter {
@@ -316,7 +341,10 @@ class _ChestPainter extends CustomPainter {
     );
 
     // Корпус.
-    final body = RRect.fromRectAndRadius(Rect.fromLTRB(w * 0.1, h * 0.46, w * 0.9, h * 0.9), Radius.circular(w * 0.06));
+    final body = RRect.fromRectAndRadius(
+      Rect.fromLTRB(w * 0.1, h * 0.46, w * 0.9, h * 0.9),
+      Radius.circular(w * 0.06),
+    );
     c.drawRRect(
       body,
       Paint()
@@ -370,11 +398,17 @@ class _ChestPainter extends CustomPainter {
         Radius.circular(w * 0.02),
       );
       c.save();
-      c.clipPath(Path()..addPath(lid, Offset.zero)..addRRect(body));
+      c.clipPath(
+        Path()
+          ..addPath(lid, Offset.zero)
+          ..addRRect(body),
+      );
       c.drawRRect(
         band,
         Paint()
-          ..shader = const LinearGradient(colors: [metalLight, metal]).createShader(band.outerRect),
+          ..shader = const LinearGradient(
+            colors: [metalLight, metal],
+          ).createShader(band.outerRect),
       );
       c.restore();
       for (final y in [0.3, 0.58, 0.82]) {
