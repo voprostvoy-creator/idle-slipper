@@ -446,6 +446,8 @@ class _DefenseGameScreenState extends State<DefenseGameScreen>
                                   _Crumbs(
                                     t.upgradePrice,
                                     enough: _d.crumbs >= t.upgradePrice,
+                                    // На золотой кнопке — тёмные цифры.
+                                    onLight: _d.crumbs >= t.upgradePrice,
                                   ),
                                 ],
                               ),
@@ -521,6 +523,7 @@ class _DefenseGameScreenState extends State<DefenseGameScreen>
       for (final k in SlipperCatalog.all)
         if (game.count(k.id) > 0) k,
     ];
+    final perRow = max(3, (owned.length / 2).ceil());
     return Container(
       decoration: const BoxDecoration(
         color: GameColors.panel,
@@ -528,16 +531,28 @@ class _DefenseGameScreenState extends State<DefenseGameScreen>
       ),
       child: SafeArea(
         top: false,
-        child: SizedBox(
-          height: 92,
-          child: ListView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
+        // Все тапки сразу, в два ряда — без прокрутки.
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(6, 6, 6, 6),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              for (final k in owned)
+              for (var r = 0; r < 2; r++)
                 Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: _card(k),
+                  padding: EdgeInsets.only(top: r == 0 ? 0 : 6),
+                  child: Row(
+                    children: [
+                      for (var i = 0; i < perRow; i++)
+                        Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 3),
+                            child: r * perRow + i < owned.length
+                                ? _card(owned[r * perRow + i])
+                                : const SizedBox(),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
             ],
           ),
@@ -551,9 +566,9 @@ class _DefenseGameScreenState extends State<DefenseGameScreen>
     final enough = _d.crumbs >= price;
     final card = GamePanel(
       color: enough ? GameColors.panelLight : GameColors.panelDark,
-      padding: const EdgeInsets.fromLTRB(6, 4, 6, 4),
+      padding: const EdgeInsets.fromLTRB(4, 3, 4, 3),
       child: SizedBox(
-        width: 66,
+        height: 62,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -561,12 +576,12 @@ class _DefenseGameScreenState extends State<DefenseGameScreen>
               opacity: enough ? 1 : 0.45,
               child: SlipperSprite(
                 fighter: Slipper(name: k.name, kindId: k.id),
-                width: 58,
+                width: 50,
                 animate: false,
                 showSize: false,
               ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 2),
             _Crumbs(price, enough: enough),
           ],
         ),
@@ -815,38 +830,64 @@ class _DefenseGameScreenState extends State<DefenseGameScreen>
   }
 }
 
+/// Деньги обороны: зелёная монетка с долларом и сумма.
 class _Crumbs extends StatelessWidget {
   const _Crumbs(
     this.amount, {
     required this.enough,
     this.big = false,
     this.plus = false,
+    this.onLight = false,
   });
   final int amount;
   final bool enough;
   final bool big;
   final bool plus;
 
+  /// На светлой кнопке — тёмные цифры, чтобы не сливались.
+  final bool onLight;
+
   @override
-  Widget build(BuildContext context) => Row(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      Icon(
-        Icons.bakery_dining_rounded,
-        size: big ? 22 : 16,
-        color: const Color(0xFFE8B66A),
-      ),
-      const SizedBox(width: 3),
-      Text(
-        '${plus ? '+' : ''}$amount',
-        style: TextStyle(
-          fontSize: big ? 18 : 14,
-          fontWeight: FontWeight.w900,
-          color: enough ? GameColors.text : GameColors.red,
+  Widget build(BuildContext context) {
+    final size = big ? 22.0 : 16.0;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: size,
+          height: size,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: const Color(0xFF3CC45A),
+            shape: BoxShape.circle,
+            border: Border.all(color: GameColors.outline, width: big ? 2 : 1.5),
+          ),
+          child: Text(
+            r'$',
+            style: TextStyle(
+              fontSize: size * 0.68,
+              height: 1,
+              fontWeight: FontWeight.w900,
+              color: Colors.white,
+            ),
+          ),
         ),
-      ),
-    ],
-  );
+        const SizedBox(width: 3),
+        Text(
+          '${plus ? '+' : ''}$amount',
+          style: TextStyle(
+            fontSize: big ? 18 : 14,
+            fontWeight: FontWeight.w900,
+            color: onLight
+                ? GameColors.outline
+                : enough
+                ? GameColors.text
+                : GameColors.red,
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 /// Поле: лужайка с цветами, каменная тропа, кусты по краям и сахарница;

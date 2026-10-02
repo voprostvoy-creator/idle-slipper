@@ -161,13 +161,12 @@ class _ModePicker extends StatelessWidget {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(18),
                   border: Border.all(color: GameColors.outline, width: 3),
-                  gradient: const LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [Color(0xFFFF8A6B), Color(0xFFB73E5C)],
-                  ),
                 ),
-                child: const Icon(Icons.shield_rounded, size: 46, color: GameColors.outline),
+                // Миниатюрный снимок поля обороны.
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(15),
+                  child: Image.asset('assets/ui/defense_thumb.webp', fit: BoxFit.cover),
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(

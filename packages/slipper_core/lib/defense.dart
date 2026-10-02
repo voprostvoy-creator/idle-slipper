@@ -251,16 +251,25 @@ class Tower {
 
   (double, double) get center => (x, y);
 
-  /// Цена постановки одна для всех: редкий тапок сильнее сам по себе.
-  static int priceOf(String kindId) => 50;
+  /// Цена постановки: чем реже тапок, тем дороже.
+  static int priceOf(String kindId) => switch (SlipperCatalog.byId(kindId).rarity) {
+        Rarity.common => 50,
+        Rarity.rare => 60,
+        Rarity.epic => 70,
+        Rarity.legendary => 85,
+        Rarity.mythic => 100,
+      };
 
-  int get upgradePrice => (priceOf(kindId) * (level == 1 ? 1.0 : 1.6)).round();
+  /// Улучшение стоит одинаково для всех: дорогой только сам редкий тапок.
+  static const _upgrade = [50, 80];
+  int get upgradePrice => _upgrade[level - 1];
 
   /// Сколько вернёт продажа: половину вложенного.
   int get sellPrice {
-    var spent = priceOf(kindId).toDouble();
-    if (level >= 2) spent += priceOf(kindId);
-    if (level >= 3) spent += priceOf(kindId) * 1.6;
+    var spent = priceOf(kindId);
+    for (var lv = 1; lv < level; lv++) {
+      spent += _upgrade[lv - 1];
+    }
     return (spent / 2).round();
   }
 }
@@ -397,7 +406,7 @@ class DefenseGame {
 
   static const waves = 10;
   static const startLives = 10;
-  static const startCrumbs = 120;
+  static const startCrumbs = 150;
 
   final Random _rng;
   final towers = <Tower>[];
