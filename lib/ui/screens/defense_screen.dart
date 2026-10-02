@@ -849,7 +849,7 @@ class _Crumbs extends StatelessWidget {
   );
 }
 
-/// Поле: кухонный пол в плитку, дорожка из досок, крошки, печенье и сахарница;
+/// Поле: лужайка с цветами, каменная тропа, кусты по краям и сахарница;
 /// у выбранного тапка — круг дальности.
 class _BoardPainter extends CustomPainter {
   _BoardPainter({
@@ -869,14 +869,13 @@ class _BoardPainter extends CustomPainter {
   static ui.Picture? _cache;
   static String _cacheKey = '';
 
-  static const _tileA = Color(0xFFF6E7CC);
-  static const _tileB = Color(0xFFEBD3AC);
-  static const _grout = Color(0xFFD2B486);
-  static const _wood = Color(0xFFC08A52);
-  static const _woodDark = Color(0xFF8E5A2C);
-  static const _woodEdge = Color(0xFF6B4020);
-  static const _crumbLight = Color(0xFFF2C46D);
-  static const _crumbDark = Color(0xFFB9772F);
+  static const _grass = Color(0xFF6DBE45);
+  static const _grassLight = Color(0xFF86D35A);
+  static const _grassDark = Color(0xFF5AAA3A);
+  static const _stoneEdge = Color(0xFF7F7B70);
+  static const _stoneBed = Color(0xFFB9B3A3);
+  static const _stone = Color(0xFFDAD5C7);
+  static const _stoneLine = Color(0xFF9C9686);
 
   @override
   void paint(Canvas c, Size size) {
@@ -911,81 +910,61 @@ class _BoardPainter extends CustomPainter {
     c.save();
     c.clipRect(Offset.zero & size);
 
-    // Пол кухни: тёплая плитка в шахматку со швами.
-    final tile = cell;
-    final shiftX = (ox * cell) % tile;
-    final shiftY = (oy * cell) % tile;
-    for (var r = -1; r * tile < size.height + tile; r++) {
-      for (var col = -1; col * tile < size.width + tile; col++) {
-        final rect = Rect.fromLTWH(
-          col * tile + shiftX,
-          r * tile + shiftY,
-          tile,
-          tile,
-        );
-        c.drawRect(rect, Paint()..color = (r + col).isEven ? _tileA : _tileB);
-        // Блик в углу плитки.
-        c.drawRect(
-          Rect.fromLTWH(rect.left + 3, rect.top + 3, tile * 0.35, 2),
-          Paint()..color = Colors.white.withValues(alpha: 0.35),
-        );
-      }
-    }
-    final grout = Paint()
-      ..color = _grout
-      ..strokeWidth = 1.5;
-    for (var x = shiftX - tile; x < size.width + tile; x += tile) {
-      c.drawLine(Offset(x, 0), Offset(x, size.height), grout);
-    }
-    for (var y = shiftY - tile; y < size.height + tile; y += tile) {
-      c.drawLine(Offset(0, y), Offset(size.width, y), grout);
-    }
-    // Мягкие тени и блики на полу.
-    for (var i = 0; i < 18; i++) {
-      final o = Offset(
-        rnd.nextDouble() * size.width,
-        rnd.nextDouble() * size.height,
-      );
-      final r = cell * (0.8 + rnd.nextDouble() * 1.2);
-      final color = rnd.nextBool() ? Colors.white : const Color(0xFFB8925C);
-      c.drawCircle(
-        o,
-        r,
-        Paint()
-          ..shader = RadialGradient(
-            colors: [color.withValues(alpha: 0.18), color.withValues(alpha: 0)],
-          ).createShader(Rect.fromCircle(center: o, radius: r)),
-      );
-    }
-
-    // Лужица молока.
-    _milk(c, Offset(size.width * 0.12, size.height * 0.62), cell * 0.55);
-
-    // Рассыпанные крошки и сахар.
-    for (var i = 0; i < 60; i++) {
-      final o = Offset(
-        rnd.nextDouble() * size.width,
-        rnd.nextDouble() * size.height,
-      );
-      _crumb(c, o, cell * (0.03 + rnd.nextDouble() * 0.045), rnd);
-    }
+    // Трава: основа, светлые и тёмные пятна.
+    c.drawRect(Offset.zero & size, Paint()..color = _grass);
     for (var i = 0; i < 40; i++) {
       final o = Offset(
         rnd.nextDouble() * size.width,
         rnd.nextDouble() * size.height,
       );
-      final s = cell * (0.03 + rnd.nextDouble() * 0.02);
-      c.save();
-      c.translate(o.dx, o.dy);
-      c.rotate(rnd.nextDouble());
-      c.drawRect(
-        Rect.fromCenter(center: Offset.zero, width: s, height: s),
-        Paint()..color = Colors.white.withValues(alpha: 0.9),
+      final r = cell * (0.5 + rnd.nextDouble() * 1.1);
+      final color = rnd.nextBool() ? _grassLight : _grassDark;
+      c.drawCircle(
+        o,
+        r,
+        Paint()
+          ..shader = RadialGradient(
+            colors: [color.withValues(alpha: 0.55), color.withValues(alpha: 0)],
+          ).createShader(Rect.fromCircle(center: o, radius: r)),
       );
-      c.restore();
+    }
+    // Травинки.
+    final tuft = Paint()
+      ..color = const Color(0xFF4E9A32)
+      ..strokeWidth = cell * 0.035
+      ..strokeCap = StrokeCap.round;
+    for (var i = 0; i < 70; i++) {
+      final o = Offset(
+        rnd.nextDouble() * size.width,
+        rnd.nextDouble() * size.height,
+      );
+      final h = cell * (0.08 + rnd.nextDouble() * 0.06);
+      c.drawLine(o, o + Offset(-h * 0.5, -h), tuft);
+      c.drawLine(o, o + Offset(0, -h * 1.2), tuft);
+      c.drawLine(o, o + Offset(h * 0.5, -h), tuft);
+    }
+    // Цветы: белые и жёлтые.
+    for (var i = 0; i < 55; i++) {
+      final o = Offset(
+        rnd.nextDouble() * size.width,
+        rnd.nextDouble() * size.height,
+      );
+      final r = cell * (0.035 + rnd.nextDouble() * 0.02);
+      final petal = rnd.nextDouble() < 0.75
+          ? Colors.white
+          : const Color(0xFFFFE066);
+      for (var k = 0; k < 5; k++) {
+        final a = k * 2 * pi / 5;
+        c.drawCircle(
+          o + Offset(cos(a), sin(a)) * r,
+          r * 0.8,
+          Paint()..color = petal,
+        );
+      }
+      c.drawCircle(o, r * 0.6, Paint()..color = const Color(0xFFFFB82E));
     }
 
-    // Тропа: дорожка из деревянных досок — в координатах карты.
+    // Тропа: тёмный край, подложка и камни — в координатах карты.
     c.save();
     c.translate(ox * cell, oy * cell);
     final path = Path();
@@ -1002,181 +981,102 @@ class _BoardPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round;
     c.drawPath(
       path.shift(Offset(0, cell * 0.06)),
-      road(const Color(0x33000000), 0.94),
+      road(const Color(0x33000000), 0.92),
     );
-    c.drawPath(path, road(_woodEdge, 0.94));
-    c.drawPath(path, road(_wood, 0.8));
-    _planks(c, rnd);
+    c.drawPath(path, road(_stoneEdge, 0.92));
+    c.drawPath(path, road(_stoneBed, 0.8));
+    _stones(c, rnd);
     _sugar(c);
     c.restore();
 
-    // Кучки крошек и печенье вместо кустов — доли ширины и высоты поля.
+    // Кусты по углам и краям.
+    // Доли ширины и высоты поля.
     for (final (bx, by, br) in const [
-      (0.02, 0.02, 1.0),
-      (0.98, 0.04, 0.85),
-      (0.03, 0.98, 0.9),
-      (0.98, 0.55, 0.65),
-      (0.5, 0.99, 0.6),
+      (0.0, 0.0, 1.1),
+      (1.0, 0.02, 0.9),
+      (0.0, 1.0, 1.0),
+      (1.0, 0.55, 0.7),
+      (0.0, 0.5, 0.6),
+      (0.45, 1.0, 0.7),
     ]) {
-      _crumbPile(c, Offset(bx * size.width, by * size.height), br * cell, rnd);
+      _bush(c, Offset(bx * size.width, by * size.height), br * cell, rnd);
     }
-    _cookie(c, Offset(size.width * 0.5, size.height * 0.36), cell * 0.32);
     c.restore();
   }
 
-  /// Доски дорожки: поперечные стыки и волокна дерева.
-  void _planks(Canvas c, Random rnd) {
+  /// Булыжники вдоль тропы.
+  void _stones(Canvas c, Random rnd) {
     final pts = DefenseMap.waypoints;
-    final seam = Paint()
-      ..color = _woodEdge.withValues(alpha: 0.75)
-      ..strokeWidth = 1.6;
-    final grain = Paint()
-      ..color = _woodDark.withValues(alpha: 0.5)
-      ..strokeWidth = 1.1
-      ..strokeCap = StrokeCap.round;
-    final shine = Paint()
-      ..color = Colors.white.withValues(alpha: 0.25)
-      ..strokeWidth = 1.4;
     for (var i = 0; i < pts.length - 1; i++) {
       final a = Offset(pts[i].$1 + 0.5, pts[i].$2 + 0.5) * cell;
       final b = Offset(pts[i + 1].$1 + 0.5, pts[i + 1].$2 + 0.5) * cell;
       final len = (b - a).distance;
       final n = (b - a) / len;
       final side = Offset(-n.dy, n.dx);
-      final half = cell * 0.4;
-      final step = cell * 0.42;
-      for (var d = step * 0.5; d < len; d += step) {
-        final o = a + n * d;
-        c.drawLine(o - side * half, o + side * half, seam);
-        // Блик вдоль стыка.
-        c.drawLine(o + n * 2 - side * half, o + n * 2 + side * half, shine);
+      final step = cell * 0.27;
+      for (var d = 0.0; d <= len; d += step) {
+        for (final s in const [-0.21, 0.0, 0.21]) {
+          if (rnd.nextDouble() < 0.12) continue;
+          final o =
+              a +
+              n * (d + (rnd.nextDouble() - 0.5) * cell * 0.06) +
+              side * cell * (s + (rnd.nextDouble() - 0.5) * 0.05);
+          final w = cell * (0.19 + rnd.nextDouble() * 0.06);
+          final h = cell * (0.15 + rnd.nextDouble() * 0.05);
+          c.save();
+          c.translate(o.dx, o.dy);
+          c.rotate(atan2(n.dy, n.dx) + (rnd.nextDouble() - 0.5) * 0.5);
+          final r = RRect.fromRectAndRadius(
+            Rect.fromCenter(center: Offset.zero, width: w, height: h),
+            Radius.circular(h * 0.45),
+          );
+          c.drawRRect(r, Paint()..color = _stone);
+          c.drawRRect(
+            r,
+            Paint()
+              ..color = _stoneLine
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 1.2,
+          );
+          // Блик сверху.
+          c.drawLine(
+            Offset(-w * 0.25, -h * 0.22),
+            Offset(w * 0.15, -h * 0.22),
+            Paint()
+              ..color = Colors.white.withValues(alpha: 0.6)
+              ..strokeWidth = 1.2
+              ..strokeCap = StrokeCap.round,
+          );
+          c.restore();
+        }
       }
-      // Волокна вдоль дорожки.
-      for (var k = 0; k < (len / cell * 5).round(); k++) {
-        final d = rnd.nextDouble() * len;
-        final s = (rnd.nextDouble() - 0.5) * cell * 0.65;
-        final l = cell * (0.12 + rnd.nextDouble() * 0.15);
-        final o = a + n * d + side * s;
-        c.drawLine(o, o + n * l, grain);
-      }
     }
   }
 
-  /// Крошка: неровный золотистый кусочек с бликом.
-  void _crumb(Canvas c, Offset o, double r, Random rnd) {
-    final p = Path();
-    const n = 6;
-    for (var k = 0; k < n; k++) {
-      final a = k * 2 * pi / n + rnd.nextDouble() * 0.5;
-      final rr = r * (0.7 + rnd.nextDouble() * 0.5);
-      final q = o + Offset(cos(a), sin(a)) * rr;
-      k == 0 ? p.moveTo(q.dx, q.dy) : p.lineTo(q.dx, q.dy);
-    }
-    p.close();
-    final color = Color.lerp(_crumbLight, _crumbDark, rnd.nextDouble())!;
-    c.drawPath(p, Paint()..color = color);
-    c.drawPath(
-      p,
-      Paint()
-        ..color = _crumbDark.withValues(alpha: 0.8)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 0.8,
-    );
+  /// Куст: несколько кругов листвы с бликами.
+  void _bush(Canvas c, Offset o, double r, Random rnd) {
     c.drawCircle(
-      o - Offset(r, r) * 0.3,
-      r * 0.25,
-      Paint()..color = Colors.white.withValues(alpha: 0.5),
-    );
-  }
-
-  /// Кучка крошек хлеба и печенья.
-  void _crumbPile(Canvas c, Offset o, double r, Random rnd) {
-    c.drawOval(
-      Rect.fromCenter(
-        center: o + Offset(r * 0.1, r * 0.2),
-        width: r * 2.2,
-        height: r * 1.5,
-      ),
-      Paint()..color = const Color(0x22000000),
-    );
-    for (var i = 0; i < 26; i++) {
-      final a = rnd.nextDouble() * 2 * pi;
-      final d = r * sqrt(rnd.nextDouble());
-      _crumb(
-        c,
-        o + Offset(cos(a), sin(a) * 0.7) * d,
-        r * (0.12 + rnd.nextDouble() * 0.14),
-        rnd,
-      );
-    }
-  }
-
-  /// Надкусанное печенье с шоколадной крошкой.
-  void _cookie(Canvas c, Offset o, double r) {
-    c.drawCircle(
-      o + Offset(r * 0.08, r * 0.15),
+      o + Offset(r * 0.1, r * 0.15),
       r,
-      Paint()..color = const Color(0x30000000),
+      Paint()..color = const Color(0x33000000),
     );
-    final body = Path()..addOval(Rect.fromCircle(center: o, radius: r));
-    final bite = Path()
-      ..addOval(
-        Rect.fromCircle(
-          center: o + Offset(r * 0.85, -r * 0.6),
-          radius: r * 0.45,
-        ),
-      );
-    final cookie = Path.combine(PathOperation.difference, body, bite);
-    c.drawPath(cookie, Paint()..color = const Color(0xFFD9A35B));
-    c.drawPath(
-      cookie,
-      Paint()
-        ..color = const Color(0xFF8A5A2B)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2,
-    );
-    for (final (dx, dy) in const [
-      (-0.4, -0.2),
-      (0.1, 0.35),
-      (-0.1, -0.5),
-      (0.4, 0.1),
-      (-0.45, 0.35),
-    ]) {
+    for (var i = 0; i < 7; i++) {
+      final a = rnd.nextDouble() * 2 * pi;
+      final d = r * 0.5 * rnd.nextDouble();
+      final p = o + Offset(cos(a), sin(a)) * d;
+      final rr = r * (0.45 + rnd.nextDouble() * 0.3);
+      c.drawCircle(p, rr, Paint()..color = const Color(0xFF3E8E2E));
       c.drawCircle(
-        o + Offset(dx, dy) * r,
-        r * 0.13,
-        Paint()..color = const Color(0xFF4A2A14),
+        p + Offset(-rr * 0.2, -rr * 0.2),
+        rr * 0.7,
+        Paint()..color = const Color(0xFF52A83A),
+      );
+      c.drawCircle(
+        p + Offset(-rr * 0.35, -rr * 0.35),
+        rr * 0.3,
+        Paint()..color = const Color(0xFF6CC24A),
       );
     }
-  }
-
-  /// Лужица разлитого молока.
-  void _milk(Canvas c, Offset o, double r) {
-    final p = Path()
-      ..addOval(Rect.fromCenter(center: o, width: r * 2, height: r * 1.3))
-      ..addOval(
-        Rect.fromCenter(
-          center: o + Offset(r * 0.7, r * 0.35),
-          width: r,
-          height: r * 0.7,
-        ),
-      )
-      ..addOval(
-        Rect.fromCenter(
-          center: o + Offset(-r * 0.6, -r * 0.4),
-          width: r * 0.8,
-          height: r * 0.5,
-        ),
-      );
-    c.drawPath(p, Paint()..color = Colors.white.withValues(alpha: 0.85));
-    c.drawOval(
-      Rect.fromCenter(
-        center: o + Offset(-r * 0.3, -r * 0.2),
-        width: r * 0.6,
-        height: r * 0.18,
-      ),
-      Paint()..color = Colors.white,
-    );
   }
 
   /// Сахарница в конце тропы.
