@@ -4,7 +4,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Фоновая музыка: весёлая в меню, тихая и спокойная в бою. Треки сменяются плавно,
+/// Фоновая музыка: весёлая в меню, в бою — тишина, только звуки ударов. Треки сменяются плавно,
 /// когда игра свёрнута — музыка на паузе. Громкость хранится на телефоне.
 class Music extends ChangeNotifier with WidgetsBindingObserver {
   Music._();
@@ -14,9 +14,7 @@ class Music extends ChangeNotifier with WidgetsBindingObserver {
   static const _fade = Duration(milliseconds: 700);
   static const _fadeStep = Duration(milliseconds: 50);
 
-  late final _menu = _Track('music/menu.mp3', restart: false);
-  // Боевая — тише, чтобы не мешала слышать удары.
-  late final _battle = _Track('music/battle.ogg', restart: true, gain: 0.7);
+  late final _menu = _Track('music/menu.mp3');
 
   bool _started = false;
   bool _starting = false;
@@ -28,14 +26,13 @@ class Music extends ChangeNotifier with WidgetsBindingObserver {
   double _volume = 0.6;
   double get volume => _volume;
 
-  _Track get _wanted => _battles > 0 ? _battle : _menu;
-  _Track get _other => _battles > 0 ? _menu : _battle;
+  bool get _inBattle => _battles > 0;
 
   /// Вызывается при запуске и при каждом касании: в браузере звук
   /// разрешён только после первого касания.
   Future<void> start() async {
     if (_started) {
-      if (!_wanted.playing) _sync();
+      if (!_menu.playing) _sync();
       return;
     }
     if (_starting) return;
@@ -51,7 +48,6 @@ class Music extends ChangeNotifier with WidgetsBindingObserver {
         ).build(),
       );
       await _menu.init();
-      await _battle.init();
       WidgetsBinding.instance.addObserver(this);
       _started = true;
       _sync();
@@ -78,9 +74,8 @@ class Music extends ChangeNotifier with WidgetsBindingObserver {
     if (_started) {
       if (_volume == 0) {
         _menu.fadeTo(0, stop: true);
-        _battle.fadeTo(0, stop: true);
-      } else if (_wanted.playing) {
-        _wanted.setNow(_volume);
+      } else if (_menu.playing) {
+        _menu.setNow(_volume);
       } else {
         _sync();
       }
@@ -90,11 +85,14 @@ class Music extends ChangeNotifier with WidgetsBindingObserver {
     await prefs.setDouble(_volumeKey, _volume);
   }
 
-  /// Нужный трек — плавно вверх, другой — плавно вниз и стоп.
+  /// В меню музыка плавно вверх, в бою — плавно вниз и пауза.
   void _sync() {
     if (!_started || _background) return;
-    _other.fadeTo(0, stop: true);
-    if (_volume > 0) _wanted.fadeTo(_volume);
+    if (_inBattle || _volume == 0) {
+      _menu.fadeTo(0, stop: true);
+    } else {
+      _menu.fadeTo(_volume);
+    }
   }
 
   @override
@@ -104,7 +102,6 @@ class Music extends ChangeNotifier with WidgetsBindingObserver {
     _background = bg;
     if (bg) {
       _menu.pauseNow();
-      _battle.pauseNow();
     } else {
       _sync();
     }
@@ -113,15 +110,9 @@ class Music extends ChangeNotifier with WidgetsBindingObserver {
 
 /// Один зацикленный трек со своим плеером и плавной громкостью.
 class _Track {
-  _Track(this.asset, {required this.restart, this.gain = 1});
+  _Track(this.asset);
 
   final String asset;
-
-  /// Своя громкость трека относительно общей.
-  final double gain;
-
-  /// Начинать заново при каждом включении (бой) или продолжать (меню).
-  final bool restart;
 
   final _player = AudioPlayer();
   double _vol = 0;
@@ -136,7 +127,7 @@ class _Track {
 
   void setNow(double v) {
     _timer?.cancel();
-    _vol = v * gain;
+    _vol = v;
     _player.setVolume(_vol);
   }
 
@@ -149,7 +140,7 @@ class _Track {
   /// Плавно к громкости [to]; со [stop] — в конце пауза (или стоп).
   void fadeTo(double level, {bool stop = false}) {
     _timer?.cancel();
-    final to = level * gain;
+    final to = level;
     if (to > 0 && !playing) {
       playing = true;
       _player.resume().catchError((Object e) {
@@ -169,7 +160,8 @@ class _Track {
         t.cancel();
         if (stop && to == 0) {
           playing = false;
-          restart ? _player.stop() : _player.pause();
+          // Пауза, а не стоп: после боя мелодия продолжится с того же места.
+          _player.pause();
         }
       }
     });
