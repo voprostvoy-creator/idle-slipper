@@ -5,7 +5,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Звуки в бою: шлепок тапка по сопернику, хлопок при убийстве жука.
+/// Звуки в бою: шлепок тапка по сопернику, хруст при убийстве жука.
 /// У каждого звука свой пул плееров — одновременные удары не обрывают
 /// друг друга. Громкость хранится на телефоне.
 class Sfx extends ChangeNotifier {
@@ -13,8 +13,9 @@ class Sfx extends ChangeNotifier {
   static final instance = Sfx._();
 
   static const _volumeKey = 'sfx_volume';
-  static const _hits = ['sfx/hit1.ogg', 'sfx/hit2.ogg', 'sfx/hit3.ogg'];
-  static const _kills = ['sfx/kill1.ogg', 'sfx/kill2.ogg'];
+  // Свои короткие звуки: сухой шлепок и хруст панциря.
+  static const _hits = ['sfx/hit1.wav', 'sfx/hit2.wav', 'sfx/hit3.wav'];
+  static const _kills = ['sfx/kill1.wav', 'sfx/kill2.wav', 'sfx/kill3.wav'];
 
   final _pools = <String, AudioPool>{};
   final _rng = Random();
