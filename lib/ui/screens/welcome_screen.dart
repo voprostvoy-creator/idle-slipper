@@ -61,8 +61,6 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                 const Spacer(),
                 // Надпись-логотип «Битва тапков».
                 Image.asset('assets/ui/title_logo.webp', width: 320, fit: BoxFit.contain),
-                const SizedBox(height: 10),
-                const StrokeText('Жуки наступают', size: 24, color: GameColors.orange),
                 const SizedBox(height: 16),
                 Text(
                   'Качай тапок, гоняй насекомых\nи поднимайся в рейтинге',
