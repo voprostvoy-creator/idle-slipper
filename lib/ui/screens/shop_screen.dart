@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../ads/ads.dart';
 import '../../game/case_box.dart';
 import '../../game/daily.dart';
 import '../../game/game_state.dart';
@@ -168,7 +169,12 @@ class _CaseCard extends StatelessWidget {
     );
   }
 
-  void _open(BuildContext context) {
+  Future<void> _open(BuildContext context) async {
+    // Кейс за рекламу — сначала досмотреть ролик.
+    if (type.isFree && !type.daily) {
+      if (!await Ads.instance.showRewarded(context)) return;
+      if (!context.mounted) return;
+    }
     final owned = {
       for (final k in SlipperCatalog.all)
         if (game.count(k.id) > 0) k.id,

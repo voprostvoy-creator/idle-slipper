@@ -69,6 +69,10 @@ class Music extends ChangeNotifier with WidgetsBindingObserver {
     start();
   }
 
+  /// Заглушить на время рекламы — и вернуть после.
+  void hold() => enterBattle();
+  void release() => leaveBattle();
+
   void enterBattle() {
     _battles++;
     _sync();

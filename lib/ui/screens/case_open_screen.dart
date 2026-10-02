@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 
+import '../../ads/ads.dart';
 import '../../game/case_box.dart';
 import '../../game/game_state.dart';
 import '../../game/slipper.dart';
@@ -90,7 +91,12 @@ class _CaseOpenScreenState extends State<CaseOpenScreen>
   }
 
   /// Крутит ещё раз, не выходя в магазин.
-  void _again() {
+  Future<void> _again() async {
+    // Ещё один кейс за рекламу — снова через ролик.
+    if (widget.type.isFree && !widget.type.daily) {
+      if (!await Ads.instance.showRewarded(context)) return;
+      if (!mounted) return;
+    }
     final hadIt = {
       for (final k in SlipperCatalog.all)
         if (widget.game.count(k.id) > 0) k.id,

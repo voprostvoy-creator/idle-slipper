@@ -4,6 +4,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 
+import '../../ads/ads.dart';
 import '../../audio/music.dart';
 import '../../audio/sfx.dart';
 import '../../game/defense.dart';
@@ -73,7 +74,12 @@ class DefenseScreen extends StatelessWidget {
                         ? GameButton(
                             color: GameColors.green,
                             height: 56,
-                            onPressed: () {
+                            onPressed: () async {
+                              // Досмотрел ролик — попытка и сразу в игру.
+                              if (!await Ads.instance.showRewarded(context)) {
+                                return;
+                              }
+                              if (!context.mounted) return;
                               game.takeDefenseAdAttempt();
                               _play(context);
                             },

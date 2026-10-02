@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 
+import 'ads/ads.dart';
 import 'audio/music.dart';
 import 'audio/sfx.dart';
 import 'game/game_state.dart';
@@ -20,6 +21,7 @@ Future<void> main() async {
   final game = await GameState.load();
   runApp(SlipperApp(game: game));
   Sfx.instance.start();
+  Ads.instance.init();
 }
 
 class SlipperApp extends StatefulWidget {
@@ -40,14 +42,15 @@ class _SlipperAppState extends State<SlipperApp> {
     return MaterialApp(
       title: 'Битва тапков',
       // В браузере звук включается только после касания — пробуем снова.
-      builder: (context, child) => Listener(
-        onPointerDown: (_) => Music.instance.start(),
-        child: child,
-      ),
+      builder: (context, child) =>
+          Listener(onPointerDown: (_) => Music.instance.start(), child: child),
       debugShowCheckedModeBanner: false,
       theme: buildGameTheme(),
       home: _welcome
-          ? WelcomeScreen(game: widget.game, onDone: () => setState(() => _welcome = false))
+          ? WelcomeScreen(
+              game: widget.game,
+              onDone: () => setState(() => _welcome = false),
+            )
           : RootShell(game: widget.game),
     );
   }
@@ -273,7 +276,11 @@ class _GameNavBar extends StatelessWidget {
 
 /// Центральная кнопка «В бой»: крупная, красная, со скрещёнными мечами.
 class _FightButton extends StatefulWidget {
-  const _FightButton({required this.active, required this.onTap, this.dot = false});
+  const _FightButton({
+    required this.active,
+    required this.onTap,
+    this.dot = false,
+  });
   final bool active;
   final VoidCallback onTap;
 
