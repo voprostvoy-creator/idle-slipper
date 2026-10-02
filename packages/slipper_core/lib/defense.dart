@@ -4,7 +4,7 @@ import 'slipper_kind.dart';
 import 'stars.dart';
 import 'story/enemies.dart';
 
-/// «Оборона кухни» — tower defense: насекомые ползут по тропе к сахарнице,
+/// «Оборона сада» — tower defense: насекомые ползут по тропе к сахарнице,
 /// тапки из коллекции стоят по бокам и бьют их. Чистая логика без Flutter:
 /// экран вызывает [DefenseGame.step] каждый кадр и рисует состояние.
 

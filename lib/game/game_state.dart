@@ -87,7 +87,7 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
   /// Полученные сегодня награды за задания «Под диваном».
   Set<String> digTasksClaimed = {};
 
-  /// «Оборона кухни»: день, сыграно попыток, взята ли попытка за рекламу,
+  /// «Оборона сада»: день, сыграно попыток, взята ли попытка за рекламу,
   /// лучший результат.
   String defenseDay = '';
   int defensePlays = 0;
@@ -842,7 +842,7 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
     notifyListeners();
   }
 
-  // --- Оборона кухни ---------------------------------------------------------
+  // --- Оборона сада ---------------------------------------------------------
 
   void _rollDefense() {
     final today = dayKey(clock());

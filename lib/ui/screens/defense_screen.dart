@@ -17,7 +17,7 @@ import '../toast.dart';
 import '../widgets/game_widgets.dart';
 import 'battle_hub_screen.dart';
 
-/// Страница режима «Оборона кухни»: попытки, рекорд, награды, кнопка игры.
+/// Страница режима «Оборона сада»: попытки, рекорд, награды, кнопка игры.
 class DefenseScreen extends StatelessWidget {
   const DefenseScreen({super.key, required this.game, required this.onBack});
 
@@ -34,7 +34,7 @@ class DefenseScreen extends StatelessWidget {
         return ListView(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
           children: [
-            BackToModes(title: 'Оборона кухни', onBack: onBack),
+            BackToModes(title: 'Оборона сада', onBack: onBack),
             const SizedBox(height: 10),
             GamePanel(
               padding: const EdgeInsets.all(14),
@@ -96,7 +96,7 @@ class DefenseScreen extends StatelessWidget {
                                 ? () => _play(context)
                                 : null,
                             child: const Text(
-                              'Защищать кухню',
+                              'Защищать сад',
                               style: TextStyle(fontSize: 20),
                             ),
                           ),
@@ -250,7 +250,7 @@ class _DefenseGameScreenState extends State<DefenseGameScreen>
       barrierDismissible: false,
       builder: (context) => AlertDialog(
         title: StrokeText(
-          _d.won ? 'Кухня спасена!' : 'Жуки прорвались',
+          _d.won ? 'Сад спасён!' : 'Жуки прорвались',
           size: 24,
           color: _d.won ? GameColors.gold : GameColors.red,
         ),

@@ -174,7 +174,7 @@ class _ModePicker extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const StrokeText('Оборона кухни', size: 24),
+                    const StrokeText('Оборона сада', size: 24),
                     const SizedBox(height: 4),
                     Text(
                       'Расставь тапки и отбей 10 волн жуков. Попытка в день.',
