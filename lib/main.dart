@@ -19,7 +19,6 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final game = await GameState.load();
   runApp(SlipperApp(game: game));
-  Music.instance.start();
   Sfx.instance.start();
 }
 
@@ -67,6 +66,13 @@ enum _Tab { home, collection, battle, shop, profile }
 
 class _RootShellState extends State<RootShell> {
   _Tab _tab = _Tab.home;
+
+  @override
+  void initState() {
+    super.initState();
+    // Музыка — только когда игрок прошёл вход и попал в саму игру.
+    Music.instance.allow();
+  }
 
   /// Открытый режим во вкладке «В бой»; null — экран выбора режима.
   BattleMode? _battleMode;

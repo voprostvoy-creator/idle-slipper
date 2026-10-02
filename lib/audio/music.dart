@@ -18,6 +18,9 @@ class Music extends ChangeNotifier with WidgetsBindingObserver {
 
   bool _started = false;
   bool _starting = false;
+
+  /// Игрок прошёл вход — до этого музыка молчит.
+  bool _allowed = false;
   bool _background = false;
 
   /// Сколько боёв открыто сейчас: бой поверх боя не сбивает трек.
@@ -31,6 +34,7 @@ class Music extends ChangeNotifier with WidgetsBindingObserver {
   /// Вызывается при запуске и при каждом касании: в браузере звук
   /// разрешён только после первого касания.
   Future<void> start() async {
+    if (!_allowed) return;
     if (_started) {
       if (!_menu.playing) _sync();
       return;
@@ -57,6 +61,12 @@ class Music extends ChangeNotifier with WidgetsBindingObserver {
     } finally {
       _starting = false;
     }
+  }
+
+  /// Разрешить музыку (после входа в игру) и сразу включить.
+  void allow() {
+    _allowed = true;
+    start();
   }
 
   void enterBattle() {
