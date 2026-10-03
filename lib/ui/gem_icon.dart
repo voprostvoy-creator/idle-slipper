@@ -26,7 +26,12 @@ String gemTitle(Gem g) {
 /// Значок гема: огранённый камень цвета характеристики в рамке цвета
 /// редкости, в углу — уровень.
 class GemIcon extends StatelessWidget {
-  const GemIcon({super.key, required this.gem, this.size = 48, this.showLevel = true});
+  const GemIcon({
+    super.key,
+    required this.gem,
+    this.size = 48,
+    this.showLevel = true,
+  });
 
   final Gem gem;
   final double size;
@@ -80,7 +85,10 @@ class _GemPainter extends CustomPainter {
   void paint(Canvas c, Size size) {
     final s = size.width;
     // Плашка с рамкой цвета редкости.
-    final plate = RRect.fromRectAndRadius(Offset.zero & size, Radius.circular(s * 0.22));
+    final plate = RRect.fromRectAndRadius(
+      Offset.zero & size,
+      Radius.circular(s * 0.22),
+    );
     c.drawRRect(plate, Paint()..color = GameColors.outline);
     c.drawRRect(plate.deflate(s * 0.05), Paint()..color = GameColors.panelDark);
     c.drawRRect(
@@ -107,7 +115,11 @@ class _GemPainter extends CustomPainter {
         ..shader = LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color.lerp(color, Colors.white, 0.45)!, color, Color.lerp(color, Colors.black, 0.35)!],
+          colors: [
+            Color.lerp(color, Colors.white, 0.45)!,
+            color,
+            Color.lerp(color, Colors.black, 0.35)!,
+          ],
         ).createShader(Offset.zero & size),
     );
     final facet = Paint()
@@ -125,10 +137,14 @@ class _GemPainter extends CustomPainter {
       facet,
     );
     // Блик.
-    c.drawLine(p(0.34, 0.3), p(0.44, 0.3), Paint()
-      ..color = Colors.white.withValues(alpha: 0.85)
-      ..strokeWidth = s * 0.045
-      ..strokeCap = StrokeCap.round);
+    c.drawLine(
+      p(0.34, 0.3),
+      p(0.44, 0.3),
+      Paint()
+        ..color = Colors.white.withValues(alpha: 0.85)
+        ..strokeWidth = s * 0.045
+        ..strokeCap = StrokeCap.round,
+    );
     c.drawPath(
       stone,
       Paint()
@@ -168,7 +184,11 @@ class GemSlotBox extends StatelessWidget {
           : Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.lock_rounded, color: GameColors.textDim, size: size * 0.34),
+                Icon(
+                  Icons.lock_rounded,
+                  color: GameColors.textDim,
+                  size: size * 0.34,
+                ),
                 Text(
                   '★$lockedStar',
                   style: TextStyle(

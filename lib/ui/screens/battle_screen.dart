@@ -93,7 +93,6 @@ class _BattleScreenState extends State<BattleScreen>
   /// Последний урон пришёл от шипов — тогда боец только краснеет, без тряски.
   final _soft = {Side.player: false, Side.opponent: false};
 
-
   /// Что сейчас показывается поверх каждого бойца.
   final _effects = {
     Side.player: <BattleEffect>{},
@@ -127,6 +126,7 @@ class _BattleScreenState extends State<BattleScreen>
     toggle(BattleEffect.shield, snap.shielded);
     toggle(BattleEffect.stun, snap.stunned);
   }
+
   /// Вспышки поверх бойцов: блики ударов и эффекты скиллов.
   final _vfx = <_Vfx>[];
   int _vfxCounter = 0;
@@ -148,7 +148,8 @@ class _BattleScreenState extends State<BattleScreen>
   /// Выполнить [apply] в момент касания удара [attacker] — не раньше и не
   /// позже: тогда урон, реакция цели и вспышки совпадают с анимацией.
   void _atImpact(Side attacker, VoidCallback apply) {
-    final style = (attacker == Side.player ? widget.player : widget.opponent).attackStyle;
+    final style =
+        (attacker == Side.player ? widget.player : widget.opponent).attackStyle;
     Future.delayed(AttackAnimation.impactDelay(style), () {
       if (!mounted || _finished) return;
       setState(apply);
@@ -184,7 +185,10 @@ class _BattleScreenState extends State<BattleScreen>
   /// следующих событий. Одновременные встают друг над другом, а не в кучу.
   void _addPopup(_Popup p) {
     p.id = ++_popupCounter;
-    final busy = {for (final q in _popups) if (q.side == p.side) q.slot};
+    final busy = {
+      for (final q in _popups)
+        if (q.side == p.side) q.slot,
+    };
     var slot = 0;
     while (busy.contains(slot)) {
       slot++;
@@ -195,6 +199,7 @@ class _BattleScreenState extends State<BattleScreen>
       if (mounted) setState(() => _popups.remove(p));
     });
   }
+
   int _index = 0;
   bool _finished = false;
   Timer? _timer;
@@ -283,15 +288,18 @@ class _BattleScreenState extends State<BattleScreen>
             _spawn(side, k);
           }
           _mood = {side: SlipperMood.attack, side.other: _mood[side.other]!};
-          _log.insert(0, '${nameOf(side)}: ${skill.name}${ultimate ? '!' : ''}');
+          _log.insert(
+            0,
+            '${nameOf(side)}: ${skill.name}${ultimate ? '!' : ''}',
+          );
 
         case HitEvent(
-            :final attacker,
-            :final damage,
-            :final crit,
-            :final targetHpAfter,
-            :final thorns
-          ):
+          :final attacker,
+          :final damage,
+          :final crit,
+          :final targetHpAfter,
+          :final thorns,
+        ):
           final target = attacker.other;
           void land() {
             if (target == Side.player) {
@@ -299,7 +307,9 @@ class _BattleScreenState extends State<BattleScreen>
             } else {
               _hpOpponent = targetHpAfter;
             }
-            _mood[target] = targetHpAfter <= 0 ? SlipperMood.dead : SlipperMood.hurt;
+            _mood[target] = targetHpAfter <= 0
+                ? SlipperMood.dead
+                : SlipperMood.hurt;
             _hits[target] = _hits[target]! + 1;
             _soft[target] = thorns;
           }
@@ -317,12 +327,21 @@ class _BattleScreenState extends State<BattleScreen>
             if (_mood[attacker] != SlipperMood.dead) {
               _mood[attacker] = SlipperMood.attack;
             }
-            _log.insert(0, '${nameOf(attacker)} бьёт на $damage${crit ? ' (крит!)' : ''}');
+            _log.insert(
+              0,
+              '${nameOf(attacker)} бьёт на $damage${crit ? ' (крит!)' : ''}',
+            );
             _startLunge(attacker);
             // Урон, цифра и вспышки — в момент касания.
             _atImpact(attacker, () {
               land();
-              _addPopup(_Popup(side: target, text: crit ? '$damage!' : '$damage', crit: crit));
+              _addPopup(
+                _Popup(
+                  side: target,
+                  text: crit ? '$damage!' : '$damage',
+                  crit: crit,
+                ),
+              );
               _impactVfx(attacker, crit: crit);
               Sfx.instance.hit(crit: crit);
             });
@@ -335,7 +354,10 @@ class _BattleScreenState extends State<BattleScreen>
           _mood = {attacker: SlipperMood.attack, target: SlipperMood.idle};
           _log.insert(0, '${nameOf(attacker)} промахивается');
           _startLunge(attacker);
-          _atImpact(attacker, () => _addPopup(_Popup(side: target, text: 'мимо', crit: false)));
+          _atImpact(
+            attacker,
+            () => _addPopup(_Popup(side: target, text: 'мимо', crit: false)),
+          );
 
         case HealEvent(:final side, :final amount, :final hpAfter):
           if (side == Side.player) {
@@ -343,21 +365,36 @@ class _BattleScreenState extends State<BattleScreen>
           } else {
             _hpOpponent = hpAfter;
           }
-          _addPopup(_Popup(side: side, text: '+$amount', crit: false, heal: true));
+          _addPopup(
+            _Popup(side: side, text: '+$amount', crit: false, heal: true),
+          );
           _flashEffect(side, BattleEffect.heal);
           _log.insert(0, '${nameOf(side)} восстанавливает $amount');
 
-        case BurnEvent(:final side, :final damage, :final hpAfter, :final poison):
+        case BurnEvent(
+          :final side,
+          :final damage,
+          :final hpAfter,
+          :final poison,
+        ):
           if (side == Side.player) {
             _hpPlayer = hpAfter;
           } else {
             _hpOpponent = hpAfter;
           }
-          _mood = {side: hpAfter <= 0 ? SlipperMood.dead : SlipperMood.hurt, side.other: SlipperMood.idle};
+          _mood = {
+            side: hpAfter <= 0 ? SlipperMood.dead : SlipperMood.hurt,
+            side.other: SlipperMood.idle,
+          };
           _hits[side] = _hits[side]! + 1;
           _soft[side] = false;
-          _addPopup(_Popup(side: side, text: '$damage', crit: false, burn: true));
-          _log.insert(0, '${nameOf(side)} ${poison ? 'отравлен' : 'горит'}: $damage');
+          _addPopup(
+            _Popup(side: side, text: '$damage', crit: false, burn: true),
+          );
+          _log.insert(
+            0,
+            '${nameOf(side)} ${poison ? 'отравлен' : 'горит'}: $damage',
+          );
           _cast = null;
 
         case StunEvent(:final side):
@@ -380,7 +417,8 @@ class _BattleScreenState extends State<BattleScreen>
     final impact = attacker == null
         ? 0
         : AttackAnimation.impactDelay(
-            (attacker == Side.player ? widget.player : widget.opponent).attackStyle,
+            (attacker == Side.player ? widget.player : widget.opponent)
+                .attackStyle,
           ).inMilliseconds;
     Future.delayed(Duration(milliseconds: max(600, impact + 380)), () {
       if (!mounted || _moodStamp != stamp) return;
@@ -408,7 +446,8 @@ class _BattleScreenState extends State<BattleScreen>
   /// пока боец ещё возвращался, анимация сбрасывалась в ноль и он рывком
   /// прыгал на место.
   void _startLunge(Side attacker) {
-    final style = (attacker == Side.player ? widget.player : widget.opponent).attackStyle;
+    final style =
+        (attacker == Side.player ? widget.player : widget.opponent).attackStyle;
     final forward = AttackAnimation.duration(style);
     _lunge.duration = forward;
     if (AttackAnimation.returnsOnItsOwn(style)) {
@@ -419,7 +458,9 @@ class _BattleScreenState extends State<BattleScreen>
     // Возврат укорачивается, если вместе с замахом не влезает в шаг.
     final room = _stepDuration - forward - const Duration(milliseconds: 40);
     _lunge.reverseDuration = room < forward
-        ? (room < const Duration(milliseconds: 120) ? const Duration(milliseconds: 120) : room)
+        ? (room < const Duration(milliseconds: 120)
+              ? const Duration(milliseconds: 120)
+              : room)
         : forward;
     _lunge.forward(from: 0).then((_) => _lunge.reverse());
   }
@@ -479,204 +520,236 @@ class _BattleScreenState extends State<BattleScreen>
       body: Stack(
         children: [
           ArtBackground(
-        asset: widget.background,
-        child: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
-              child: Row(
+            asset: widget.background,
+            child: SafeArea(
+              child: Column(
                 children: [
-                  GameButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    color: GameColors.panelLight,
-                    height: 36,
-                    padding: const EdgeInsets.symmetric(horizontal: 10),
-                    child: const Icon(Icons.arrow_back_rounded, color: GameColors.text),
-                  ),
-                  const Spacer(),
-                  const StrokeText('Бой', size: 24),
-                  const Spacer(),
-                  if (!_finished)
-                    GameButton(
-                      onPressed: _skip,
-                      color: GameColors.panelLight,
-                      height: 36,
-                      padding: const EdgeInsets.symmetric(horizontal: 10),
-                      child: const Text('Пропустить', style: TextStyle(color: GameColors.text, fontSize: 13)),
-                    )
-                  else
-                    const SizedBox(width: 36),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: _HpBar(
-                      name: widget.player.name,
-                      hp: _hpPlayer,
-                      max: widget.result.playerMaxHp,
-                      color: GameColors.green,
-                      snapshot: _snapPlayer,
-                      ultUnlocked: widget.player.skills.hasUltimate,
-                      onDialog: _pause,
-                      onDialogClosed: _resume,
-                    ),
-                  ),
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 12),
-                    child: StrokeText('VS', size: 22, color: GameColors.gold),
-                  ),
-                  Expanded(
-                    child: _HpBar(
-                      name: widget.opponent.name,
-                      hp: _hpOpponent,
-                      max: widget.result.opponentMaxHp,
-                      color: GameColors.red,
-                      alignEnd: true,
-                      snapshot: _snapOpponent,
-                      ultUnlocked: widget.opponent.skills.hasUltimate,
-                      onDialog: _pause,
-                      onDialogClosed: _resume,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: LayoutBuilder(
-                builder: (context, c) {
-                  final w = (c.maxWidth * 0.5).clamp(130.0, 270.0);
-                  return AnimatedBuilder(
-                    animation: _lunge,
-                    builder: (context, _) {
-                      // Бойцы стоят в круге на полу арены — он ниже центра экрана.
-                      final reach = w * 0.3;
-                      return Align(
-                        alignment: const Alignment(0, 0.5),
-                        child: SizedBox(
-                        height: w * 0.62,
-                        child: Stack(
-                        alignment: Alignment.center,
-                        clipBehavior: Clip.none,
-                        children: [
-                          Positioned(
-                            bottom: 0,
-                            left: 6,
-                            child: _Fighter(
-                              spriteKey: _spriteKeys[Side.player]!,
-                              auraKey: _auraKeys[Side.player]!,
-                              fighter: widget.player,
-                              mood: _mood[Side.player]!,
-                              width: w,
-                              reach: reach,
-                              attack: _lunging == Side.player ? _lunge.value : 0,
-                              dark: !_finished && _snapPlayer.transformed,
-                              effects: _effects[Side.player]!,
-                              hits: _hits[Side.player]!,
-                              softHit: _soft[Side.player]!,
-                              popups: _popups.where((p) => p.side == Side.player),
-                              vfx: _vfx.where((v) => v.side == Side.player),
-                            ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
+                    child: Row(
+                      children: [
+                        GameButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          color: GameColors.panelLight,
+                          height: 36,
+                          padding: const EdgeInsets.symmetric(horizontal: 10),
+                          child: const Icon(
+                            Icons.arrow_back_rounded,
+                            color: GameColors.text,
                           ),
-                          Positioned(
-                            bottom: 0,
-                            right: 6,
-                            child: _Fighter(
-                              spriteKey: _spriteKeys[Side.opponent]!,
-                              auraKey: _auraKeys[Side.opponent]!,
-                              fighter: widget.opponent,
-                              mood: _mood[Side.opponent]!,
-                              width: w,
-                              flip: true,
-                              reach: reach,
-                              attack: _lunging == Side.opponent ? _lunge.value : 0,
-                              dark: !_finished && _snapOpponent.transformed,
-                              effects: _effects[Side.opponent]!,
-                              hits: _hits[Side.opponent]!,
-                              softHit: _soft[Side.opponent]!,
-                              popups: _popups.where((p) => p.side == Side.opponent),
-                              vfx: _vfx.where((v) => v.side == Side.opponent),
+                        ),
+                        const Spacer(),
+                        const StrokeText('Бой', size: 24),
+                        const Spacer(),
+                        if (!_finished)
+                          GameButton(
+                            onPressed: _skip,
+                            color: GameColors.panelLight,
+                            height: 36,
+                            padding: const EdgeInsets.symmetric(horizontal: 10),
+                            child: const Text(
+                              'Пропустить',
+                              style: TextStyle(
+                                color: GameColors.text,
+                                fontSize: 13,
+                              ),
                             ),
+                          )
+                        else
+                          const SizedBox(width: 36),
+                      ],
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: _HpBar(
+                            name: widget.player.name,
+                            hp: _hpPlayer,
+                            max: widget.result.playerMaxHp,
+                            color: GameColors.green,
+                            snapshot: _snapPlayer,
+                            ultUnlocked: widget.player.skills.hasUltimate,
+                            onDialog: _pause,
+                            onDialogClosed: _resume,
+                          ),
+                        ),
+                        const Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 12),
+                          child: StrokeText(
+                            'VS',
+                            size: 22,
+                            color: GameColors.gold,
+                          ),
+                        ),
+                        Expanded(
+                          child: _HpBar(
+                            name: widget.opponent.name,
+                            hp: _hpOpponent,
+                            max: widget.result.opponentMaxHp,
+                            color: GameColors.red,
+                            alignEnd: true,
+                            snapshot: _snapOpponent,
+                            ultUnlocked: widget.opponent.skills.hasUltimate,
+                            onDialog: _pause,
+                            onDialogClosed: _resume,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: LayoutBuilder(
+                      builder: (context, c) {
+                        final w = (c.maxWidth * 0.5).clamp(130.0, 270.0);
+                        return AnimatedBuilder(
+                          animation: _lunge,
+                          builder: (context, _) {
+                            // Бойцы стоят в круге на полу арены — он ниже центра экрана.
+                            final reach = w * 0.3;
+                            return Align(
+                              alignment: const Alignment(0, 0.5),
+                              child: SizedBox(
+                                height: w * 0.62,
+                                child: Stack(
+                                  alignment: Alignment.center,
+                                  clipBehavior: Clip.none,
+                                  children: [
+                                    Positioned(
+                                      bottom: 0,
+                                      left: 6,
+                                      child: _Fighter(
+                                        spriteKey: _spriteKeys[Side.player]!,
+                                        auraKey: _auraKeys[Side.player]!,
+                                        fighter: widget.player,
+                                        mood: _mood[Side.player]!,
+                                        width: w,
+                                        reach: reach,
+                                        attack: _lunging == Side.player
+                                            ? _lunge.value
+                                            : 0,
+                                        dark:
+                                            !_finished &&
+                                            _snapPlayer.transformed,
+                                        effects: _effects[Side.player]!,
+                                        hits: _hits[Side.player]!,
+                                        softHit: _soft[Side.player]!,
+                                        popups: _popups.where(
+                                          (p) => p.side == Side.player,
+                                        ),
+                                        vfx: _vfx.where(
+                                          (v) => v.side == Side.player,
+                                        ),
+                                      ),
+                                    ),
+                                    Positioned(
+                                      bottom: 0,
+                                      right: 6,
+                                      child: _Fighter(
+                                        spriteKey: _spriteKeys[Side.opponent]!,
+                                        auraKey: _auraKeys[Side.opponent]!,
+                                        fighter: widget.opponent,
+                                        mood: _mood[Side.opponent]!,
+                                        width: w,
+                                        flip: true,
+                                        reach: reach,
+                                        attack: _lunging == Side.opponent
+                                            ? _lunge.value
+                                            : 0,
+                                        dark:
+                                            !_finished &&
+                                            _snapOpponent.transformed,
+                                        effects: _effects[Side.opponent]!,
+                                        hits: _hits[Side.opponent]!,
+                                        softHit: _soft[Side.opponent]!,
+                                        popups: _popups.where(
+                                          (p) => p.side == Side.opponent,
+                                        ),
+                                        vfx: _vfx.where(
+                                          (v) => v.side == Side.opponent,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                  // Скиллы — под своими тапками: игрока слева, соперника справа.
+                  // В конце боя прячем, чтобы итог помещался на узком экране.
+                  if (!_finished)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
+                      child: Row(
+                        children: [
+                          _SkillRow(
+                            skills: widget.player.skills,
+                            snapshot: _snapPlayer,
+                            onDialog: _pause,
+                            onDialogClosed: _resume,
+                          ),
+                          const Spacer(),
+                          _SkillRow(
+                            skills: widget.opponent.skills,
+                            snapshot: _snapOpponent,
+                            onDialog: _pause,
+                            onDialogClosed: _resume,
                           ),
                         ],
-                        ),
-                        ),
-                      );
-                    },
-                  );
-                },
-              ),
-            ),
-            // Скиллы — под своими тапками: игрока слева, соперника справа.
-            // В конце боя прячем, чтобы итог помещался на узком экране.
-            if (!_finished)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
-                child: Row(
-                  children: [
-                    _SkillRow(
-                      skills: widget.player.skills,
-                      snapshot: _snapPlayer,
-                      onDialog: _pause,
-                      onDialogClosed: _resume,
-                    ),
-                    const Spacer(),
-                    _SkillRow(
-                      skills: widget.opponent.skills,
-                      snapshot: _snapOpponent,
-                      onDialog: _pause,
-                      onDialogClosed: _resume,
-                    ),
-                  ],
-                ),
-              ),
-            // Название сработавшего скилла — поверх сцены, под барами.
-            SizedBox(
-              height: 46,
-              child: Center(
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 180),
-                  child: _banner == null
-                      ? const SizedBox.shrink()
-                      : _SkillBanner(key: ValueKey(_banner), banner: _banner!),
-                ),
-              ),
-            ),
-            if (_finished)
-              _ResultPanel(
-                won: won,
-                ratingDelta: widget.ratingDelta,
-                threadsDelta: widget.threadsDelta,
-                coinsDelta: widget.coinsDelta,
-                rewardKind: widget.rewardKind,
-                rewardGem: widget.rewardGem,
-                exitLabel: widget.exitLabel,
-              )
-            else
-              Container(
-                height: 84,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                alignment: Alignment.topCenter,
-                child: Column(
-                  children: [
-                    for (final line in _log)
-                      Text(
-                        line,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
                       ),
-                  ],
-                ),
+                    ),
+                  // Название сработавшего скилла — поверх сцены, под барами.
+                  SizedBox(
+                    height: 46,
+                    child: Center(
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 180),
+                        child: _banner == null
+                            ? const SizedBox.shrink()
+                            : _SkillBanner(
+                                key: ValueKey(_banner),
+                                banner: _banner!,
+                              ),
+                      ),
+                    ),
+                  ),
+                  if (_finished)
+                    _ResultPanel(
+                      won: won,
+                      ratingDelta: widget.ratingDelta,
+                      threadsDelta: widget.threadsDelta,
+                      coinsDelta: widget.coinsDelta,
+                      rewardKind: widget.rewardKind,
+                      rewardGem: widget.rewardGem,
+                      exitLabel: widget.exitLabel,
+                    )
+                  else
+                    Container(
+                      height: 84,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      alignment: Alignment.topCenter,
+                      child: Column(
+                        children: [
+                          for (final line in _log)
+                            Text(
+                              line,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                ],
               ),
-          ],
-        ),
-        ),
-      ),
+            ),
+          ),
           // Удар ультой — короткая белая вспышка на весь экран.
           if (_screenFlash > 0)
             Positioned.fill(
@@ -685,8 +758,9 @@ class _BattleScreenState extends State<BattleScreen>
                   key: ValueKey(_screenFlash),
                   tween: Tween(begin: 1, end: 0),
                   duration: const Duration(milliseconds: 260),
-                  builder: (_, t, _) =>
-                      ColoredBox(color: Colors.white.withValues(alpha: 0.35 * t)),
+                  builder: (_, t, _) => ColoredBox(
+                    color: Colors.white.withValues(alpha: 0.35 * t),
+                  ),
                 ),
               ),
             ),
@@ -745,7 +819,10 @@ class _IntroOverlay extends StatelessWidget {
                   duration: const Duration(milliseconds: 550),
                   curve: Curves.easeOutBack,
                   builder: (_, t, child) => Transform.translate(
-                    offset: Offset((right ? 1 : -1) * c.maxWidth * 0.6 * (1 - t), 0),
+                    offset: Offset(
+                      (right ? 1 : -1) * c.maxWidth * 0.6 * (1 - t),
+                      0,
+                    ),
                     child: child,
                   ),
                   child: SizedBox(
@@ -775,7 +852,11 @@ class _IntroOverlay extends StatelessWidget {
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.emoji_events, color: GameColors.blue, size: 18),
+                            const Icon(
+                              Icons.emoji_events,
+                              color: GameColors.blue,
+                              size: 18,
+                            ),
                             const SizedBox(width: 3),
                             StrokeText('$rating', size: 18),
                           ],
@@ -805,7 +886,11 @@ class _IntroOverlay extends StatelessWidget {
                     opacity: t.clamp(0.0, 1.0),
                     child: Transform.scale(scale: 0.4 + 0.6 * t, child: child),
                   ),
-                  child: const StrokeText('VS', size: 72, color: GameColors.gold),
+                  child: const StrokeText(
+                    'VS',
+                    size: 72,
+                    color: GameColors.gold,
+                  ),
                 ),
                 const SizedBox(height: 18),
                 Text(
@@ -848,7 +933,9 @@ class _Popup {
     if (heal) return GameColors.green;
     if (burn) return GameColors.orange;
     if (crit) return GameColors.gold;
-    return text == 'мимо' || text == 'оглушён' ? GameColors.textDim : GameColors.text;
+    return text == 'мимо' || text == 'оглушён'
+        ? GameColors.textDim
+        : GameColors.text;
   }
 }
 
@@ -870,10 +957,10 @@ class _SkillSlot extends StatelessWidget {
   final bool locked;
 
   int get _unlockStar => switch (index) {
-        1 => SkillSet.activeStar,
-        2 => SkillSet.passiveStar,
-        _ => SkillSet.ultimateStar,
-      };
+    1 => SkillSet.activeStar,
+    2 => SkillSet.passiveStar,
+    _ => SkillSet.ultimateStar,
+  };
 
   /// Порядковый номер: 1 — активный, 2 — пассивный, 3 — ульта.
   final int index;
@@ -899,19 +986,17 @@ class _SkillSlot extends StatelessWidget {
       : (skill?.description ?? passive!.description);
 
   String get _kindLabel => switch (index) {
-        1 => 'Скилл',
-        2 => 'Пассивный',
-        _ => 'Ульта',
-      };
+    1 => 'Скилл',
+    2 => 'Пассивный',
+    _ => 'Ульта',
+  };
 
   /// Чем скилл ограничен: откат в ходах, шкала или ничего (у пассивки).
   String? get _recharge => switch (index) {
-        1 => 'Перезарядка: ${fmtTurns(cooldown)}',
-        2 => null,
-        _ => 'Заряжается от урона: нанесённого и полученного',
-      };
-
-
+    1 => 'Перезарядка: ${fmtTurns(cooldown)}',
+    2 => null,
+    _ => 'Заряжается от урона: нанесённого и полученного',
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -926,7 +1011,11 @@ class _SkillSlot extends StatelessWidget {
             border: Border.all(color: GameColors.outline, width: 2.5),
             color: GameColors.panelDark,
           ),
-          child: const Icon(Icons.lock_rounded, size: 18, color: GameColors.textDim),
+          child: const Icon(
+            Icons.lock_rounded,
+            size: 18,
+            color: GameColors.textDim,
+          ),
         ),
       );
     }
@@ -1012,9 +1101,15 @@ class _SkillSlot extends StatelessWidget {
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.timer_outlined, size: 16, color: GameColors.textDim),
+                  const Icon(
+                    Icons.timer_outlined,
+                    size: 16,
+                    color: GameColors.textDim,
+                  ),
                   const SizedBox(width: 6),
-                  Expanded(child: Text(_recharge!, style: theme.textTheme.bodySmall)),
+                  Expanded(
+                    child: Text(_recharge!, style: theme.textTheme.bodySmall),
+                  ),
                 ],
               ),
             ],
@@ -1024,7 +1119,10 @@ class _SkillSlot extends StatelessWidget {
           GameButton(
             color: GameColors.panelLight,
             onPressed: () => Navigator.pop(context),
-            child: const Text('Понятно', style: TextStyle(color: GameColors.text)),
+            child: const Text(
+              'Понятно',
+              style: TextStyle(color: GameColors.text),
+            ),
           ),
         ],
       ),
@@ -1073,7 +1171,11 @@ class _SkillBanner extends StatelessWidget {
 
 /// Плашка с названием сработавшего скилла.
 class _Banner {
-  const _Banner({required this.side, required this.text, required this.ultimate});
+  const _Banner({
+    required this.side,
+    required this.text,
+    required this.ultimate,
+  });
   final Side side;
   final String text;
   final bool ultimate;
@@ -1215,10 +1317,15 @@ class _Fighter extends StatelessWidget {
                 curve: Curves.easeOut,
                 // Держится ярко, потом гаснет полностью — без хвостов.
                 builder: (_, t, child) => Opacity(
-                  opacity: t < 0.55 ? 1 : (1 - (t - 0.55) / 0.45).clamp(0.0, 1.0),
+                  opacity: t < 0.55
+                      ? 1
+                      : (1 - (t - 0.55) / 0.45).clamp(0.0, 1.0),
                   child: Transform.translate(
                     offset: Offset(0, -34 * t),
-                    child: Transform.scale(scale: p.crit ? 1 + 0.4 * (1 - t) : 1, child: child),
+                    child: Transform.scale(
+                      scale: p.crit ? 1 + 0.4 * (1 - t) : 1,
+                      child: child,
+                    ),
                   ),
                 ),
                 child: StrokeText(
@@ -1269,9 +1376,15 @@ class _HpBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Column(
-      crossAxisAlignment: alignEnd ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+      crossAxisAlignment: alignEnd
+          ? CrossAxisAlignment.end
+          : CrossAxisAlignment.start,
       children: [
-        Text(name, style: theme.textTheme.titleSmall, overflow: TextOverflow.ellipsis),
+        Text(
+          name,
+          style: theme.textTheme.titleSmall,
+          overflow: TextOverflow.ellipsis,
+        ),
         const SizedBox(height: 4),
         GameBar(
           value: hp / max,
@@ -1402,7 +1515,11 @@ class _ResultPanel extends StatelessWidget {
         _RewardItem(icon: const CoinIcon(size: 22), text: '+$coinsDelta'),
       if (rating != null && rating != 0)
         _RewardItem(
-          icon: const Icon(Icons.emoji_events, color: GameColors.blue, size: 22),
+          icon: const Icon(
+            Icons.emoji_events,
+            color: GameColors.blue,
+            size: 22,
+          ),
           text: '${rating >= 0 ? '+' : ''}$rating',
           color: color,
         ),
@@ -1426,8 +1543,14 @@ class _ResultPanel extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(gemTitle(rewardGem!), style: theme.textTheme.titleSmall),
-                        Text(rewardGem!.bonusText, style: theme.textTheme.bodySmall),
+                        Text(
+                          gemTitle(rewardGem!),
+                          style: theme.textTheme.titleSmall,
+                        ),
+                        Text(
+                          rewardGem!.bonusText,
+                          style: theme.textTheme.bodySmall,
+                        ),
                       ],
                     ),
                   ),
@@ -1436,7 +1559,11 @@ class _ResultPanel extends StatelessWidget {
               const SizedBox(height: 8),
             ],
             if (items.isNotEmpty)
-              Wrap(spacing: 22, alignment: WrapAlignment.center, children: items)
+              Wrap(
+                spacing: 22,
+                alignment: WrapAlignment.center,
+                children: items,
+              )
             else if (!won)
               Text(
                 'Прокачай тапок и попробуй снова',
@@ -1460,7 +1587,10 @@ class _ResultPanel extends StatelessWidget {
                       children: [
                         Text('Новый тапок!', style: theme.textTheme.bodySmall),
                         Text(kind.name, style: theme.textTheme.titleMedium),
-                        GameBadge(text: kind.rarity.label, color: kind.rarity.color),
+                        GameBadge(
+                          text: kind.rarity.label,
+                          color: kind.rarity.color,
+                        ),
                       ],
                     ),
                   ),
@@ -1499,7 +1629,9 @@ class _RewardItem extends StatelessWidget {
         const SizedBox(width: 5),
         Text(
           text,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(color: color),
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(color: color),
         ),
       ],
     );

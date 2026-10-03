@@ -37,7 +37,9 @@ class _StoryScreenState extends State<StoryScreen> {
         final cleared = game.cleared(chapter);
         final done = cleared >= chapter.stages.length;
         final i = StoryCatalog.chapters.indexOf(chapter);
-        final next = i + 1 < StoryCatalog.chapters.length ? StoryCatalog.chapters[i + 1] : null;
+        final next = i + 1 < StoryCatalog.chapters.length
+            ? StoryCatalog.chapters[i + 1]
+            : null;
         return ListView(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
           children: [
@@ -65,8 +67,8 @@ class _StoryScreenState extends State<StoryScreen> {
                 state: i < cleared
                     ? _StageState.cleared
                     : i == cleared
-                        ? _StageState.current
-                        : _StageState.locked,
+                    ? _StageState.current
+                    : _StageState.locked,
                 onFight: () => _fight(context, i),
               ),
               const SizedBox(height: 10),
@@ -107,30 +109,38 @@ class _StoryScreenState extends State<StoryScreen> {
     final open = game.chapterOpen(c);
     final active = c == chapter;
     return GameButton(
-      color: active ? GameColors.gold : (open ? GameColors.panelLight : GameColors.panelDark),
+      color: active
+          ? GameColors.gold
+          : (open ? GameColors.panelLight : GameColors.panelDark),
       height: 40,
       padding: const EdgeInsets.symmetric(horizontal: 6),
       onPressed: open
           ? () => setState(() => chapter = c)
           : () => showToast(
-                context,
-                'Глава ${c.number} откроется, когда пройдёшь главу ${c.number - 1}',
-                kind: ToastKind.warn,
-              ),
+              context,
+              'Глава ${c.number} откроется, когда пройдёшь главу ${c.number - 1}',
+              kind: ToastKind.warn,
+            ),
       child: FittedBox(
         fit: BoxFit.scaleDown,
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             if (!open) ...[
-              const Icon(Icons.lock_rounded, size: 16, color: GameColors.textDim),
+              const Icon(
+                Icons.lock_rounded,
+                size: 16,
+                color: GameColors.textDim,
+              ),
               const SizedBox(width: 4),
             ],
             Text(
               'Глава ${c.number}',
               style: TextStyle(
                 fontSize: 15,
-                color: active ? GameColors.outline : (open ? GameColors.text : GameColors.textDim),
+                color: active
+                    ? GameColors.outline
+                    : (open ? GameColors.text : GameColors.textDim),
               ),
             ),
           ],
@@ -144,7 +154,11 @@ class _StoryScreenState extends State<StoryScreen> {
     final me = game.slipper;
     final outcome = game.fightStage(chapter, index);
     if (outcome == null) {
-      showToast(context, 'Повторы на сегодня кончились — завтра будут новые', kind: ToastKind.warn);
+      showToast(
+        context,
+        'Повторы на сегодня кончились — завтра будут новые',
+        kind: ToastKind.warn,
+      );
       return;
     }
     Navigator.of(context).push(
@@ -284,26 +298,40 @@ class _StageCard extends StatelessWidget {
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
-                _Reward(stage: stage, cleared: state == _StageState.cleared, kind: reward),
+                _Reward(
+                  stage: stage,
+                  cleared: state == _StageState.cleared,
+                  kind: reward,
+                ),
               ],
             ),
           ),
           const SizedBox(width: 6),
           switch (state) {
-            _StageState.cleared =>
-              const Icon(Icons.check_circle, color: GameColors.green, size: 30),
+            _StageState.cleared => const Icon(
+              Icons.check_circle,
+              color: GameColors.green,
+              size: 30,
+            ),
             _StageState.current => Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: GameColors.red,
-                  border: Border.all(color: GameColors.outline, width: 2.5),
-                ),
-                child: const Icon(Icons.sports_mma, size: 20, color: GameColors.outline),
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: GameColors.red,
+                border: Border.all(color: GameColors.outline, width: 2.5),
               ),
-            _StageState.locked =>
-              const Icon(Icons.lock_rounded, color: GameColors.textDim, size: 24),
+              child: const Icon(
+                Icons.sports_mma,
+                size: 20,
+                color: GameColors.outline,
+              ),
+            ),
+            _StageState.locked => const Icon(
+              Icons.lock_rounded,
+              color: GameColors.textDim,
+              size: 24,
+            ),
           },
         ],
       ),
@@ -315,16 +343,24 @@ class _StageCard extends StatelessWidget {
 
 /// Награда этапа: нитки и монеты за первую победу, треть ниток — за повтор.
 class _Reward extends StatelessWidget {
-  const _Reward({required this.stage, required this.cleared, required this.kind});
+  const _Reward({
+    required this.stage,
+    required this.cleared,
+    required this.kind,
+  });
 
   final Stage stage;
   final bool cleared;
   final SlipperKind? kind;
 
   static Widget _item(Widget icon, String text, TextStyle? style) => Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [icon, const SizedBox(width: 3), Text(text, style: style)],
-      );
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      icon,
+      const SizedBox(width: 3),
+      Text(text, style: style),
+    ],
+  );
 
   @override
   Widget build(BuildContext context) {

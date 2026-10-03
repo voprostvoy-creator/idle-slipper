@@ -60,7 +60,11 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
               children: [
                 const Spacer(),
                 // Надпись-логотип «Битва тапков».
-                Image.asset('assets/ui/title_logo.webp', width: 320, fit: BoxFit.contain),
+                Image.asset(
+                  'assets/ui/title_logo.webp',
+                  width: 320,
+                  fit: BoxFit.contain,
+                ),
                 const SizedBox(height: 16),
                 Text(
                   'Качай тапок, гоняй насекомых\nи поднимайся в рейтинге',
@@ -98,11 +102,16 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                   Text(
                     '$_error. Проверь интернет и попробуй ещё раз.',
                     textAlign: TextAlign.center,
-                    style: theme.textTheme.bodySmall?.copyWith(color: GameColors.red),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: GameColors.red,
+                    ),
                   ),
                   TextButton(
                     onPressed: widget.onDone,
-                    child: Text('Играть без сети', style: theme.textTheme.bodySmall),
+                    child: Text(
+                      'Играть без сети',
+                      style: theme.textTheme.bodySmall,
+                    ),
                   ),
                 ],
               ],

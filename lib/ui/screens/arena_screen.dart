@@ -76,7 +76,9 @@ class _ArenaScreenState extends State<ArenaScreen> {
                           icon: Icons.military_tech_rounded,
                           color: GameColors.gold,
                           // До первого боя игрока нет в таблице.
-                          value: game.arenaPlace == null || !game.arenaBoard!.me.ranked
+                          value:
+                              game.arenaPlace == null ||
+                                  !game.arenaBoard!.me.ranked
                               ? '—'
                               : '#${game.arenaPlace}',
                           label: game.arenaBoard == null
@@ -186,7 +188,11 @@ class _ArenaScreenState extends State<ArenaScreen> {
       outcome = await game.fightArena();
     } on ServerException catch (e) {
       if (!context.mounted) return;
-      showToast(context, '${e.message}. Арена работает только онлайн.', kind: ToastKind.warn);
+      showToast(
+        context,
+        '${e.message}. Арена работает только онлайн.',
+        kind: ToastKind.warn,
+      );
       return;
     } finally {
       if (mounted) setState(() => _searching = false);

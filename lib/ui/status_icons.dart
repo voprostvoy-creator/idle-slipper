@@ -13,19 +13,41 @@ enum StatusKind {
   barrier('Барьер', 'Поглощает урон, пока не иссякнет.', positive: true),
   haste('Ускорение', 'Ходит чаще обычного.', positive: true),
   evade('Уклонение', 'Следующая атака по нему пройдёт мимо.', positive: true),
-  form('Тёмная форма', 'Ушёл во тьму: бьёт сильнее, получает меньше урона и ходит чаще.',
-      positive: true),
-  reflect('Отражение', 'Следующий удар по нему вернётся атакующему.', positive: true),
-  rage('Ярость', 'Каждый свой удар сильнее предыдущего. Число — стопки ярости.',
-      positive: true),
-  burn('Горение', 'Теряет здоровье в начале каждого своего хода.', positive: false),
+  form(
+    'Тёмная форма',
+    'Ушёл во тьму: бьёт сильнее, получает меньше урона и ходит чаще.',
+    positive: true,
+  ),
+  reflect(
+    'Отражение',
+    'Следующий удар по нему вернётся атакующему.',
+    positive: true,
+  ),
+  rage(
+    'Ярость',
+    'Каждый свой удар сильнее предыдущего. Число — стопки ярости.',
+    positive: true,
+  ),
+  burn(
+    'Горение',
+    'Теряет здоровье в начале каждого своего хода.',
+    positive: false,
+  ),
   stun('Оглушение', 'Пропустит следующий ход.', positive: false),
   weaken('Ослабление', 'Наносит меньше урона.', positive: false),
   slow('Замедление', 'Ходит реже обычного.', positive: false),
-  poison('Яд', 'Каждая стопка — 2% здоровья в начале хода, стопок становится меньше. '
-      'Число — стопки.', positive: false),
+  poison(
+    'Яд',
+    'Каждая стопка — 2% здоровья в начале хода, стопок становится меньше. '
+        'Число — стопки.',
+    positive: false,
+  ),
   vulnerable('Уязвимость', 'Получает больше урона.', positive: false),
-  silence('Немота', 'Не может применять скиллы — только обычные удары.', positive: false);
+  silence(
+    'Немота',
+    'Не может применять скиллы — только обычные удары.',
+    positive: false,
+  );
 
   const StatusKind(this.label, this.description, {required this.positive});
 
@@ -49,21 +71,21 @@ class ActiveStatus {
 
 /// Какие эффекты висят на стороне прямо сейчас: сначала полезные, потом вредные.
 List<ActiveStatus> statusesOf(SideSnapshot s) => [
-      if (s.shielded) ActiveStatus(StatusKind.shield, s.shieldTurns),
-      if (s.barriered) const ActiveStatus(StatusKind.barrier),
-      if (s.hasted) ActiveStatus(StatusKind.haste, s.hasteTurns),
-      if (s.evading) const ActiveStatus(StatusKind.evade),
-      if (s.transformed) ActiveStatus(StatusKind.form, s.formTurns),
-      if (s.reflecting) const ActiveStatus(StatusKind.reflect),
-      if (s.rage > 0) ActiveStatus(StatusKind.rage, s.rage),
-      if (s.burning) ActiveStatus(StatusKind.burn, s.burnTurns),
-      if (s.stunned) const ActiveStatus(StatusKind.stun),
-      if (s.weakened) ActiveStatus(StatusKind.weaken, s.weakenTurns),
-      if (s.slowed) ActiveStatus(StatusKind.slow, s.slowTurns),
-      if (s.poisoned) ActiveStatus(StatusKind.poison, s.poisonStacks),
-      if (s.vulnerable) ActiveStatus(StatusKind.vulnerable, s.vulnerableTurns),
-      if (s.silenced) ActiveStatus(StatusKind.silence, s.silenceTurns),
-    ];
+  if (s.shielded) ActiveStatus(StatusKind.shield, s.shieldTurns),
+  if (s.barriered) const ActiveStatus(StatusKind.barrier),
+  if (s.hasted) ActiveStatus(StatusKind.haste, s.hasteTurns),
+  if (s.evading) const ActiveStatus(StatusKind.evade),
+  if (s.transformed) ActiveStatus(StatusKind.form, s.formTurns),
+  if (s.reflecting) const ActiveStatus(StatusKind.reflect),
+  if (s.rage > 0) ActiveStatus(StatusKind.rage, s.rage),
+  if (s.burning) ActiveStatus(StatusKind.burn, s.burnTurns),
+  if (s.stunned) const ActiveStatus(StatusKind.stun),
+  if (s.weakened) ActiveStatus(StatusKind.weaken, s.weakenTurns),
+  if (s.slowed) ActiveStatus(StatusKind.slow, s.slowTurns),
+  if (s.poisoned) ActiveStatus(StatusKind.poison, s.poisonStacks),
+  if (s.vulnerable) ActiveStatus(StatusKind.vulnerable, s.vulnerableTurns),
+  if (s.silenced) ActiveStatus(StatusKind.silence, s.silenceTurns),
+];
 
 /// Значок эффекта: схематичный рисунок в круглой рамке цвета «плюс/минус».
 /// По тапу — название и что делает; бой на это время встаёт.
@@ -104,7 +126,10 @@ class StatusIcon extends StatelessWidget {
                 right: -badge * 0.3,
                 bottom: -badge * 0.25,
                 child: Container(
-                  constraints: BoxConstraints(minWidth: badge, minHeight: badge),
+                  constraints: BoxConstraints(
+                    minWidth: badge,
+                    minHeight: badge,
+                  ),
                   padding: EdgeInsets.symmetric(horizontal: badge * 0.12),
                   decoration: BoxDecoration(
                     color: GameColors.text,
@@ -142,15 +167,26 @@ class StatusIcon extends StatelessWidget {
       builder: (context) => AlertDialog(
         title: Row(
           children: [
-            CustomPaint(size: const Size.square(34), painter: _StatusPainter(kind)),
+            CustomPaint(
+              size: const Size.square(34),
+              painter: _StatusPainter(kind),
+            ),
             const SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  GameBadge(text: kind.positive ? 'Полезный' : 'Вредный', color: frame),
+                  GameBadge(
+                    text: kind.positive ? 'Полезный' : 'Вредный',
+                    color: frame,
+                  ),
                   const SizedBox(height: 6),
-                  StrokeText(kind.label, size: 20, color: frame, align: TextAlign.start),
+                  StrokeText(
+                    kind.label,
+                    size: 20,
+                    color: frame,
+                    align: TextAlign.start,
+                  ),
                 ],
               ),
             ),
@@ -165,9 +201,16 @@ class StatusIcon extends StatelessWidget {
               const SizedBox(height: 10),
               Row(
                 children: [
-                  const Icon(Icons.timer_outlined, size: 16, color: GameColors.textDim),
+                  const Icon(
+                    Icons.timer_outlined,
+                    size: 16,
+                    color: GameColors.textDim,
+                  ),
                   const SizedBox(width: 6),
-                  Text('Осталось: ${fmtTurns(turns!)}', style: theme.textTheme.bodySmall),
+                  Text(
+                    'Осталось: ${fmtTurns(turns!)}',
+                    style: theme.textTheme.bodySmall,
+                  ),
                 ],
               ),
             ],
@@ -177,7 +220,10 @@ class StatusIcon extends StatelessWidget {
           GameButton(
             color: GameColors.panelLight,
             onPressed: () => Navigator.pop(context),
-            child: const Text('Понятно', style: TextStyle(color: GameColors.text)),
+            child: const Text(
+              'Понятно',
+              style: TextStyle(color: GameColors.text),
+            ),
           ),
         ],
       ),
@@ -198,7 +244,11 @@ class _StatusPainter extends CustomPainter {
 
     // Подложка и рамка «плюс/минус».
     c.drawCircle(center, s / 2, Paint()..color = GameColors.outline);
-    c.drawCircle(center, s / 2 - s * 0.06, Paint()..color = GameColors.panelDark);
+    c.drawCircle(
+      center,
+      s / 2 - s * 0.06,
+      Paint()..color = GameColors.panelDark,
+    );
     c.drawCircle(
       center,
       s / 2 - s * 0.1,
@@ -258,8 +308,11 @@ class _StatusPainter extends CustomPainter {
       ..quadraticBezierTo(s * 0.28, s * 0.62, s * 0.28, s * 0.33)
       ..close();
     c.drawPath(p, _fill(GameColors.blue));
-    c.drawLine(Offset(s * 0.5, s * 0.3), Offset(s * 0.5, s * 0.7),
-        _line(GameColors.blueDark, s * 0.06));
+    c.drawLine(
+      Offset(s * 0.5, s * 0.3),
+      Offset(s * 0.5, s * 0.7),
+      _line(GameColors.blueDark, s * 0.06),
+    );
   }
 
   /// Барьер — кристалл-шестигранник с бликом.
@@ -301,7 +354,11 @@ class _StatusPainter extends CustomPainter {
     c.drawPath(
       Path()
         ..addArc(whole, -pi / 2, pi)
-        ..addArc(Rect.fromCircle(center: o + Offset(0, r / 2), radius: r / 2), pi / 2, pi)
+        ..addArc(
+          Rect.fromCircle(center: o + Offset(0, r / 2), radius: r / 2),
+          pi / 2,
+          pi,
+        )
         ..close(),
       _fill(GameColors.outline),
     );
@@ -318,15 +375,21 @@ class _StatusPainter extends CustomPainter {
       Path()
         ..moveTo(s * 0.26, s * 0.4)
         ..lineTo(s * 0.58, s * 0.4)
-        ..arcToPoint(Offset(s * 0.58, s * 0.26), radius: Radius.circular(s * 0.07)),
+        ..arcToPoint(
+          Offset(s * 0.58, s * 0.26),
+          radius: Radius.circular(s * 0.07),
+        ),
       paint,
     );
     c.drawPath(
       Path()
         ..moveTo(s * 0.26, s * 0.58)
         ..lineTo(s * 0.66, s * 0.58)
-        ..arcToPoint(Offset(s * 0.66, s * 0.74),
-            radius: Radius.circular(s * 0.08), clockwise: true),
+        ..arcToPoint(
+          Offset(s * 0.66, s * 0.74),
+          radius: Radius.circular(s * 0.08),
+          clockwise: true,
+        ),
       paint,
     );
   }
@@ -335,9 +398,24 @@ class _StatusPainter extends CustomPainter {
   void _burn(Canvas c, double s) {
     Path flame(double k) => Path()
       ..moveTo(s * 0.5, s * (0.5 - 0.3 * k))
-      ..quadraticBezierTo(s * (0.5 + 0.26 * k), s * 0.5, s * (0.5 + 0.18 * k), s * 0.66)
-      ..quadraticBezierTo(s * 0.5, s * (0.66 + 0.12 * k), s * (0.5 - 0.18 * k), s * 0.66)
-      ..quadraticBezierTo(s * (0.5 - 0.26 * k), s * 0.5, s * 0.5, s * (0.5 - 0.3 * k))
+      ..quadraticBezierTo(
+        s * (0.5 + 0.26 * k),
+        s * 0.5,
+        s * (0.5 + 0.18 * k),
+        s * 0.66,
+      )
+      ..quadraticBezierTo(
+        s * 0.5,
+        s * (0.66 + 0.12 * k),
+        s * (0.5 - 0.18 * k),
+        s * 0.66,
+      )
+      ..quadraticBezierTo(
+        s * (0.5 - 0.26 * k),
+        s * 0.5,
+        s * 0.5,
+        s * (0.5 - 0.3 * k),
+      )
       ..close();
     c.drawPath(flame(1), _fill(const Color(0xFFFF6A1F)));
     c.drawPath(flame(0.55), _fill(const Color(0xFFFFD34D)));
@@ -362,8 +440,15 @@ class _StatusPainter extends CustomPainter {
 
   /// Отражение — зеркальная пластина со стрелкой назад.
   void _reflect(Canvas c, double s) {
-    final r = Rect.fromCenter(center: Offset(s * 0.5, s * 0.5), width: s * 0.36, height: s * 0.44);
-    c.drawRRect(RRect.fromRectAndRadius(r, Radius.circular(s * 0.06)), _fill(const Color(0xFFBFE9FF)));
+    final r = Rect.fromCenter(
+      center: Offset(s * 0.5, s * 0.5),
+      width: s * 0.36,
+      height: s * 0.44,
+    );
+    c.drawRRect(
+      RRect.fromRectAndRadius(r, Radius.circular(s * 0.06)),
+      _fill(const Color(0xFFBFE9FF)),
+    );
     c.drawPath(
       Path()
         ..moveTo(s * 0.62, s * 0.4)
@@ -398,12 +483,19 @@ class _StatusPainter extends CustomPainter {
       Path()
         ..moveTo(s * 0.5, s * 0.24)
         ..quadraticBezierTo(s * 0.7, s * 0.5, s * 0.68, s * 0.6)
-        ..arcToPoint(Offset(s * 0.32, s * 0.6), radius: Radius.circular(s * 0.18))
+        ..arcToPoint(
+          Offset(s * 0.32, s * 0.6),
+          radius: Radius.circular(s * 0.18),
+        )
         ..quadraticBezierTo(s * 0.3, s * 0.5, s * 0.5, s * 0.24)
         ..close(),
       _fill(color),
     );
-    c.drawCircle(Offset(s * 0.44, s * 0.56), s * 0.04, _fill(Colors.white.withValues(alpha: 0.8)));
+    c.drawCircle(
+      Offset(s * 0.44, s * 0.56),
+      s * 0.04,
+      _fill(Colors.white.withValues(alpha: 0.8)),
+    );
   }
 
   /// Уязвимость — треснувший щит.
@@ -430,18 +522,30 @@ class _StatusPainter extends CustomPainter {
     const color = Color(0xFFCDBBE0);
     c.drawRRect(
       RRect.fromRectAndRadius(
-        Rect.fromCenter(center: Offset(s * 0.5, s * 0.52), width: s * 0.4, height: s * 0.16),
+        Rect.fromCenter(
+          center: Offset(s * 0.5, s * 0.52),
+          width: s * 0.4,
+          height: s * 0.16,
+        ),
         Radius.circular(s * 0.08),
       ),
       _fill(color),
     );
-    c.drawLine(Offset(s * 0.3, s * 0.32), Offset(s * 0.7, s * 0.72), _line(GameColors.red, s * 0.08));
+    c.drawLine(
+      Offset(s * 0.3, s * 0.32),
+      Offset(s * 0.7, s * 0.72),
+      _line(GameColors.red, s * 0.08),
+    );
   }
 
   /// Ослабление — стрелка вниз.
   void _weaken(Canvas c, double s) {
     const color = Color(0xFFC77DFF);
-    c.drawLine(Offset(s * 0.5, s * 0.26), Offset(s * 0.5, s * 0.6), _line(color, s * 0.11));
+    c.drawLine(
+      Offset(s * 0.5, s * 0.26),
+      Offset(s * 0.5, s * 0.6),
+      _line(color, s * 0.11),
+    );
     c.drawPath(
       Path()
         ..moveTo(s * 0.32, s * 0.52)

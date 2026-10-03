@@ -27,13 +27,13 @@ class BoardEntry {
   final bool ranked;
 
   factory BoardEntry.fromJson(Map<String, dynamic> j) => BoardEntry(
-        place: (j['place'] as num?)?.toInt() ?? 0,
-        id: j['id'] as String,
-        rating: (j['rating'] as num).toInt(),
-        slipper: Slipper.fromJson((j['slipper'] as Map).cast<String, dynamic>()),
-        bot: j['bot'] as bool? ?? false,
-        ranked: j['ranked'] as bool? ?? true,
-      );
+    place: (j['place'] as num?)?.toInt() ?? 0,
+    id: j['id'] as String,
+    rating: (j['rating'] as num).toInt(),
+    slipper: Slipper.fromJson((j['slipper'] as Map).cast<String, dynamic>()),
+    bot: j['bot'] as bool? ?? false,
+    ranked: j['ranked'] as bool? ?? true,
+  );
 }
 
 /// Рейтинг арены с сервера.
@@ -78,12 +78,13 @@ class ServerException implements Exception {
 /// [login] со страницы входа; id и токен хранятся на телефоне.
 class ServerApi {
   ServerApi(this._prefs, {http.Client? client, this.enabled = true})
-      : _http = client ?? http.Client();
+    : _http = client ?? http.Client();
 
   /// Сервер отключён — например, в тестах: запросы не отправляются.
   ServerApi.disabled(SharedPreferences prefs) : this(prefs, enabled: false);
 
-  static const baseUrl = 'https://bbau56a0vt2451biufi5.containers.yandexcloud.net';
+  static const baseUrl =
+      'https://bbau56a0vt2451biufi5.containers.yandexcloud.net';
   static const _authKey = 'server_auth';
   static const _timeout = Duration(seconds: 12);
 
@@ -134,14 +135,19 @@ class ServerApi {
       ..body = body == null ? '' : jsonEncode(body);
     final http.Response res;
     try {
-      res = await http.Response.fromStream(await _http.send(req).timeout(_timeout));
+      res = await http.Response.fromStream(
+        await _http.send(req).timeout(_timeout),
+      );
     } on TimeoutException {
       throw ServerException('Сервер не отвечает');
     } catch (_) {
       throw ServerException('Нет связи с сервером');
     }
     if (res.statusCode != 200) {
-      throw ServerException('Ошибка сервера (${res.statusCode})', res.statusCode);
+      throw ServerException(
+        'Ошибка сервера (${res.statusCode})',
+        res.statusCode,
+      );
     }
     return jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
   }
@@ -151,11 +157,17 @@ class ServerApi {
   Future<Map<String, dynamic>?> login(String login, String password) async {
     final Map<String, dynamic> j;
     try {
-      j = await _send('POST', '/login',
-          body: {'login': login.trim(), 'password': password.trim()}, auth: false);
+      j = await _send(
+        'POST',
+        '/login',
+        body: {'login': login.trim(), 'password': password.trim()},
+        auth: false,
+      );
     } on ServerException catch (e) {
-      if (e.status == 401) throw ServerException('Неверный логин или пароль', 401);
-      if (e.status == 429) throw ServerException('Слишком много попыток — попробуй позже', 429);
+      if (e.status == 401)
+        throw ServerException('Неверный логин или пароль', 401);
+      if (e.status == 429)
+        throw ServerException('Слишком много попыток — попробуй позже', 429);
       rethrow;
     }
     final auth = '${j['id']}:${j['token']}';
@@ -166,8 +178,15 @@ class ServerApi {
 
   /// Облачная копия сохранения и снимок тапка для соперников.
   /// Возвращает очки арены по версии сервера.
-  Future<int> pushSave(Map<String, dynamic> save, Map<String, dynamic> snapshot) async {
-    final j = await _send('PUT', '/save', body: {'save': save, 'snapshot': snapshot});
+  Future<int> pushSave(
+    Map<String, dynamic> save,
+    Map<String, dynamic> snapshot,
+  ) async {
+    final j = await _send(
+      'PUT',
+      '/save',
+      body: {'save': save, 'snapshot': snapshot},
+    );
     return (j['rating'] as num).toInt();
   }
 
@@ -176,7 +195,10 @@ class ServerApi {
     return ArenaBoard(
       total: (j['total'] as num).toInt(),
       me: BoardEntry.fromJson((j['me'] as Map).cast<String, dynamic>()),
-      top: [for (final e in j['top'] as List) BoardEntry.fromJson((e as Map).cast<String, dynamic>())],
+      top: [
+        for (final e in j['top'] as List)
+          BoardEntry.fromJson((e as Map).cast<String, dynamic>()),
+      ],
     );
   }
 

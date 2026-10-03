@@ -14,21 +14,37 @@ import 'widgets/game_widgets.dart';
 
 /// Окно «Твой аккаунт»: логин и пароль, сохранить картинкой в галерею
 /// или скопировать. [firstTime] — показано сразу после создания аккаунта.
-Future<void> showAccountDialog(BuildContext context, GameState game, {bool firstTime = false}) {
+Future<void> showAccountDialog(
+  BuildContext context,
+  GameState game, {
+  bool firstTime = false,
+}) {
   final creds = game.server.credentials;
   if (creds == null) {
-    showToast(context, 'Аккаунт ещё не создан — нужна связь с сервером', kind: ToastKind.warn);
+    showToast(
+      context,
+      'Аккаунт ещё не создан — нужна связь с сервером',
+      kind: ToastKind.warn,
+    );
     return Future.value();
   }
   return showDialog<void>(
     context: context,
     barrierDismissible: !firstTime,
-    builder: (_) => _AccountDialog(login: creds.login, password: creds.password, firstTime: firstTime),
+    builder: (_) => _AccountDialog(
+      login: creds.login,
+      password: creds.password,
+      firstTime: firstTime,
+    ),
   );
 }
 
 class _AccountDialog extends StatefulWidget {
-  const _AccountDialog({required this.login, required this.password, required this.firstTime});
+  const _AccountDialog({
+    required this.login,
+    required this.password,
+    required this.firstTime,
+  });
 
   final String login;
   final String password;
@@ -44,18 +60,25 @@ class _AccountDialogState extends State<_AccountDialog> {
 
   Future<void> _saveImage() async {
     if (kIsWeb) {
-      setState(() => _status = 'Сохранение картинки работает на телефоне — скопируй данные');
+      setState(
+        () => _status =
+            'Сохранение картинки работает на телефоне — скопируй данные',
+      );
       return;
     }
     try {
-      final boundary = _cardKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
+      final boundary =
+          _cardKey.currentContext!.findRenderObject() as RenderRepaintBoundary;
       final image = await boundary.toImage(pixelRatio: 3);
       final png = await image.toByteData(format: ui.ImageByteFormat.png);
       if (!await Gal.hasAccess() && !await Gal.requestAccess()) {
         setState(() => _status = 'Нет доступа к галерее');
         return;
       }
-      await Gal.putImageBytes(png!.buffer.asUint8List(), name: 'bitva-tapkov-${widget.login}');
+      await Gal.putImageBytes(
+        png!.buffer.asUint8List(),
+        name: 'bitva-tapkov-${widget.login}',
+      );
       setState(() => _status = 'Картинка сохранена в галерею');
     } catch (_) {
       setState(() => _status = 'Не удалось сохранить — скопируй данные');
@@ -64,7 +87,10 @@ class _AccountDialogState extends State<_AccountDialog> {
 
   Future<void> _copy() async {
     await Clipboard.setData(
-      ClipboardData(text: 'Битва тапков\nЛогин: ${widget.login}\nПароль: ${widget.password}'),
+      ClipboardData(
+        text:
+            'Битва тапков\nЛогин: ${widget.login}\nПароль: ${widget.password}',
+      ),
     );
     setState(() => _status = 'Скопировано');
   }
@@ -94,7 +120,11 @@ class _AccountDialogState extends State<_AccountDialog> {
               ),
               child: Column(
                 children: [
-                  const StrokeText('Битва тапков', size: 24, color: GameColors.gold),
+                  const StrokeText(
+                    'Битва тапков',
+                    size: 24,
+                    color: GameColors.gold,
+                  ),
                   const SizedBox(height: 2),
                   Text('Данные для входа', style: theme.textTheme.bodySmall),
                   const SizedBox(height: 12),
@@ -120,7 +150,10 @@ class _AccountDialogState extends State<_AccountDialog> {
                   height: 44,
                   padding: const EdgeInsets.symmetric(horizontal: 6),
                   onPressed: _saveImage,
-                  child: const Text('В галерею', style: TextStyle(fontSize: 14)),
+                  child: const Text(
+                    'В галерею',
+                    style: TextStyle(fontSize: 14),
+                  ),
                 ),
               ),
               const SizedBox(width: 8),
@@ -130,14 +163,21 @@ class _AccountDialogState extends State<_AccountDialog> {
                   height: 44,
                   padding: const EdgeInsets.symmetric(horizontal: 6),
                   onPressed: _copy,
-                  child: const Text('Скопировать', style: TextStyle(fontSize: 14)),
+                  child: const Text(
+                    'Скопировать',
+                    style: TextStyle(fontSize: 14),
+                  ),
                 ),
               ),
             ],
           ),
           if (_status != null) ...[
             const SizedBox(height: 8),
-            Text(_status!, textAlign: TextAlign.center, style: theme.textTheme.bodySmall),
+            Text(
+              _status!,
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodySmall,
+            ),
           ],
         ],
       ),
@@ -189,7 +229,11 @@ class _Field extends StatelessWidget {
 /// Вход в аккаунт: логин и пароль. [replacing] — на телефоне уже есть
 /// прогресс, и его заменит облачный: тогда показываем предупреждение.
 /// Возвращает true, если вход удался.
-Future<bool> showLoginDialog(BuildContext context, GameState game, {bool replacing = true}) async {
+Future<bool> showLoginDialog(
+  BuildContext context,
+  GameState game, {
+  bool replacing = true,
+}) async {
   var ok = false;
   final login = TextEditingController();
   final password = TextEditingController();
@@ -205,7 +249,10 @@ Future<bool> showLoginDialog(BuildContext context, GameState game, {bool replaci
           children: [
             TextField(
               controller: login,
-              decoration: const InputDecoration(labelText: 'Логин', hintText: 'tapok-12345'),
+              decoration: const InputDecoration(
+                labelText: 'Логин',
+                hintText: 'tapok-12345',
+              ),
               autocorrect: false,
             ),
             TextField(
@@ -228,7 +275,10 @@ Future<bool> showLoginDialog(BuildContext context, GameState game, {bool replaci
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Отмена')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Отмена'),
+          ),
           GameButton(
             color: GameColors.gold,
             onPressed: busy
@@ -277,7 +327,10 @@ Future<void> showNicknameDialog(BuildContext context, GameState game) async {
                 controller: controller,
                 autofocus: true,
                 maxLength: 16,
-                decoration: const InputDecoration(labelText: 'Ник', hintText: 'Шлёпа Гроза'),
+                decoration: const InputDecoration(
+                  labelText: 'Ник',
+                  hintText: 'Шлёпа Гроза',
+                ),
                 onChanged: (_) => setState(() {}),
               ),
               const Text(

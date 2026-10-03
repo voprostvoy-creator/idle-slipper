@@ -170,7 +170,10 @@ class _EffectsPainter extends CustomPainter {
       final x = body.left + body.width * (0.08 + 0.84 * i / (tongues - 1));
       // Ближе к центру языки выше — пламя облизывает силуэт.
       final bias = 1 - (x - body.center.dx).abs() / (body.width / 2);
-      final h = body.height * (0.5 + 0.6 * bias) * (0.82 + 0.28 * sin(localPhase * pi));
+      final h =
+          body.height *
+          (0.5 + 0.6 * bias) *
+          (0.82 + 0.28 * sin(localPhase * pi));
       final w = body.width * (0.07 + 0.02 * cos(localPhase * 2 * pi));
       final sway = sin((t * 2 + i) * 2 * pi) * body.width * 0.02;
 
@@ -203,7 +206,8 @@ class _EffectsPainter extends CustomPainter {
       c.drawCircle(
         Offset(x, y),
         body.width * 0.016 * (1 - localPhase),
-        Paint()..color = const Color(0xFFFFB03A).withValues(alpha: 1 - localPhase),
+        Paint()
+          ..color = const Color(0xFFFFB03A).withValues(alpha: 1 - localPhase),
       );
     }
   }

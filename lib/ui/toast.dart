@@ -19,7 +19,12 @@ enum ToastKind {
 
 /// Уведомление в стиле игры: выезжает сверху, стоит пару секунд и уезжает.
 /// Несколько подряд выстраиваются очередью друг под другом.
-void showToast(BuildContext context, String text, {ToastKind kind = ToastKind.info, Widget? icon}) {
+void showToast(
+  BuildContext context,
+  String text, {
+  ToastKind kind = ToastKind.info,
+  Widget? icon,
+}) {
   final overlay = Overlay.maybeOf(context, rootOverlay: true);
   if (overlay == null) return;
   _ToastHost.of(overlay).add(_ToastData(text: text, kind: kind, icon: icon));
@@ -40,7 +45,8 @@ class _ToastHost {
 
   static final _hosts = Expando<_ToastHost>();
 
-  static _ToastHost of(OverlayState overlay) => _hosts[overlay] ??= _ToastHost._(overlay);
+  static _ToastHost of(OverlayState overlay) =>
+      _hosts[overlay] ??= _ToastHost._(overlay);
 
   final OverlayState overlay;
   final _items = <_ToastData>[];
@@ -87,10 +93,7 @@ class _ToastHost {
           type: MaterialType.transparency,
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            children: [
-              for (final t in _items)
-                _ToastView(key: t.key, data: t),
-            ],
+            children: [for (final t in _items) _ToastView(key: t.key, data: t)],
           ),
         ),
       ),
@@ -111,7 +114,13 @@ class _ToastView extends StatelessWidget {
         color: GameColors.panel,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: GameColors.outline, width: 3),
-        boxShadow: const [BoxShadow(color: Color(0x66000000), blurRadius: 8, offset: Offset(0, 3))],
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x66000000),
+            blurRadius: 8,
+            offset: Offset(0, 3),
+          ),
+        ],
       ),
       child: Row(
         children: [
@@ -124,13 +133,17 @@ class _ToastView extends StatelessWidget {
               color: data.kind.color,
               border: Border.all(color: GameColors.outline, width: 2),
             ),
-            child: data.icon ?? Icon(data.kind.icon, size: 18, color: GameColors.outline),
+            child:
+                data.icon ??
+                Icon(data.kind.icon, size: 18, color: GameColors.outline),
           ),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
               data.text,
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(color: GameColors.text),
+              style: Theme.of(
+                context,
+              ).textTheme.titleSmall?.copyWith(color: GameColors.text),
             ),
           ),
         ],
@@ -139,11 +152,16 @@ class _ToastView extends StatelessWidget {
     // Появление: выезжает сверху; уход — уезжает вверх и тает.
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0, end: data.leaving ? 0 : 1),
-      duration: data.leaving ? _ToastHost._leave : const Duration(milliseconds: 280),
+      duration: data.leaving
+          ? _ToastHost._leave
+          : const Duration(milliseconds: 280),
       curve: data.leaving ? Curves.easeIn : Curves.easeOutBack,
       builder: (_, t, child) => Opacity(
         opacity: t.clamp(0.0, 1.0),
-        child: Transform.translate(offset: Offset(0, -24 * (1 - t)), child: child),
+        child: Transform.translate(
+          offset: Offset(0, -24 * (1 - t)),
+          child: child,
+        ),
       ),
       child: card,
     );

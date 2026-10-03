@@ -100,7 +100,8 @@ class _SlipperSpriteState extends State<SlipperSprite>
     if (old.animate != widget.animate) {
       widget.animate ? _orbit.repeat() : _orbit.stop();
     }
-    final reacts = widget.mood == SlipperMood.hurt || widget.mood == SlipperMood.happy;
+    final reacts =
+        widget.mood == SlipperMood.hurt || widget.mood == SlipperMood.happy;
     if (reacts && (old.mood != widget.mood || old.impulse != widget.impulse)) {
       _fx.forward(from: 0);
     }
@@ -111,7 +112,10 @@ class _SlipperSpriteState extends State<SlipperSprite>
     _listener = ImageStreamListener((info, _) {
       if (!mounted) return;
       setState(() {
-        _imageSize = Size(info.image.width.toDouble(), info.image.height.toDouble());
+        _imageSize = Size(
+          info.image.width.toDouble(),
+          info.image.height.toDouble(),
+        );
       });
     });
     _stream = AssetImage(widget.fighter.asset).resolve(ImageConfiguration.empty)
@@ -140,17 +144,17 @@ class _SlipperSpriteState extends State<SlipperSprite>
         children: [
           // Аура прокачки — за тапком, арт не перекрывается.
           if (widget.layer != SpriteLayer.body)
-          Positioned.fill(
-            child: CustomPaint(
-              painter: AuraPainter(
-                aura: widget.fighter.aura,
-                fitted: fitted,
-                phase: widget.animate
-                    ? _orbit
-                    : const AlwaysStoppedAnimation<double>(0),
+            Positioned.fill(
+              child: CustomPaint(
+                painter: AuraPainter(
+                  aura: widget.fighter.aura,
+                  fitted: fitted,
+                  phase: widget.animate
+                      ? _orbit
+                      : const AlwaysStoppedAnimation<double>(0),
+                ),
               ),
             ),
-          ),
           if (widget.layer != SpriteLayer.aura)
             Positioned.fromRect(
               rect: fitted,
@@ -164,10 +168,26 @@ class _SlipperSpriteState extends State<SlipperSprite>
     if (widget.negative) {
       sprite = ColorFiltered(
         colorFilter: const ColorFilter.matrix([
-          -1, 0, 0, 0, 255,
-          0, -1, 0, 0, 255,
-          0, 0, -1, 0, 255,
-          0, 0, 0, 1, 0,
+          -1,
+          0,
+          0,
+          0,
+          255,
+          0,
+          -1,
+          0,
+          0,
+          255,
+          0,
+          0,
+          -1,
+          0,
+          255,
+          0,
+          0,
+          0,
+          1,
+          0,
         ]),
         child: sprite,
       );
@@ -201,27 +221,43 @@ class _SlipperSpriteState extends State<SlipperSprite>
   }
 
   Widget _applyMoodColor(Widget child) => switch (widget.mood) {
-        SlipperMood.hurt => ColorFiltered(
-            colorFilter: ColorFilter.mode(
-              Colors.red.withValues(alpha: 0.45 * (1 - _fx.value)),
-              BlendMode.srcATop,
-            ),
-            child: child,
-          ),
-        SlipperMood.dead => Opacity(
-            opacity: 0.75,
-            child: ColorFiltered(
-              colorFilter: const ColorFilter.matrix(<double>[
-                0.3, 0.59, 0.11, 0, 0,
-                0.3, 0.59, 0.11, 0, 0,
-                0.3, 0.59, 0.11, 0, 0,
-                0, 0, 0, 1, 0,
-              ]),
-              child: child,
-            ),
-          ),
-        _ => child,
-      };
+    SlipperMood.hurt => ColorFiltered(
+      colorFilter: ColorFilter.mode(
+        Colors.red.withValues(alpha: 0.45 * (1 - _fx.value)),
+        BlendMode.srcATop,
+      ),
+      child: child,
+    ),
+    SlipperMood.dead => Opacity(
+      opacity: 0.75,
+      child: ColorFiltered(
+        colorFilter: const ColorFilter.matrix(<double>[
+          0.3,
+          0.59,
+          0.11,
+          0,
+          0,
+          0.3,
+          0.59,
+          0.11,
+          0,
+          0,
+          0.3,
+          0.59,
+          0.11,
+          0,
+          0,
+          0,
+          0,
+          0,
+          1,
+          0,
+        ]),
+        child: child,
+      ),
+    ),
+    _ => child,
+  };
 
   Widget _applyMoodMotion(Widget child) {
     final dir = widget.flip ? -1.0 : 1.0;
@@ -247,7 +283,11 @@ class _SlipperSpriteState extends State<SlipperSprite>
         // Наклон и рывок задаёт AttackAnimation — здесь спрайт нейтрален.
         return child;
       case SlipperMood.dead:
-        return Transform.rotate(angle: -0.4 * dir, alignment: Alignment.bottomCenter, child: child);
+        return Transform.rotate(
+          angle: -0.4 * dir,
+          alignment: Alignment.bottomCenter,
+          child: child,
+        );
       case SlipperMood.idle:
         if (!widget.animate) return child;
         final t = Curves.easeInOut.transform(_breath.value);
@@ -266,11 +306,8 @@ class _SlipperSpriteState extends State<SlipperSprite>
 /// Аура бойца: свечение, кольца на «земле» и искры по орбите.
 /// Что рисовать, решает сам боец через [AuraSpec] — движок и статы тут ни при чём.
 class AuraPainter extends CustomPainter {
-  AuraPainter({
-    required this.aura,
-    required this.fitted,
-    required this.phase,
-  }) : super(repaint: phase);
+  AuraPainter({required this.aura, required this.fitted, required this.phase})
+    : super(repaint: phase);
 
   final AuraSpec? aura;
   final Rect fitted;
@@ -286,7 +323,10 @@ class AuraPainter extends CustomPainter {
     final t = spec.strength;
     final col = spec.color;
 
-    final center = Offset(fitted.center.dx, fitted.center.dy + fitted.height * 0.12);
+    final center = Offset(
+      fitted.center.dx,
+      fitted.center.dy + fitted.height * 0.12,
+    );
     final rx = fitted.width * (0.55 + 0.14 * t);
     final ry = fitted.height * (0.46 + 0.16 * t);
     // Лёгкая пульсация, чтобы аура жила.
@@ -296,30 +336,43 @@ class AuraPainter extends CustomPainter {
     c.drawOval(
       Rect.fromCenter(center: center, width: rx * 2, height: ry * 2),
       Paint()
-        ..shader = RadialGradient(
-          colors: [
-            col.withValues(alpha: 0.62 * t * pulse),
-            col.withValues(alpha: 0.26 * t * pulse),
-            col.withValues(alpha: 0),
-          ],
-          stops: const [0, 0.5, 1],
-        ).createShader(Rect.fromCenter(center: center, width: rx * 2, height: ry * 2)),
+        ..shader =
+            RadialGradient(
+              colors: [
+                col.withValues(alpha: 0.62 * t * pulse),
+                col.withValues(alpha: 0.26 * t * pulse),
+                col.withValues(alpha: 0),
+              ],
+              stops: const [0, 0.5, 1],
+            ).createShader(
+              Rect.fromCenter(center: center, width: rx * 2, height: ry * 2),
+            ),
     );
 
     // Плотное ядро у самого бойца.
     c.drawOval(
       Rect.fromCenter(center: center, width: rx * 1.1, height: ry * 1.0),
       Paint()
-        ..shader = RadialGradient(
-          colors: [
-            col.withValues(alpha: 0.34 * t * pulse),
-            col.withValues(alpha: 0),
-          ],
-        ).createShader(Rect.fromCenter(center: center, width: rx * 1.1, height: ry * 1.0)),
+        ..shader =
+            RadialGradient(
+              colors: [
+                col.withValues(alpha: 0.34 * t * pulse),
+                col.withValues(alpha: 0),
+              ],
+            ).createShader(
+              Rect.fromCenter(
+                center: center,
+                width: rx * 1.1,
+                height: ry * 1.0,
+              ),
+            ),
     );
 
     // Кольца на «земле» — чем сильнее аура, тем их больше.
-    final ground = Offset(fitted.center.dx, fitted.bottom - fitted.height * 0.08);
+    final ground = Offset(
+      fitted.center.dx,
+      fitted.bottom - fitted.height * 0.08,
+    );
     final rings = 1 + (t * 2).floor();
     for (var i = 0; i < rings; i++) {
       final k = 1 - i * 0.22;
@@ -347,11 +400,23 @@ class AuraPainter extends CustomPainter {
       // Ближние искры крупнее и ярче.
       final depth = (sin(a) + 1) / 2;
       final r = fitted.width * (0.011 + 0.017 * depth) * (0.6 + 0.4 * t);
-      c.drawCircle(p, r * 2.6, Paint()..color = col.withValues(alpha: 0.26 * t * depth));
-      c.drawCircle(p, r, Paint()..color = col.withValues(alpha: (0.55 + 0.45 * depth) * t));
+      c.drawCircle(
+        p,
+        r * 2.6,
+        Paint()..color = col.withValues(alpha: 0.26 * t * depth),
+      );
+      c.drawCircle(
+        p,
+        r,
+        Paint()..color = col.withValues(alpha: (0.55 + 0.45 * depth) * t),
+      );
       // Белое ядро у ближних искр — так они читаются как свет.
       if (depth > 0.65) {
-        c.drawCircle(p, r * 0.45, Paint()..color = Colors.white.withValues(alpha: 0.7 * t));
+        c.drawCircle(
+          p,
+          r * 0.45,
+          Paint()..color = Colors.white.withValues(alpha: 0.7 * t),
+        );
       }
     }
   }

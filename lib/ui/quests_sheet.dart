@@ -31,8 +31,11 @@ class QuestsTile extends StatelessWidget {
               color: GameColors.gold,
               border: Border.all(color: GameColors.outline, width: 3),
             ),
-            child: const Icon(Icons.assignment_turned_in_rounded,
-                color: GameColors.outline, size: 22),
+            child: const Icon(
+              Icons.assignment_turned_in_rounded,
+              color: GameColors.outline,
+              size: 22,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -100,7 +103,9 @@ class _QuestsSheet extends StatelessWidget {
                 target: q.target,
                 coins: q.coins,
                 claimed: game.questClaimedToday(q),
-                onClaim: game.canClaimQuest(q) ? () => game.claimQuest(q) : null,
+                onClaim: game.canClaimQuest(q)
+                    ? () => game.claimQuest(q)
+                    : null,
               ),
               const SizedBox(height: 10),
             ],
@@ -173,9 +178,15 @@ class _QuestRow extends StatelessWidget {
           SizedBox(
             width: 84,
             child: claimed
-                ? const Icon(Icons.check_circle, color: GameColors.green, size: 30)
+                ? const Icon(
+                    Icons.check_circle,
+                    color: GameColors.green,
+                    size: 30,
+                  )
                 : GameButton(
-                    color: onClaim != null ? GameColors.gold : GameColors.panelDark,
+                    color: onClaim != null
+                        ? GameColors.gold
+                        : GameColors.panelDark,
                     height: 38,
                     padding: const EdgeInsets.symmetric(horizontal: 8),
                     onPressed: onClaim,

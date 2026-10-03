@@ -17,7 +17,11 @@ String fmtDuration(Duration d) {
 /// «1 ход», «3 хода», «5 ходов».
 String fmtTurns(int n) {
   final tail = n % 100 >= 11 && n % 100 <= 14 ? 0 : n % 10;
-  final word = switch (tail) { 1 => 'ход', 2 || 3 || 4 => 'хода', _ => 'ходов' };
+  final word = switch (tail) {
+    1 => 'ход',
+    2 || 3 || 4 => 'хода',
+    _ => 'ходов',
+  };
   return '$n $word';
 }
 

@@ -39,7 +39,11 @@ class DigScreen extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               child: Row(
                 children: [
-                  const Icon(Icons.back_hand_rounded, color: GameColors.orange, size: 22),
+                  const Icon(
+                    Icons.back_hand_rounded,
+                    color: GameColors.orange,
+                    size: 22,
+                  ),
                   const SizedBox(width: 6),
                   Text(
                     '${game.digSwingsLeft}',
@@ -99,7 +103,6 @@ class DigScreen extends StatelessWidget {
     );
   }
 
-
   void _tap(BuildContext context, DigBoard board, int i) {
     if (game.digGuardWaiting(i)) {
       _guardDialog(context, i);
@@ -107,19 +110,38 @@ class DigScreen extends StatelessWidget {
     }
     if (game.digRevealed(i)) return;
     if (game.digSwingsLeft == 0) {
-      showToast(context, 'Взмахи на сегодня кончились — завтра новое поле', kind: ToastKind.warn);
+      showToast(
+        context,
+        'Взмахи на сегодня кончились — завтра новое поле',
+        kind: ToastKind.warn,
+      );
       return;
     }
     final out = game.dig(i);
     if (out == null || !out.revealed) return;
     final gem = out.gem;
     final (text, kind, icon) = switch (board.cells[i].loot) {
-      DigLoot.threads => ('+${fmtNum(out.threads)} ниток', ToastKind.good, toastThread()),
+      DigLoot.threads => (
+        '+${fmtNum(out.threads)} ниток',
+        ToastKind.good,
+        toastThread(),
+      ),
       DigLoot.coins => ('+${out.coins} монет', ToastKind.good, toastCoin()),
-      DigLoot.gem => ('Гем! ${gemTitle(gem!)}', ToastKind.reward, GemIcon(gem: gem, size: 22, showLevel: false)),
-      DigLoot.treasure =>
-        ('Клад! ${gemTitle(gem!)}', ToastKind.reward, GemIcon(gem: gem, size: 22, showLevel: false)),
-      DigLoot.guard => ('Страж! Победи его, чтобы забрать гем', ToastKind.warn, null),
+      DigLoot.gem => (
+        'Гем! ${gemTitle(gem!)}',
+        ToastKind.reward,
+        GemIcon(gem: gem, size: 22, showLevel: false),
+      ),
+      DigLoot.treasure => (
+        'Клад! ${gemTitle(gem!)}',
+        ToastKind.reward,
+        GemIcon(gem: gem, size: 22, showLevel: false),
+      ),
+      DigLoot.guard => (
+        'Страж! Победи его, чтобы забрать гем',
+        ToastKind.warn,
+        null,
+      ),
       DigLoot.empty => ('Пусто', ToastKind.info, null),
     };
     showToast(context, text, kind: kind, icon: icon);
@@ -134,7 +156,12 @@ class DigScreen extends StatelessWidget {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            SlipperSprite(fighter: enemy, width: 180, flip: true, showSize: false),
+            SlipperSprite(
+              fighter: enemy,
+              width: 180,
+              flip: true,
+              showSize: false,
+            ),
             const SizedBox(height: 8),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -155,7 +182,9 @@ class DigScreen extends StatelessWidget {
           ),
           GameButton(
             color: GameColors.red,
-            onPressed: game.digSwingsLeft > 0 ? () => Navigator.pop(context, true) : null,
+            onPressed: game.digSwingsLeft > 0
+                ? () => Navigator.pop(context, true)
+                : null,
             child: const Text('В бой'),
           ),
         ],
@@ -192,7 +221,11 @@ class _DigCellView extends StatelessWidget {
   final int index;
   final VoidCallback onTap;
 
-  static const _dust = [Color(0xFF8C7A64), Color(0xFF6F5E4B), Color(0xFF524436)];
+  static const _dust = [
+    Color(0xFF8C7A64),
+    Color(0xFF6F5E4B),
+    Color(0xFF524436),
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -207,7 +240,9 @@ class _DigCellView extends StatelessWidget {
           borderRadius: BorderRadius.circular(9),
           border: Border.all(color: GameColors.outline, width: 2),
         ),
-        child: CustomPaint(painter: _CrumbsPainter(layers: layers, seed: index)),
+        child: CustomPaint(
+          painter: _CrumbsPainter(layers: layers, seed: index),
+        ),
       );
     } else {
       final taken = game.digTaken.contains(index);
@@ -216,29 +251,37 @@ class _DigCellView extends StatelessWidget {
         DigLoot.threads => const ThreadIcon(size: 26),
         DigLoot.coins => const CoinIcon(size: 26),
         DigLoot.gem || DigLoot.treasure => Icon(
-            cell.loot == DigLoot.treasure ? Icons.auto_awesome : Icons.diamond_rounded,
-            size: 26,
-            color: cell.gemRarity!.color,
-          ),
-        DigLoot.guard => taken
-            ? const Icon(Icons.check_rounded, color: GameColors.green, size: 26)
-            : SlipperSprite(
-                fighter: game.digGuard(index),
-                width: 46,
-                flip: true,
-                animate: false,
-                showSize: false,
-              ),
-        DigLoot.empty => hint > 0
-            ? Text(
-                '$hint',
-                style: TextStyle(
-                  fontWeight: FontWeight.w900,
-                  fontSize: 20,
-                  color: hint >= 3 ? GameColors.gold : GameColors.text,
+          cell.loot == DigLoot.treasure
+              ? Icons.auto_awesome
+              : Icons.diamond_rounded,
+          size: 26,
+          color: cell.gemRarity!.color,
+        ),
+        DigLoot.guard =>
+          taken
+              ? const Icon(
+                  Icons.check_rounded,
+                  color: GameColors.green,
+                  size: 26,
+                )
+              : SlipperSprite(
+                  fighter: game.digGuard(index),
+                  width: 46,
+                  flip: true,
+                  animate: false,
+                  showSize: false,
                 ),
-              )
-            : const SizedBox.shrink(),
+        DigLoot.empty =>
+          hint > 0
+              ? Text(
+                  '$hint',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 20,
+                    color: hint >= 3 ? GameColors.gold : GameColors.text,
+                  ),
+                )
+              : const SizedBox.shrink(),
       };
       final waiting = game.digGuardWaiting(index);
       child = Container(
@@ -295,8 +338,15 @@ class _CrumbsPainter extends CustomPainter {
     for (var i = 0; i < 3 + layers * 3; i++) {
       x = (x * 57 + 23) % 100;
       final y = (x * 31 + i * 17) % 100;
-      final p = Offset(size.width * (0.12 + 0.76 * x / 100), size.height * (0.12 + 0.76 * y / 100));
-      c.drawCircle(p, size.width * (i.isEven ? 0.05 : 0.035), i.isEven ? light : dark);
+      final p = Offset(
+        size.width * (0.12 + 0.76 * x / 100),
+        size.height * (0.12 + 0.76 * y / 100),
+      );
+      c.drawCircle(
+        p,
+        size.width * (i.isEven ? 0.05 : 0.035),
+        i.isEven ? light : dark,
+      );
     }
   }
 
@@ -313,9 +363,29 @@ class DigArt extends StatelessWidget {
     return const Stack(
       alignment: Alignment.center,
       children: [
-        Positioned(left: 6, bottom: 6, child: Icon(Icons.diamond_rounded, size: 22, color: Color(0xFF5BC8FF))),
-        Positioned(right: 8, top: 8, child: Icon(Icons.diamond_rounded, size: 18, color: Color(0xFFC77DFF))),
-        Positioned(right: 10, bottom: 8, child: Icon(Icons.auto_awesome, size: 18, color: GameColors.gold)),
+        Positioned(
+          left: 6,
+          bottom: 6,
+          child: Icon(
+            Icons.diamond_rounded,
+            size: 22,
+            color: Color(0xFF5BC8FF),
+          ),
+        ),
+        Positioned(
+          right: 8,
+          top: 8,
+          child: Icon(
+            Icons.diamond_rounded,
+            size: 18,
+            color: Color(0xFFC77DFF),
+          ),
+        ),
+        Positioned(
+          right: 10,
+          bottom: 8,
+          child: Icon(Icons.auto_awesome, size: 18, color: GameColors.gold),
+        ),
         CaseIcon(size: 54),
       ],
     );
@@ -345,7 +415,11 @@ class _DigTaskRow extends StatelessWidget {
               children: [
                 Text(task.title, style: theme.textTheme.titleSmall),
                 const SizedBox(height: 6),
-                GameBar(value: value / task.target, height: 16, label: '$value/${task.target}'),
+                GameBar(
+                  value: value / task.target,
+                  height: 16,
+                  label: '$value/${task.target}',
+                ),
               ],
             ),
           ),
@@ -353,7 +427,11 @@ class _DigTaskRow extends StatelessWidget {
           SizedBox(
             width: 84,
             child: claimed
-                ? const Icon(Icons.check_circle, color: GameColors.green, size: 30)
+                ? const Icon(
+                    Icons.check_circle,
+                    color: GameColors.green,
+                    size: 30,
+                  )
                 : GameButton(
                     color: can ? GameColors.gold : GameColors.panelDark,
                     height: 38,
@@ -362,7 +440,11 @@ class _DigTaskRow extends StatelessWidget {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.back_hand_rounded, size: 16, color: GameColors.orange),
+                        const Icon(
+                          Icons.back_hand_rounded,
+                          size: 16,
+                          color: GameColors.orange,
+                        ),
                         const SizedBox(width: 4),
                         Text('+${task.swings}'),
                       ],

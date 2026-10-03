@@ -12,7 +12,11 @@ import '../widgets/game_widgets.dart';
 
 /// Главный экран: тапок на коврике, монеты, прокачка.
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key, required this.game, required this.onOpenCollection});
+  const HomeScreen({
+    super.key,
+    required this.game,
+    required this.onOpenCollection,
+  });
   final GameState game;
 
   /// Переход во вкладку «Коллекция» — там меняется тапок.
@@ -58,7 +62,11 @@ class _HomeScreenState extends State<HomeScreen>
                       width: c.maxWidth,
                       // Тапок рисуется уменьшенным (размер от Здоровья) и прижат
                       // к низу — высота по реальному размеру, без пустоты сверху.
-                      height: spriteW / SlipperSprite.aspect * game.slipper.sizeFactor + 20,
+                      height:
+                          spriteW /
+                              SlipperSprite.aspect *
+                              game.slipper.sizeFactor +
+                          20,
                       child: Stack(
                         alignment: Alignment.bottomCenter,
                         clipBehavior: Clip.none,
@@ -68,7 +76,9 @@ class _HomeScreenState extends State<HomeScreen>
                             child: AnimatedBuilder(
                               animation: _tapAnim,
                               builder: (_, child) {
-                                final t = Curves.easeOut.transform(_tapAnim.value);
+                                final t = Curves.easeOut.transform(
+                                  _tapAnim.value,
+                                );
                                 final squash = 1 - 0.12 * (1 - t);
                                 final active = _tapAnim.isAnimating;
                                 return Transform.scale(
@@ -78,7 +88,10 @@ class _HomeScreenState extends State<HomeScreen>
                                   child: child,
                                 );
                               },
-                              child: SlipperSprite(fighter: game.slipper, width: spriteW),
+                              child: SlipperSprite(
+                                fighter: game.slipper,
+                                width: spriteW,
+                              ),
                             ),
                           ),
                         ],
@@ -89,7 +102,10 @@ class _HomeScreenState extends State<HomeScreen>
               ),
             ),
             SliverToBoxAdapter(
-              child: _NameRow(game: game, onOpenCollection: widget.onOpenCollection),
+              child: _NameRow(
+                game: game,
+                onOpenCollection: widget.onOpenCollection,
+              ),
             ),
             SliverToBoxAdapter(
               child: Padding(
@@ -106,11 +122,7 @@ class _HomeScreenState extends State<HomeScreen>
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 18, 20, 10),
-                child: Row(
-                  children: [
-                    const StrokeText('Прокачка', size: 24),
-                  ],
-                ),
+                child: Row(children: [const StrokeText('Прокачка', size: 24)]),
               ),
             ),
             SliverPadding(
@@ -118,7 +130,8 @@ class _HomeScreenState extends State<HomeScreen>
               sliver: SliverList.separated(
                 itemCount: Stat.values.length,
                 separatorBuilder: (_, _) => const SizedBox(height: 10),
-                itemBuilder: (_, i) => _UpgradeTile(game: game, stat: Stat.values[i]),
+                itemBuilder: (_, i) =>
+                    _UpgradeTile(game: game, stat: Stat.values[i]),
               ),
             ),
           ],
@@ -196,7 +209,10 @@ class _NameRow extends StatelessWidget {
           spacing: 6,
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
-            GameBadge(text: '${kind.rarity.label} · ${kind.name}', color: kind.rarity.color),
+            GameBadge(
+              text: '${kind.rarity.label} · ${kind.name}',
+              color: kind.rarity.color,
+            ),
             for (final e in kind.bonuses.entries)
               GameBadge(text: e.key.format(e.value), color: GameColors.green),
           ],
@@ -218,7 +234,6 @@ class _NameRow extends StatelessWidget {
       ],
     );
   }
-
 }
 
 class _UpgradeTile extends StatelessWidget {
@@ -227,19 +242,22 @@ class _UpgradeTile extends StatelessWidget {
   final Stat stat;
 
   (IconData, Color) get _look => switch (stat) {
-        Stat.attack => (Icons.flash_on, GameColors.orange),
-        Stat.defense => (Icons.shield, GameColors.blue),
-        Stat.health => (Icons.favorite, GameColors.red),
-        Stat.speed => (Icons.speed, GameColors.green),
-      };
+    Stat.attack => (Icons.flash_on, GameColors.orange),
+    Stat.defense => (Icons.shield, GameColors.blue),
+    Stat.health => (Icons.favorite, GameColors.red),
+    Stat.speed => (Icons.speed, GameColors.green),
+  };
 
   String _value() {
     final s = game.slipper;
     return switch (stat) {
-      Stat.attack => '${s.attack.toStringAsFixed(0)} урона · крит ${(s.critChance * 100).round()}%',
-      Stat.defense => '−${(100 - 10000 / (100 + s.defense)).round()}% входящего урона',
+      Stat.attack =>
+        '${s.attack.toStringAsFixed(0)} урона · крит ${(s.critChance * 100).round()}%',
+      Stat.defense =>
+        '−${(100 - 10000 / (100 + s.defense)).round()}% входящего урона',
       Stat.health => '${s.maxHp.round()} HP',
-      Stat.speed => '${s.speed.round()} скорости · уворот ${(s.dodgeChance * 100).round()}%',
+      Stat.speed =>
+        '${s.speed.round()} скорости · уворот ${(s.dodgeChance * 100).round()}%',
     };
   }
 
@@ -281,7 +299,10 @@ class _UpgradeTile extends StatelessWidget {
                     children: [
                       Text(stat.label, style: theme.textTheme.titleMedium),
                       const SizedBox(width: 8),
-                      GameBadge(text: 'ур. ${game.slipper.level(stat)}', color: color),
+                      GameBadge(
+                        text: 'ур. ${game.slipper.level(stat)}',
+                        color: color,
+                      ),
                     ],
                   ),
                 ),

@@ -37,11 +37,15 @@ class BattleHubScreen extends StatelessWidget {
       BattleMode.arena => ArenaScreen(game: game, onBack: () => onMode(null)),
       BattleMode.story => StoryScreen(game: game, onBack: () => onMode(null)),
       BattleMode.dig => DigScreen(game: game, onBack: () => onMode(null)),
-      BattleMode.defense => DefenseScreen(game: game, onBack: () => onMode(null)),
+      BattleMode.defense => DefenseScreen(
+        game: game,
+        onBack: () => onMode(null),
+      ),
       null => ListenableBuilder(
-          listenable: game,
-          builder: (_, _) => _ModePicker(onMode: onMode, digReady: game.digTasksReady),
-        ),
+        listenable: game,
+        builder: (_, _) =>
+            _ModePicker(onMode: onMode, digReady: game.digTasksReady),
+      ),
     };
   }
 }
@@ -132,7 +136,10 @@ class _ModePicker extends StatelessWidget {
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               color: GameColors.red,
-                              border: Border.all(color: GameColors.outline, width: 2),
+                              border: Border.all(
+                                color: GameColors.outline,
+                                width: 2,
+                              ),
                             ),
                           ),
                         ],
@@ -165,7 +172,10 @@ class _ModePicker extends StatelessWidget {
                 // Миниатюрный снимок поля обороны.
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(15),
-                  child: Image.asset('assets/ui/defense_thumb.webp', fit: BoxFit.cover),
+                  child: Image.asset(
+                    'assets/ui/defense_thumb.webp',
+                    fit: BoxFit.cover,
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
@@ -303,7 +313,8 @@ class _ArenaArt extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, box) {
         final s = box.maxWidth;
-        Widget slipper(String id, double angle, {bool flip = false}) => Positioned(
+        Widget slipper(String id, double angle, {bool flip = false}) =>
+            Positioned(
               left: s * 0.06,
               // По центру плитки: картинка 2:1 высотой 0.44 от ширины.
               top: s * 0.3,

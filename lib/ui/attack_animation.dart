@@ -33,14 +33,22 @@ class AttackAnimation {
   /// внешний перенос анимации сохраняется, повороты и масштаб — нет.
   static Widget _withAura(Widget body, Widget aura) {
     Widget under(Widget w) => Stack(
-          clipBehavior: Clip.none,
-          children: [Positioned.fill(child: aura), w],
-        );
-    if (body is Transform && body.child != null && _isTranslation(body.transform)) {
+      clipBehavior: Clip.none,
+      children: [
+        Positioned.fill(child: aura),
+        w,
+      ],
+    );
+    if (body is Transform &&
+        body.child != null &&
+        _isTranslation(body.transform)) {
       return Transform(transform: body.transform, child: under(body.child!));
     }
     if (body is Opacity && body.child != null) {
-      return Opacity(opacity: body.opacity, child: _withAura(body.child!, aura));
+      return Opacity(
+        opacity: body.opacity,
+        child: _withAura(body.child!, aura),
+      );
     }
     if (body is Stack) {
       // Лазер и призыв: сам тапок — единственный Transform среди детей.
@@ -48,7 +56,11 @@ class AttackAnimation {
       if (i >= 0) {
         final children = [...body.children];
         children[i] = _withAura(children[i], aura);
-        return Stack(clipBehavior: body.clipBehavior, alignment: body.alignment, children: children);
+        return Stack(
+          clipBehavior: body.clipBehavior,
+          alignment: body.alignment,
+          children: children,
+        );
       }
     }
     return under(body);
@@ -97,7 +109,13 @@ class AttackAnimation {
     Widget? aura,
   }) {
     if (aura != null) {
-      final body = apply(style: style, progress: progress, flip: flip, reach: reach, child: child);
+      final body = apply(
+        style: style,
+        progress: progress,
+        flip: flip,
+        reach: reach,
+        child: child,
+      );
       return _withAura(body, aura);
     }
     if (progress <= 0.001) return child;
@@ -159,7 +177,11 @@ class AttackAnimation {
           Positioned.fill(
             child: IgnorePointer(
               child: CustomPaint(
-                painter: _YinYangMarkPainter(progress: mark, dir: dir, reach: reach),
+                painter: _YinYangMarkPainter(
+                  progress: mark,
+                  dir: dir,
+                  reach: reach,
+                ),
               ),
             ),
           ),
@@ -183,11 +205,16 @@ class AttackAnimation {
       squash = 0.18 * c;
       tilt = -0.08 * c;
     } else {
-      final j = Curves.easeInOutSine.transform((t - crouchEnd) / (1 - crouchEnd));
+      final j = Curves.easeInOutSine.transform(
+        (t - crouchEnd) / (1 - crouchEnd),
+      );
       x = -0.12 + 1.07 * j;
       y = -0.32 * sin(pi * j);
       // В полёте вытягивается, у цели снова приседает — придавливает.
-      squash = 0.18 * (1 - j) - 0.08 * sin(pi * j) + 0.14 * max(0.0, (j - 0.85) / 0.15);
+      squash =
+          0.18 * (1 - j) -
+          0.08 * sin(pi * j) +
+          0.14 * max(0.0, (j - 0.85) / 0.15);
       tilt = -0.08 + 0.2 * j;
     }
     return Transform.translate(

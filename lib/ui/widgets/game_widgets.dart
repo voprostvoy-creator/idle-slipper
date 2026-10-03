@@ -19,10 +19,7 @@ class GameBackground extends StatelessWidget {
           colors: [GameColors.bgTop, GameColors.bgBottom],
         ),
       ),
-      child: CustomPaint(
-        painter: _TexturePainter(),
-        child: child,
-      ),
+      child: CustomPaint(painter: _TexturePainter(), child: child),
     );
   }
 }
@@ -87,14 +84,21 @@ class GamePanel extends StatelessWidget {
         ),
         border: Border.all(color: GameColors.outline, width: 3),
         boxShadow: const [
-          BoxShadow(color: Color(0x66000000), offset: Offset(0, 5), blurRadius: 6),
+          BoxShadow(
+            color: Color(0x66000000),
+            offset: Offset(0, 5),
+            blurRadius: 6,
+          ),
         ],
       ),
       // Внутренний блик по верхнему краю.
       foregroundDecoration: BoxDecoration(
         borderRadius: r,
         border: Border(
-          top: BorderSide(color: Colors.white.withValues(alpha: 0.22), width: 2),
+          top: BorderSide(
+            color: Colors.white.withValues(alpha: 0.22),
+            width: 2,
+          ),
         ),
       ),
       child: Material(
@@ -188,14 +192,18 @@ class _GameButtonState extends State<GameButton> {
                 ),
                 child: DefaultTextStyle.merge(
                   style: TextStyle(
-                    color: enabled ? GameColors.outline : const Color(0xFFB9B0C4),
+                    color: enabled
+                        ? GameColors.outline
+                        : const Color(0xFFB9B0C4),
                     fontVariations: const [FontVariation('wght', 900)],
                     fontWeight: FontWeight.w900,
                     fontSize: 15,
                   ),
                   child: IconTheme.merge(
                     data: IconThemeData(
-                      color: enabled ? GameColors.outline : const Color(0xFFB9B0C4),
+                      color: enabled
+                          ? GameColors.outline
+                          : const Color(0xFFB9B0C4),
                       size: 18,
                     ),
                     child: Center(widthFactor: 1, child: widget.child),
@@ -253,7 +261,11 @@ class StrokeText extends StatelessWidget {
               ..color = stroke,
           ),
         ),
-        Text(text, textAlign: align, style: base.copyWith(color: color)),
+        Text(
+          text,
+          textAlign: align,
+          style: base.copyWith(color: color),
+        ),
       ],
     );
   }
@@ -480,7 +492,11 @@ class _ThreadPainter extends CustomPainter {
 
 /// Цветная плашка-ярлык («Разминка», «ур. 5»).
 class GameBadge extends StatelessWidget {
-  const GameBadge({super.key, required this.text, this.color = GameColors.blue});
+  const GameBadge({
+    super.key,
+    required this.text,
+    this.color = GameColors.blue,
+  });
   final String text;
   final Color color;
 
