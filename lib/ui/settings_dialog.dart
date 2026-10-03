@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../audio/music.dart';
 import '../audio/sfx.dart';
 import 'theme.dart';
 import 'widgets/game_widgets.dart';
 
-/// Настройки звука: громкость музыки и эффектов в бою.
+/// Политика конфиденциальности игры (GitHub Pages).
+const privacyPolicyUrl =
+    'https://voprostvoy-creator.github.io/politics/slipper-battle/privacy.html?lang=ru';
+
+/// Настройки: громкость музыки и эффектов в бою, политика конфиденциальности.
 Future<void> showSettingsDialog(BuildContext context) => showDialog<void>(
   context: context,
   builder: (context) => AlertDialog(
@@ -34,6 +39,16 @@ Future<void> showSettingsDialog(BuildContext context) => showDialog<void>(
               onChanged: Sfx.instance.setVolume,
               // Отпустил ползунок — слышно, как теперь звучит удар.
               onChangeEnd: (_) => Sfx.instance.hit(),
+            ),
+            const SizedBox(height: 12),
+            TextButton.icon(
+              onPressed: () => launchUrl(
+                Uri.parse(privacyPolicyUrl),
+                mode: LaunchMode.externalApplication,
+              ),
+              icon: const Icon(Icons.privacy_tip_outlined, size: 18),
+              label: const Text('Политика конфиденциальности'),
+              style: TextButton.styleFrom(foregroundColor: GameColors.textDim),
             ),
           ],
         ),

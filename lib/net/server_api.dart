@@ -164,10 +164,12 @@ class ServerApi {
         auth: false,
       );
     } on ServerException catch (e) {
-      if (e.status == 401)
+      if (e.status == 401) {
         throw ServerException('Неверный логин или пароль', 401);
-      if (e.status == 429)
+      }
+      if (e.status == 429) {
         throw ServerException('Слишком много попыток — попробуй позже', 429);
+      }
       rethrow;
     }
     final auth = '${j['id']}:${j['token']}';

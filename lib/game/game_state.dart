@@ -39,13 +39,10 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
   static const double startingThreads = 0;
 
   /// На старте — только базовый тапок, остальные выбиваются из кейсов.
-  /// TODO: убрать Инь-Ян перед релизом — выдан со старта для тестов.
+  /// Со старта — только базовый тапок, остальные из кейсов и сюжета.
   static Map<String, int> get startingInventory => {
     SlipperCatalog.defaultId: 1,
-    _testKindId: 1,
   };
-
-  static const _testKindId = 'yin_yang';
 
   /// Основная валюта: нитки. Тратятся на прокачку и кейсы.
   double threads = startingThreads;
@@ -239,7 +236,6 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
     final result = BattleSim.run(slipper, f.opponent.slipper, seed: f.seed);
     if (result.playerWon) {
       wins++;
-      _progress(QuestKind.arenaWins);
     } else {
       losses++;
     }
@@ -425,8 +421,6 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
             e.key as String: (e.value as num).toInt(),
         };
       }
-      // TODO: убрать перед релизом — тестовый тапок и в старых сохранениях.
-      inventory[_testKindId] = max(1, inventory[_testKindId] ?? 0);
       // Надетый тапок всегда присутствует в инвентаре.
       inventory[slipper.kindId] = max(1, inventory[slipper.kindId] ?? 0);
       rating = json['rating'] as int? ?? rating;
@@ -822,9 +816,9 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
     return (result: result, enemy: enemy, gem: gem);
   }
 
-  void _progress(QuestKind kind) {
+  void _progress(QuestKind kind, [int amount = 1]) {
     _rollDay();
-    questProgress[kind.name] = (questProgress[kind.name] ?? 0) + 1;
+    questProgress[kind.name] = (questProgress[kind.name] ?? 0) + amount;
   }
 
   List<QuestSpec> get quests => DailyQuests.forDay(clock());
@@ -933,6 +927,7 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
     coins += reward.coins;
     final gem = reward.gem == null ? null : _giveGem(reward.gem!);
     defenseBest = max(defenseBest, waves);
+    if (waves > 0) _progress(QuestKind.defenseWaves, waves);
     _save();
     notifyListeners();
     return (reward: reward, gem: gem);

@@ -12,7 +12,7 @@ Duration untilMidnight(DateTime now) =>
     DateTime(now.year, now.month, now.day + 1).difference(now);
 
 /// Что считают задания.
-enum QuestKind { arenaWins, arenaFights, storyWins, openCases, upgrades, chest }
+enum QuestKind { arenaFights, storyWins, openCases, upgrades, chest, defenseWaves }
 
 class QuestSpec {
   const QuestSpec({
@@ -38,7 +38,7 @@ class DailyQuests {
   static const bonusCoins = 50;
 
   static const pool = [
-    QuestSpec(kind: QuestKind.arenaWins, title: 'Победи на арене 3 раза', target: 3, coins: 40),
+    QuestSpec(kind: QuestKind.defenseWaves, title: 'Отбей 3 волны в обороне сада', target: 3, coins: 40),
     QuestSpec(kind: QuestKind.arenaFights, title: 'Проведи 3 боя на арене', target: 3, coins: 30),
     QuestSpec(kind: QuestKind.storyWins, title: 'Выиграй 2 боя в сюжете', target: 2, coins: 30),
     QuestSpec(kind: QuestKind.openCases, title: 'Открой кейс', target: 1, coins: 25),
