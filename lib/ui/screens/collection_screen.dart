@@ -45,14 +45,18 @@ class _CollectionScreenState extends State<CollectionScreen> {
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-          GameButton(
-            color: active ? GameColors.gold : GameColors.panelLight,
-            height: 40,
-            onPressed: () => setState(() => _gems = gems),
-            child: Text(
-              label,
-              style: TextStyle(
-                color: active ? GameColors.outline : GameColors.text,
+          // Stack не растягивает детей — кнопка на всю ширину явно.
+          SizedBox(
+            width: double.infinity,
+            child: GameButton(
+              color: active ? GameColors.gold : GameColors.panelLight,
+              height: 40,
+              onPressed: () => setState(() => _gems = gems),
+              child: Text(
+                label,
+                style: TextStyle(
+                  color: active ? GameColors.outline : GameColors.text,
+                ),
               ),
             ),
           ),
