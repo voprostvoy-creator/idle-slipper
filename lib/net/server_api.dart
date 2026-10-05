@@ -218,6 +218,15 @@ class ServerApi {
     );
   }
 
+  /// Новости игры, свежие сверху. Без входа в аккаунт.
+  Future<List<NewsItem>> news() async {
+    final j = await _send('GET', '/news', auth: false);
+    return [
+      for (final e in j['items'] as List)
+        NewsItem.fromJson((e as Map).cast<String, dynamic>()),
+    ];
+  }
+
   /// Призы недели: когда конец недели и незабранный приз за прошлую.
   Future<ArenaWeekly> weekly() async {
     final j = await _send('GET', '/arena/weekly');
@@ -231,6 +240,27 @@ class ServerApi {
   /// Забрать приз за прошлую неделю — сервер отмечает, что он выдан.
   Future<WeeklyReward> claimWeekly() async =>
       WeeklyReward.fromJson(await _send('POST', '/arena/weekly/claim'));
+}
+
+/// Новость игры.
+class NewsItem {
+  const NewsItem({
+    required this.id,
+    required this.title,
+    required this.body,
+    required this.date,
+  });
+  final int id;
+  final String title;
+  final String body;
+  final DateTime date;
+
+  factory NewsItem.fromJson(Map<String, dynamic> j) => NewsItem(
+    id: (j['id'] as num).toInt(),
+    title: j['title'] as String? ?? '',
+    body: j['body'] as String? ?? '',
+    date: DateTime.tryParse(j['date'] as String? ?? '') ?? DateTime(2026),
+  );
 }
 
 /// Состояние недельных призов арены.

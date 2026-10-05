@@ -72,6 +72,10 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
   /// Карты выбора тапка в инвентаре: вид карты → сколько.
   Map<String, int> pickCards = {};
 
+  /// Новости с сервера (свежие сверху) и прочитанные игроком.
+  List<NewsItem> news = [];
+  Set<int> readNews = {};
+
   /// Отладочная панель в профиле открыта промокодом.
   bool debugUnlocked = false;
 
@@ -146,6 +150,7 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
     state._start();
     // Аккаунт уже есть — отправим свежий снимок тапка.
     if (online && state.server.hasAccount) state._pushNow();
+    if (online) state.refreshNews();
     return state;
   }
 
@@ -242,6 +247,26 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
       arenaLoading = false;
       notifyListeners();
     }
+  }
+
+  // --- Новости -------------------------------------------------------------
+
+  /// Есть новость, которую игрок ещё не открывал.
+  bool get hasUnreadNews => news.any((n) => !readNews.contains(n.id));
+
+  Future<void> refreshNews() async {
+    try {
+      news = await server.news();
+      notifyListeners();
+    } on ServerException {
+      // Нет сети — покажем в следующий раз.
+    }
+  }
+
+  void markNewsRead(NewsItem n) {
+    if (!readNews.add(n.id)) return;
+    _save();
+    notifyListeners();
   }
 
   // --- Призы недели и карты выбора ---------------------------------------------
@@ -426,6 +451,7 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
     'coins': coins,
     'inventory': inventory,
     'pickCards': pickCards,
+    'readNews': readNews.toList(),
     'debug': debugUnlocked,
     'rating': rating,
     'wins': wins,
@@ -507,6 +533,10 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
         };
       }
       debugUnlocked = json['debug'] as bool? ?? false;
+      readNews = {
+        for (final id in json['readNews'] as List? ?? const [])
+          (id as num).toInt(),
+      };
       final gemsJson = json['gems'] as List?;
       if (gemsJson != null) {
         gems = [

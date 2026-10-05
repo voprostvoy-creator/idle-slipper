@@ -5,6 +5,7 @@ import '../../game/slipper.dart';
 import '../../game/stars.dart';
 import '../format.dart';
 import '../duty_chest.dart';
+import '../news.dart';
 import '../quests_sheet.dart';
 import '../slipper_sprite.dart';
 import '../theme.dart';
@@ -51,6 +52,13 @@ class _HomeScreenState extends State<HomeScreen>
         return CustomScrollView(
           slivers: [
             const SliverToBoxAdapter(child: SizedBox(height: 8)),
+            if (game.news.isNotEmpty)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+                  child: NewsTile(game: game),
+                ),
+              ),
             SliverToBoxAdapter(
               child: LayoutBuilder(
                 builder: (context, c) {
