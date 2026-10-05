@@ -85,7 +85,7 @@ class _ArenaScreenState extends State<ArenaScreen> {
                               ? (game.arenaLoading ? 'Загрузка…' : 'Место')
                               : game.arenaBoard!.me.ranked
                               ? 'Место из ${game.arenaBoard!.total}'
-                              : 'Проведи бой, чтобы попасть в рейтинг',
+                              : 'Место',
                         ),
                       ),
                     ],
