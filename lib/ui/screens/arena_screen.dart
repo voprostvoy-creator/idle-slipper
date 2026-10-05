@@ -5,6 +5,7 @@ import '../../net/server_api.dart';
 import '../slipper_sprite.dart';
 import '../theme.dart';
 import '../toast.dart';
+import '../weekly_prizes.dart';
 import '../widgets/game_widgets.dart';
 import 'battle_hub_screen.dart';
 import 'battle_screen.dart';
@@ -163,6 +164,8 @@ class _ArenaScreenState extends State<ArenaScreen> {
               textAlign: TextAlign.center,
               style: theme.textTheme.bodySmall,
             ),
+            const SizedBox(height: 16),
+            WeeklyPrizesPanel(game: game),
           ],
         );
       },

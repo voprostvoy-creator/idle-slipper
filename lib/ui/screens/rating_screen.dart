@@ -222,95 +222,115 @@ class RatingScreen extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(height: 24),
-            // TODO: убрать отладочную панель перед релизом.
-            GamePanel(
-              color: GameColors.panelDark,
-              child: Row(
+            const SizedBox(height: 14),
+            _PromoField(game: game),
+            // Отладочная панель — только по промокоду.
+            if (game.debugUnlocked) ...[
+              const SizedBox(height: 24),
+              GamePanel(
+                color: GameColors.panelDark,
+                child: Row(
+                  children: [
+                    const Icon(Icons.bug_report, color: GameColors.textDim),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Отладка',
+                        style: theme.textTheme.titleMedium,
+                      ),
+                    ),
+                    GameButton(
+                      color: GameColors.gold,
+                      height: 38,
+                      onPressed: () => game.cheatThreads(100000),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          ThreadIcon(size: 16),
+                          SizedBox(width: 5),
+                          Text('+100K'),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 10),
+              Row(
                 children: [
-                  const Icon(Icons.bug_report, color: GameColors.textDim),
-                  const SizedBox(width: 12),
                   Expanded(
-                    child: Text('Отладка', style: theme.textTheme.titleMedium),
+                    child: GameButton(
+                      color: GameColors.gold,
+                      height: 38,
+                      onPressed: () => game.cheatCoins(1000),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          CoinIcon(size: 16),
+                          SizedBox(width: 5),
+                          Text('+1K'),
+                        ],
+                      ),
+                    ),
                   ),
-                  GameButton(
-                    color: GameColors.gold,
-                    height: 38,
-                    onPressed: () => game.cheatThreads(100000),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        ThreadIcon(size: 16),
-                        SizedBox(width: 5),
-                        Text('+100K'),
-                      ],
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: GameButton(
+                      color: GameColors.blue,
+                      height: 38,
+                      onPressed: game.cheatNewDay,
+                      child: const Text('Новый день'),
                     ),
                   ),
                 ],
               ),
-            ),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                  child: GameButton(
-                    color: GameColors.gold,
-                    height: 38,
-                    onPressed: () => game.cheatCoins(1000),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        CoinIcon(size: 16),
-                        SizedBox(width: 5),
-                        Text('+1K'),
-                      ],
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: GameButton(
+                      color: GameColors.green,
+                      height: 38,
+                      onPressed: game.cheatOneOfEach,
+                      child: const Text('+1 тапки'),
                     ),
                   ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: GameButton(
-                    color: GameColors.blue,
-                    height: 38,
-                    onPressed: game.cheatNewDay,
-                    child: const Text('Новый день'),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: GameButton(
+                      color: const Color(0xFFC77DFF),
+                      height: 38,
+                      onPressed: game.cheatGems,
+                      child: const Text('+гемы'),
+                    ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                  child: GameButton(
-                    color: GameColors.green,
-                    height: 38,
-                    onPressed: game.cheatOneOfEach,
-                    child: const Text('+1 тапки'),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: GameButton(
+                      color: const Color(0xFFFF5FA2),
+                      height: 38,
+                      onPressed: game.cheatPickCards,
+                      child: const Text('+карты'),
+                    ),
                   ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: GameButton(
-                    color: const Color(0xFFC77DFF),
-                    height: 38,
-                    onPressed: game.cheatGems,
-                    child: const Text('+гемы'),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Center(
+                child: TextButton.icon(
+                  onPressed: () => _confirmReset(context),
+                  icon: const Icon(
+                    Icons.restart_alt,
+                    color: GameColors.textDim,
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Center(
-              child: TextButton.icon(
-                onPressed: () => _confirmReset(context),
-                icon: const Icon(Icons.restart_alt, color: GameColors.textDim),
-                label: Text(
-                  'Сбросить прогресс',
-                  style: theme.textTheme.bodySmall,
+                  label: Text(
+                    'Сбросить прогресс',
+                    style: theme.textTheme.bodySmall,
+                  ),
                 ),
               ),
-            ),
+            ],
+            const SizedBox(height: 80),
           ],
         );
       },
@@ -370,6 +390,67 @@ class _Metric extends StatelessWidget {
         StrokeText(value, size: 22, color: color),
         Text(label, style: Theme.of(context).textTheme.labelSmall),
       ],
+    );
+  }
+}
+
+/// Поле промокода в профиле.
+class _PromoField extends StatefulWidget {
+  const _PromoField({required this.game});
+  final GameState game;
+
+  @override
+  State<_PromoField> createState() => _PromoFieldState();
+}
+
+class _PromoFieldState extends State<_PromoField> {
+  final _ctrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  void _apply() {
+    final code = _ctrl.text;
+    if (code.trim().isEmpty) return;
+    FocusScope.of(context).unfocus();
+    if (widget.game.applyPromo(code)) {
+      _ctrl.clear();
+      showToast(context, 'Промокод принят', kind: ToastKind.good);
+    } else {
+      showToast(context, 'Неверный промокод', kind: ToastKind.warn);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GamePanel(
+      padding: const EdgeInsets.fromLTRB(14, 6, 8, 6),
+      child: Row(
+        children: [
+          const Icon(Icons.card_giftcard_rounded, color: GameColors.gold),
+          const SizedBox(width: 10),
+          Expanded(
+            child: TextField(
+              controller: _ctrl,
+              textInputAction: TextInputAction.done,
+              onSubmitted: (_) => _apply(),
+              decoration: const InputDecoration(
+                hintText: 'Промокод',
+                border: InputBorder.none,
+              ),
+            ),
+          ),
+          GameButton(
+            color: GameColors.gold,
+            height: 38,
+            onPressed: _apply,
+            child: const Text('Ввести'),
+          ),
+        ],
+      ),
     );
   }
 }

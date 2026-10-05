@@ -7,6 +7,7 @@ import 'package:idle_slipper/game/slipper.dart';
 import 'package:idle_slipper/game/slipper_kind.dart';
 import 'package:idle_slipper/game/stars.dart';
 import 'package:idle_slipper/game/story/chapters.dart';
+import 'package:idle_slipper/game/weekly.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -117,6 +118,25 @@ void main() {
       now = DateTime(2026, 9, 28, 0, 1);
       expect(game.adCasesLeft, GameState.adCasesPerDay);
       expect(game.canOpen(ad), isTrue);
+    });
+
+    test('карта выбора: обычная — кроме мифических, супер — любой', () {
+      game.pickCards = {PickCard.normal.name: 1, PickCard.superCard.name: 1};
+      expect(game.usePickCard(PickCard.normal, 'yin_yang'), isFalse);
+      expect(game.usePickCard(PickCard.normal, 'red_spike'), isTrue);
+      expect(game.count('red_spike'), 1);
+      expect(game.cardCount(PickCard.normal), 0);
+      expect(game.usePickCard(PickCard.normal, 'rainbow'), isFalse);
+      expect(game.usePickCard(PickCard.superCard, 'yin_yang'), isTrue);
+      expect(game.count('yin_yang'), 1);
+    });
+
+    test('промокод 00100 открывает отладку, другой — нет', () {
+      expect(game.debugUnlocked, isFalse);
+      expect(game.applyPromo('12345'), isFalse);
+      expect(game.debugUnlocked, isFalse);
+      expect(game.applyPromo(' 00100 '), isTrue);
+      expect(game.debugUnlocked, isTrue);
     });
 
     test('задание выполняется, награда забирается один раз, с новым днём сброс', () {

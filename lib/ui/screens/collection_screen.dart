@@ -8,6 +8,8 @@ import '../../game/slipper_kind.dart';
 import '../../game/stars.dart';
 import '../format.dart';
 import '../gems_ui.dart';
+import '../pick_card.dart';
+import '../../game/weekly.dart';
 import '../slipper_sprite.dart';
 import '../theme.dart';
 import '../widgets/game_widgets.dart';
@@ -83,7 +85,14 @@ class _CollectionScreenState extends State<CollectionScreen> {
                 _tab('Инвентарь', true),
               ],
             ),
-            if (_gems) ...[const SizedBox(height: 14), GemsTab(game: game)],
+            if (_gems) ...[
+              const SizedBox(height: 14),
+              // Карты выбора тапка (призы арены) — над гемами.
+              PickCardsSection(game: game),
+              if (game.gems.isNotEmpty ||
+                  PickCard.values.every((c) => game.cardCount(c) == 0))
+                GemsTab(game: game),
+            ],
             if (!_gems)
               for (final rarity in Rarity.values)
                 if (SlipperCatalog.byRarity(rarity).isNotEmpty) ...[

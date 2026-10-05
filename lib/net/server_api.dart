@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../game/slipper.dart';
+import '../game/weekly.dart';
 
 /// Строка рейтинга с сервера: место, очки и снимок тапка.
 class BoardEntry {
@@ -216,4 +217,43 @@ class ServerApi {
       threads: (j['threads'] as num).toInt(),
     );
   }
+
+  /// Призы недели: когда конец недели и незабранный приз за прошлую.
+  Future<ArenaWeekly> weekly() async {
+    final j = await _send('GET', '/arena/weekly');
+    final p = (j['pending'] as Map?)?.cast<String, dynamic>();
+    return ArenaWeekly(
+      endsAt: DateTime.parse(j['endsAt'] as String),
+      pending: p == null ? null : WeeklyReward.fromJson(p),
+    );
+  }
+
+  /// Забрать приз за прошлую неделю — сервер отмечает, что он выдан.
+  Future<WeeklyReward> claimWeekly() async =>
+      WeeklyReward.fromJson(await _send('POST', '/arena/weekly/claim'));
+}
+
+/// Состояние недельных призов арены.
+class ArenaWeekly {
+  const ArenaWeekly({required this.endsAt, this.pending});
+  final DateTime endsAt;
+  final WeeklyReward? pending;
+}
+
+/// Приз за место по итогам недели.
+class WeeklyReward {
+  const WeeklyReward({
+    required this.week,
+    required this.place,
+    required this.prize,
+  });
+  final String week;
+  final int place;
+  final WeeklyPrize prize;
+
+  factory WeeklyReward.fromJson(Map<String, dynamic> j) => WeeklyReward(
+    week: j['week'] as String,
+    place: (j['place'] as num).toInt(),
+    prize: WeeklyPrize.fromJson((j['prize'] as Map).cast<String, dynamic>()),
+  );
 }

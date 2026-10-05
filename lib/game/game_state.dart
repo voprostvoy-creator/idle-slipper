@@ -19,6 +19,7 @@ import 'slipper_kind.dart';
 import 'stars.dart';
 import 'story/chapters.dart';
 import 'story/enemies.dart';
+import 'weekly.dart';
 
 /// Единственный источник правды для UI. Сохраняется в SharedPreferences.
 class GameState extends ChangeNotifier with WidgetsBindingObserver {
@@ -34,9 +35,8 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
 
   Slipper slipper = Slipper(name: 'Мой тапок');
 
-  /// TODO: вернуть 50 перед релизом — сейчас для тестов пусто,
-  /// нитки берутся кнопкой в отладочной панели.
-  static const double startingThreads = 0;
+  /// Нитки на старте — хватает на первые прокачки.
+  static const double startingThreads = 50;
 
   /// На старте — только базовый тапок, остальные выбиваются из кейсов.
   /// Со старта — только базовый тапок, остальные из кейсов и сюжета.
@@ -65,6 +65,18 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
   /// Рейтинг арены с сервера — последний полученный.
   ArenaBoard? arenaBoard;
   bool arenaLoading = false;
+
+  /// Призы недели арены: конец недели и незабранный приз — с сервера.
+  ArenaWeekly? arenaWeekly;
+
+  /// Карты выбора тапка в инвентаре: вид карты → сколько.
+  Map<String, int> pickCards = {};
+
+  /// Отладочная панель в профиле открыта промокодом.
+  bool debugUnlocked = false;
+
+  /// Промокод, открывающий отладочную панель.
+  static const _debugCode = '00100';
   String? arenaError;
 
   /// Все гемы игрока и следующий свободный id.
@@ -218,12 +230,61 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
     try {
       arenaBoard = await server.leaderboard();
       rating = arenaBoard!.me.rating;
+      // Призы недели — отдельно: их сбой не должен ломать рейтинг.
+      try {
+        arenaWeekly = await server.weekly();
+      } on ServerException {
+        arenaWeekly = null;
+      }
     } on ServerException catch (e) {
       arenaError = e.message;
     } finally {
       arenaLoading = false;
       notifyListeners();
     }
+  }
+
+  // --- Призы недели и карты выбора ---------------------------------------------
+
+  int cardCount(PickCard c) => pickCards[c.name] ?? 0;
+
+  /// Можно ли картой [c] взять тапок [kind]: обычная — кроме мифических.
+  static bool cardAllows(PickCard c, SlipperKind kind) =>
+      c == PickCard.superCard || kind.rarity != Rarity.mythic;
+
+  /// Потратить карту выбора на тапок [kindId].
+  bool usePickCard(PickCard c, String kindId) {
+    final kind = SlipperCatalog.byId(kindId);
+    if (cardCount(c) == 0 || !cardAllows(c, kind)) return false;
+    pickCards[c.name] = cardCount(c) - 1;
+    if (pickCards[c.name] == 0) pickCards.remove(c.name);
+    inventory[kindId] = count(kindId) + 1;
+    _save();
+    notifyListeners();
+    return true;
+  }
+
+  /// Забрать приз за прошлую неделю: сервер отмечает выдачу, награда — сюда.
+  Future<WeeklyReward> claimWeekly() async {
+    final r = await server.claimWeekly();
+    threads += r.prize.threads;
+    coins += r.prize.coins;
+    final card = r.prize.card;
+    if (card != null) pickCards[card.name] = cardCount(card) + 1;
+    final w = arenaWeekly;
+    if (w != null) arenaWeekly = ArenaWeekly(endsAt: w.endsAt);
+    _save();
+    notifyListeners();
+    return r;
+  }
+
+  /// Промокод из профиля. true — подошёл.
+  bool applyPromo(String code) {
+    if (code.trim() != _debugCode) return false;
+    debugUnlocked = true;
+    _save();
+    notifyListeners();
+    return true;
   }
 
   /// Бой на арене через сервер: сначала отправляем свежий снимок тапка,
@@ -361,6 +422,8 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
     'threads': threads,
     'coins': coins,
     'inventory': inventory,
+    'pickCards': pickCards,
+    'debug': debugUnlocked,
     'rating': rating,
     'wins': wins,
     'losses': losses,
@@ -433,6 +496,14 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
             e.key as String: (e.value as num).toInt(),
         };
       }
+      final cardsJson = json['pickCards'] as Map?;
+      if (cardsJson != null) {
+        pickCards = {
+          for (final e in cardsJson.entries)
+            e.key as String: (e.value as num).toInt(),
+        };
+      }
+      debugUnlocked = json['debug'] as bool? ?? false;
       final gemsJson = json['gems'] as List?;
       if (gemsJson != null) {
         gems = [
@@ -994,6 +1065,15 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   /// Для отладки: по одному экземпляру каждого тапка из каталога.
+  /// Для отладки: по одной карте выбора каждого вида.
+  void cheatPickCards() {
+    for (final c in PickCard.values) {
+      pickCards[c.name] = cardCount(c) + 1;
+    }
+    _save();
+    notifyListeners();
+  }
+
   void cheatOneOfEach() {
     for (final k in SlipperCatalog.all) {
       inventory[k.id] = count(k.id) + 1;
@@ -1062,6 +1142,8 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
     storyCleared = {};
     stars = {};
     arenaBoard = null;
+    arenaWeekly = null;
+    pickCards = {};
     gems = [];
     _nextGemId = 1;
     sockets = {};
