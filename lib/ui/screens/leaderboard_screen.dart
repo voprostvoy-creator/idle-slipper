@@ -4,14 +4,18 @@ import 'package:flutter/material.dart';
 
 import '../../game/game_state.dart';
 import '../../game/slipper.dart';
+import '../../game/weekly.dart';
 import '../slipper_sprite.dart';
 import '../theme.dart';
+import '../weekly_prizes.dart';
 import '../widgets/game_widgets.dart';
 
 /// Рейтинг арены: все участники по очкам, игрок среди них подсвечен.
+/// С [prizes] — под каждым местом приз недели, который оно получит.
 class LeaderboardScreen extends StatelessWidget {
-  const LeaderboardScreen({super.key, required this.game});
+  const LeaderboardScreen({super.key, required this.game, this.prizes = false});
   final GameState game;
+  final bool prizes;
 
   static const _rowExtent = 84.0;
 
@@ -60,8 +64,16 @@ class LeaderboardScreen extends StatelessWidget {
                         color: GameColors.text,
                       ),
                     ),
-                    const Expanded(
-                      child: Center(child: StrokeText('Рейтинг', size: 30)),
+                    Expanded(
+                      child: Center(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: StrokeText(
+                            prizes ? 'Призы недели' : 'Рейтинг',
+                            size: 30,
+                          ),
+                        ),
+                      ),
                     ),
                     const SizedBox(width: 44),
                   ],
@@ -89,6 +101,7 @@ class LeaderboardScreen extends StatelessWidget {
                               slipper: slipper,
                               rating: rating,
                               isMe: isMe,
+                              prizes: prizes,
                             ),
                           );
                         },
@@ -108,12 +121,14 @@ class _Row extends StatelessWidget {
     required this.slipper,
     required this.rating,
     required this.isMe,
+    this.prizes = false,
   });
 
   final int place;
   final Slipper slipper;
   final int rating;
   final bool isMe;
+  final bool prizes;
 
   @override
   Widget build(BuildContext context) {
@@ -156,7 +171,8 @@ class _Row extends StatelessWidget {
           const SizedBox(width: 8),
           SlipperSprite(
             fighter: slipper,
-            width: 72,
+            // С призами тапок поменьше — строке приза нужно место.
+            width: prizes ? 48 : 72,
             animate: false,
             showSize: false,
           ),
@@ -171,22 +187,28 @@ class _Row extends StatelessWidget {
                   style: theme.textTheme.titleSmall,
                   overflow: TextOverflow.ellipsis,
                 ),
-                Row(
-                  children: [
-                    const PowerIcon(size: 14),
-                    const SizedBox(width: 3),
-                    Text('${slipper.power}', style: theme.textTheme.bodySmall),
-                    if (slipper.stars > 0) ...[
-                      const SizedBox(width: 6),
+                if (prizes)
+                  _prize(theme)
+                else
+                  Row(
+                    children: [
+                      const PowerIcon(size: 14),
+                      const SizedBox(width: 3),
                       Text(
-                        '★' * slipper.stars,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: GameColors.gold,
-                        ),
+                        '${slipper.power}',
+                        style: theme.textTheme.bodySmall,
                       ),
+                      if (slipper.stars > 0) ...[
+                        const SizedBox(width: 6),
+                        Text(
+                          '★' * slipper.stars,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: GameColors.gold,
+                          ),
+                        ),
+                      ],
                     ],
-                  ],
-                ),
+                  ),
               ],
             ),
           ),
@@ -195,6 +217,19 @@ class _Row extends StatelessWidget {
           Text('$rating', style: theme.textTheme.titleMedium),
         ],
       ),
+    );
+  }
+
+  /// Приз недели за это место — в одну строку, ужимается под ширину.
+  Widget _prize(ThemeData theme) {
+    final prize = WeeklyPrize.forPlace(place);
+    if (prize == null) {
+      return Text('Без приза', style: theme.textTheme.bodySmall);
+    }
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      alignment: Alignment.centerLeft,
+      child: PrizeLine(prize: prize),
     );
   }
 }

@@ -248,6 +248,9 @@ class GameState extends ChangeNotifier with WidgetsBindingObserver {
 
   int cardCount(PickCard c) => pickCards[c.name] ?? 0;
 
+  /// Есть неиспользованная карта выбора — красная точка в меню.
+  bool get hasPickCards => PickCard.values.any((c) => cardCount(c) > 0);
+
   /// Можно ли картой [c] взять тапок [kind]: обычная — кроме мифических.
   static bool cardAllows(PickCard c, SlipperKind kind) =>
       c == PickCard.superCard || kind.rarity != Rarity.mythic;

@@ -5,6 +5,7 @@ import '../game/weekly.dart';
 import '../net/server_api.dart';
 import 'format.dart';
 import 'pick_card.dart';
+import 'screens/leaderboard_screen.dart';
 import 'theme.dart';
 import 'toast.dart';
 import 'widgets/game_widgets.dart';
@@ -36,6 +37,12 @@ class _WeeklyPrizesPanelState extends State<WeeklyPrizesPanel> {
     final prize = place == null ? null : WeeklyPrize.forPlace(place);
     return GamePanel(
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      // Нажатие — рейтинг с призами каждого места.
+      onTap: () => Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => LeaderboardScreen(game: game, prizes: true),
+        ),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

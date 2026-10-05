@@ -141,6 +141,7 @@ class _RootShellState extends State<RootShell> {
           // Точка — есть что забрать: задание, полный сундук, бесплатный кейс.
           dots: {
             if (game.questsReady || game.chestFull) _Tab.home,
+            if (game.hasPickCards) _Tab.collection,
             if (game.dailyCaseAvailable || game.adCaseAvailable) _Tab.shop,
             if (game.digTasksReady) _Tab.battle,
           },

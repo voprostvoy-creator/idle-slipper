@@ -39,19 +39,39 @@ class _CollectionScreenState extends State<CollectionScreen> {
 
   GameState get game => widget.game;
 
-  Widget _tab(String label, bool gems) {
+  Widget _tab(String label, bool gems, {bool dot = false}) {
     final active = _gems == gems;
     return Expanded(
-      child: GameButton(
-        color: active ? GameColors.gold : GameColors.panelLight,
-        height: 40,
-        onPressed: () => setState(() => _gems = gems),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: active ? GameColors.outline : GameColors.text,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          GameButton(
+            color: active ? GameColors.gold : GameColors.panelLight,
+            height: 40,
+            onPressed: () => setState(() => _gems = gems),
+            child: Text(
+              label,
+              style: TextStyle(
+                color: active ? GameColors.outline : GameColors.text,
+              ),
+            ),
           ),
-        ),
+          // Красная точка — в инвентаре ждёт карта выбора.
+          if (dot)
+            Positioned(
+              right: -2,
+              top: -4,
+              child: Container(
+                width: 14,
+                height: 14,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: GameColors.red,
+                  border: Border.all(color: GameColors.outline, width: 2),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -82,7 +102,7 @@ class _CollectionScreenState extends State<CollectionScreen> {
               children: [
                 _tab('Тапки', false),
                 const SizedBox(width: 10),
-                _tab('Инвентарь', true),
+                _tab('Инвентарь', true, dot: game.hasPickCards),
               ],
             ),
             if (_gems) ...[
